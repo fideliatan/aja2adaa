@@ -652,3 +652,249 @@
   .od-main { padding: 20px 16px 48px; }
   .od-card { padding: 18px 16px; }
 }
+
+/* ════════════════════════════════════════════════════════
+   NEW STATUS ELEMENTS
+════════════════════════════════════════════════════════ */
+
+/* Rejected / Cancelled banners */
+.od-rejected-banner,
+.od-cancelled-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+}
+
+.od-rejected-banner {
+  background: rgba(239,68,68,0.07);
+  border: 1.5px solid rgba(239,68,68,0.2);
+}
+
+.od-cancelled-banner {
+  background: rgba(170,170,170,0.08);
+  border: 1.5px solid rgba(170,170,170,0.2);
+}
+
+.od-rejected-icon,
+.od-cancelled-icon { font-size: 28px; flex-shrink: 0; }
+
+.od-rejected-title  { font-size: 15px; font-weight: 800; color: #ef4444; margin-bottom: 4px; }
+.od-cancelled-title { font-size: 15px; font-weight: 800; color: #888; margin-bottom: 4px; }
+
+.od-rejected-reason,
+.od-cancelled-reason { font-size: 13px; color: #777; line-height: 1.6; }
+
+/* Cancel card */
+.od-cancel-card {
+  background: rgba(239,68,68,0.04);
+  border: 1.5px solid rgba(239,68,68,0.15);
+  border-radius: var(--od-radius);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.od-cancel-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.od-cancel-info-icon { font-size: 20px; }
+
+.od-cancel-info-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin-bottom: 2px;
+}
+
+.od-cancel-info-sub {
+  font-size: 12px;
+  color: #888;
+}
+
+.od-cancel-info-sub strong { color: #e09a3a; }
+
+.od-cancel-btn {
+  padding: 10px 20px;
+  background: #fff;
+  border: 1.5px solid rgba(239,68,68,0.4);
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ef4444;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+
+.od-cancel-btn:hover {
+  background: rgba(239,68,68,0.06);
+  border-color: #ef4444;
+}
+
+/* Cancel confirm modal small */
+.od-modal--small { max-width: 420px; }
+
+.od-cancel-confirm-btn {
+  flex: 1;
+  padding: 12px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.od-cancel-back-btn {
+  flex: 1;
+  padding: 12px;
+  background: #f5f5f5;
+  color: #555;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Waiting card */
+.od-waiting-card {
+  text-align: center;
+  padding: 24px !important;
+}
+
+.od-waiting-icon { font-size: 36px; margin-bottom: 10px; }
+.od-waiting-title { font-size: 15px; font-weight: 800; color: #2d2d2d; margin-bottom: 6px; }
+.od-waiting-sub   { font-size: 13px; color: #888; line-height: 1.6; }
+
+/* Tracking card */
+.od-tracking-card { overflow: hidden; }
+
+.od-tracking-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.od-tracking-icon { font-size: 26px; }
+
+.od-tracking-info {
+  background: linear-gradient(135deg, rgba(139,92,246,0.07), rgba(139,92,246,0.03));
+  border: 1.5px solid rgba(139,92,246,0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.od-tracking-courier {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b5cf6;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.od-tracking-number {
+  font-size: 18px;
+  font-weight: 900;
+  color: #2d2d2d;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rejection detail card */
+.od-rejection-card { overflow: hidden; }
+
+.od-rejection-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.od-rejection-icon { font-size: 26px; }
+
+.od-rejection-reason {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.65;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  background: rgba(239,68,68,0.05);
+  border: 1px solid rgba(239,68,68,0.15);
+  border-radius: 10px;
+}
+
+.od-rejection-note {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* ── DELIVERY PROOF CARD ──────────────────────────── */
+.od-delivery-proof-card { }
+
+.od-delivery-proof-img-wrap {
+  margin: 12px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid rgba(34,197,94,0.2);
+  background: #f0fdf4;
+}
+.od-delivery-proof-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  display: block;
+}
+.od-delivery-proof-caption {
+  font-size: 11.5px;
+  color: #16a34a;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 0;
+  background: rgba(34,197,94,0.07);
+}
+.od-delivery-proof-note {
+  font-size: 13.5px;
+  color: #6b7280;
+  margin: 10px 0 14px;
+  line-height: 1.6;
+}
+
+/* ── RETURN BUTTON ────────────────────────────────── */
+.od-return-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 50px;
+  border: 1.5px solid #f0d5d2;
+  background: #fdf8f7;
+  color: #c97269;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  justify-content: center;
+  margin-top: 12px;
+  transition: background 0.16s, border-color 0.16s;
+}
+.od-return-btn:hover {
+  background: #fce8e6;
+  border-color: #c97269;
+}

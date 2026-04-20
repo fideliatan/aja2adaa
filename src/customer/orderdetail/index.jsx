@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useOrders } from "../context/OrderContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -28,24 +29,24 @@ const ORDER = {
 
 /* ─── Status Config ────────────────────────────────────────── */
 const STATUS_CONFIG = {
-  Approved:  { label: "Disetujui",  color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
-  Packaging: { label: "Dikemas",    color: "#4a9fd4", bg: "rgba(74,159,212,0.12)"  },
-  Shipped:   { label: "Dikirim",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
-  Delivered: { label: "Terkirim",   color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
-  Pending:   { label: "Menunggu",   color: "#e09a3a", bg: "rgba(224,154,58,0.12)"  },
+  pending:   { label: "Menunggu Konfirmasi", color: "#e09a3a", bg: "rgba(224,154,58,0.12)"  },
+  packing:   { label: "Sedang Dikemas",      color: "#4a9fd4", bg: "rgba(74,159,212,0.12)"  },
+  shipped:   { label: "Dalam Pengiriman",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
+  delivered: { label: "Terkirim",            color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  rejected:  { label: "Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
+  cancelled: { label: "Dibatalkan",          color: "#aaa",    bg: "rgba(170,170,170,0.12)" },
 };
 
 const ORDER_STEPS = [
-  { key: "Pending",   label: "Menunggu",  icon: "🕐" },
-  { key: "Approved",  label: "Disetujui", icon: "✓"  },
-  { key: "Packaging", label: "Dikemas",   icon: "📦" },
-  { key: "Shipped",   label: "Dikirim",   icon: "🚚" },
-  { key: "Delivered", label: "Sampai",    icon: "🎉" },
+  { key: "pending",   label: "Menunggu",  icon: "⏳" },
+  { key: "packing",   label: "Dikemas",   icon: "📦" },
+  { key: "shipped",   label: "Dikirim",   icon: "🚚" },
+  { key: "delivered", label: "Sampai",    icon: "🎉" },
 ];
 const STEP_ORDER = ORDER_STEPS.map(s => s.key);
 
 const isReceiptAvailable = (status) =>
-  ["Approved", "Packaging", "Shipped", "Delivered"].includes(status);
+  ["packing", "shipped", "delivered"].includes(status);
 
 /* ─── Download E-Receipt ───────────────────────────────────── */
 function buildReceiptHtml(order, logoDataUrl = "") {
@@ -500,12 +501,48 @@ function Barcode({ value, width = 200, height = 44 }) {
    ════════════════════════════════════════════════════════════ */
 export default function OrderDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { getOrder, cancelOrder } = useOrders();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen]     = useState(false);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [timeLeft, setTimeLeft]           = useState(null);
 
-  const status       = STATUS_CONFIG[ORDER.status] ?? STATUS_CONFIG.Pending;
-  const subtotal     = ORDER.items.reduce((s, i) => s + i.price * i.qty, 0);
-  const receiptReady = isReceiptAvailable(ORDER.status);
+  const orderId = location.state?.orderId ?? ORDER.id;
+  const liveOrder = getOrder(orderId) ?? ORDER;
+
+  // Real-time cancel countdown
+  useEffect(() => {
+    if (!liveOrder.cancelDeadlineTs) return;
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((liveOrder.cancelDeadlineTs - Date.now()) / 1000));
+      setTimeLeft(diff);
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [liveOrder.cancelDeadlineTs]);
+
+  const fmtCountdown = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}j ${m}m`;
+    if (m > 0) return `${m}m ${sec}d`;
+    return `${sec}d`;
+  };
+
+  const canCancel = liveOrder.status === "pending" &&
+    liveOrder.cancelDeadlineTs && liveOrder.cancelDeadlineTs > Date.now();
+
+  const status       = STATUS_CONFIG[liveOrder.status] ?? STATUS_CONFIG.pending;
+  const subtotal     = liveOrder.subtotal ?? liveOrder.items?.reduce((s, i) => s + i.price * i.qty, 0) ?? 0;
+  const receiptReady = isReceiptAvailable(liveOrder.status);
+
+  const handleCancel = () => {
+    cancelOrder(liveOrder.id);
+    setCancelConfirm(false);
+  };
 
   return (
     <div className="od-root">
@@ -519,15 +556,15 @@ export default function OrderDetailPage() {
       <main className="od-main">
 
         {/* ── Back button ── */}
-        <button className="od-back-btn" onClick={() => navigate(-1)}>
-          <BackIcon /> Kembali ke Pesanan Saya
+        <button className="od-back-btn" onClick={() => navigate("/myprofile", { state: { tab: "orderstatus" } })}>
+          <BackIcon /> Kembali ke Status Orderan
         </button>
 
         {/* ── Page header ── */}
         <div className="od-header">
           <div className="od-header-left">
             <h1 className="od-title">Detail Pesanan</h1>
-            <p className="od-order-id">#{ORDER.id}</p>
+            <p className="od-order-id">#{liveOrder.id}</p>
           </div>
           <span
             className="od-status-badge"
@@ -537,36 +574,62 @@ export default function OrderDetailPage() {
           </span>
         </div>
 
-        {/* ── Status Timeline ── */}
-        <div className="od-card od-timeline-card">
-          <h2 className="od-card-title" style={{ marginBottom: 16 }}>Status Pesanan</h2>
-          <div className="od-steps">
-            {ORDER_STEPS.map((step, i) => {
-              const currentIdx = STEP_ORDER.indexOf(ORDER.status);
-              const stepIdx    = STEP_ORDER.indexOf(step.key);
-              const isDone     = stepIdx < currentIdx;
-              const isActive   = stepIdx === currentIdx;
-              const dotClass   = isDone ? "od-step-dot--done" : isActive ? "od-step-dot--active" : "od-step-dot--pending";
-              const lblClass   = isDone ? "od-step-label--done" : isActive ? "od-step-label--active" : "od-step-label--pending";
-              const lineClass  = i < ORDER_STEPS.length - 1
-                ? stepIdx < currentIdx ? "od-step-line--done"
-                  : stepIdx === currentIdx ? "od-step-line--active"
-                  : "od-step-line--pending"
-                : null;
-              return (
-                <React.Fragment key={step.key}>
-                  <div className="od-step">
-                    <div className={`od-step-dot ${dotClass}`}>{step.icon}</div>
-                    <span className={`od-step-label ${lblClass}`}>{step.label}</span>
-                  </div>
-                  {i < ORDER_STEPS.length - 1 && (
-                    <div className={`od-step-line ${lineClass}`} />
-                  )}
-                </React.Fragment>
-              );
-            })}
+        {/* ── REJECTED state ── */}
+        {liveOrder.status === "rejected" && (
+          <div className="od-rejected-banner">
+            <div className="od-rejected-icon">❌</div>
+            <div>
+              <p className="od-rejected-title">Pesanan Ditolak</p>
+              <p className="od-rejected-reason">
+                {liveOrder.rejectionReason ?? "Pembayaran tidak dapat dikonfirmasi."}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ── CANCELLED state ── */}
+        {liveOrder.status === "cancelled" && (
+          <div className="od-cancelled-banner">
+            <div className="od-cancelled-icon">🚫</div>
+            <div>
+              <p className="od-cancelled-title">Pesanan Dibatalkan</p>
+              <p className="od-cancelled-reason">Pesanan ini telah dibatalkan.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Status Timeline (only for active orders) ── */}
+        {!["rejected","cancelled"].includes(liveOrder.status) && (
+          <div className="od-card od-timeline-card">
+            <h2 className="od-card-title" style={{ marginBottom: 16 }}>Status Pesanan</h2>
+            <div className="od-steps">
+              {ORDER_STEPS.map((step, i) => {
+                const currentIdx = STEP_ORDER.indexOf(liveOrder.status);
+                const stepIdx    = STEP_ORDER.indexOf(step.key);
+                const isDone     = stepIdx < currentIdx;
+                const isActive   = stepIdx === currentIdx;
+                const dotClass   = isDone ? "od-step-dot--done" : isActive ? "od-step-dot--active" : "od-step-dot--pending";
+                const lblClass   = isDone ? "od-step-label--done" : isActive ? "od-step-label--active" : "od-step-label--pending";
+                const lineClass  = i < ORDER_STEPS.length - 1
+                  ? stepIdx < currentIdx ? "od-step-line--done"
+                    : stepIdx === currentIdx ? "od-step-line--active"
+                    : "od-step-line--pending"
+                  : null;
+                return (
+                  <React.Fragment key={step.key}>
+                    <div className="od-step">
+                      <div className={`od-step-dot ${dotClass}`}>{step.icon}</div>
+                      <span className={`od-step-label ${lblClass}`}>{step.label}</span>
+                    </div>
+                    {i < ORDER_STEPS.length - 1 && (
+                      <div className={`od-step-line ${lineClass}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="od-grid">
 
@@ -577,10 +640,13 @@ export default function OrderDetailPage() {
             <div className="od-card">
               <h2 className="od-card-title">Produk yang Dipesan</h2>
               <div className="od-items">
-                {ORDER.items.map((item, i) => (
+                {(liveOrder.items ?? []).map((item, i) => (
                   <div key={i} className="od-item">
                     <div className="od-item-img">
-                      <span>{item.name[0]}</span>
+                      {item.image
+                        ? <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />
+                        : <span>{item.name?.[0] ?? "?"}</span>
+                      }
                     </div>
                     <div className="od-item-info">
                       <p className="od-item-name">{item.name}</p>
@@ -605,19 +671,37 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="od-summary-row">
                   <span>Ongkos Kirim</span>
-                  <span className="od-free-ship">Gratis</span>
+                  <span>{liveOrder.deliveryFee ? fmt(liveOrder.deliveryFee) : <span className="od-free-ship">Gratis</span>}</span>
                 </div>
                 <div className="od-summary-divider" />
                 <div className="od-summary-row od-summary-total">
                   <span>Total</span>
-                  <span>{fmt(ORDER.total)}</span>
+                  <span>{fmt(liveOrder.total ?? subtotal)}</span>
                 </div>
                 <div className="od-summary-row od-summary-payment-method">
                   <span>Metode Pembayaran</span>
-                  <span>{ORDER.payment}</span>
+                  <span>{liveOrder.payment}</span>
                 </div>
               </div>
             </div>
+
+            {/* ── Cancel button (only while pending + within window) ── */}
+            {canCancel && (
+              <div className="od-cancel-card">
+                <div className="od-cancel-info">
+                  <span className="od-cancel-info-icon">⏱</span>
+                  <div>
+                    <p className="od-cancel-info-title">Bisa Dibatalkan</p>
+                    <p className="od-cancel-info-sub">
+                      Sisa waktu: <strong>{timeLeft != null ? fmtCountdown(timeLeft) : "—"}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button className="od-cancel-btn" onClick={() => setCancelConfirm(true)}>
+                  Batalkan Pesanan
+                </button>
+              </div>
+            )}
 
           </div>
 
@@ -629,9 +713,9 @@ export default function OrderDetailPage() {
               <h2 className="od-card-title">Informasi Pengiriman</h2>
               <div className="od-shipping">
                 {[
-                  ["Penerima",       ORDER.recipient],
-                  ["Alamat",         ORDER.address],
-                  ["Tanggal Pesan",  ORDER.date],
+                  ["Penerima",      liveOrder.recipient ?? "—"],
+                  ["Alamat",        liveOrder.address   ?? "—"],
+                  ["Tanggal Pesan", liveOrder.date      ?? "—"],
                 ].map(([label, val]) => (
                   <div key={label} className="od-shipping-row">
                     <span className="od-shipping-label">{label}</span>
@@ -640,6 +724,34 @@ export default function OrderDetailPage() {
                 ))}
               </div>
             </div>
+
+            {/* ── Tracking card (shipped) ── */}
+            {liveOrder.status === "shipped" && liveOrder.trackingNumber && (
+              <div className="od-card od-tracking-card">
+                <div className="od-tracking-header">
+                  <span className="od-tracking-icon">🚚</span>
+                  <div>
+                    <h2 className="od-card-title" style={{ marginBottom: 2 }}>Nomor Resi</h2>
+                    <p className="od-receipt-avail">Pesanan sedang dalam pengiriman</p>
+                  </div>
+                </div>
+                <div className="od-tracking-info">
+                  <p className="od-tracking-courier">{liveOrder.courier}</p>
+                  <p className="od-tracking-number">{liveOrder.trackingNumber}</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Pending / waiting card ── */}
+            {liveOrder.status === "pending" && (
+              <div className="od-card od-waiting-card">
+                <div className="od-waiting-icon">⏳</div>
+                <p className="od-waiting-title">Menunggu Konfirmasi Admin</p>
+                <p className="od-waiting-sub">
+                  Bukti pembayaran kamu sedang diperiksa. Estimasi konfirmasi 1×24 jam.
+                </p>
+              </div>
+            )}
 
             {/* ── E-Receipt section ── */}
             {receiptReady && (
@@ -659,7 +771,7 @@ export default function OrderDetailPage() {
                 </p>
 
                 <div className="od-receipt-actions">
-                  <button className="od-btn-download" onClick={() => handleDownload(ORDER)}>
+                  <button className="od-btn-download" onClick={() => handleDownload(liveOrder)}>
                     <DownloadIcon />
                     Download Struk
                   </button>
@@ -671,9 +783,81 @@ export default function OrderDetailPage() {
               </div>
             )}
 
+            {/* ── Delivery proof card (delivered) ── */}
+            {liveOrder.status === "delivered" && (
+              <div className="od-card od-delivery-proof-card">
+                <div className="od-receipt-header">
+                  <div className="od-receipt-icon-wrap" style={{ background: "rgba(34,197,94,0.1)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                  <div>
+                    <h2 className="od-card-title" style={{ marginBottom: 2 }}>Paket Diterima</h2>
+                    <p className="od-receipt-avail">Pesanan sudah sampai ke tujuan</p>
+                  </div>
+                </div>
+                {liveOrder.deliveryProof ? (
+                  <div className="od-delivery-proof-img-wrap">
+                    <img src={liveOrder.deliveryProof} alt="Bukti kirim" className="od-delivery-proof-img" />
+                    <p className="od-delivery-proof-caption">Foto bukti pengiriman dari kurir</p>
+                  </div>
+                ) : (
+                  <p className="od-delivery-proof-note">Kurir telah mengkonfirmasi pengiriman paket.</p>
+                )}
+                <button className="od-return-btn" onClick={() => alert("Fitur return akan segera hadir!")}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                  Ajukan Return / Pengembalian
+                </button>
+              </div>
+            )}
+
+            {/* ── Rejection detail card ── */}
+            {liveOrder.status === "rejected" && (
+              <div className="od-card od-rejection-card">
+                <div className="od-rejection-header">
+                  <span className="od-rejection-icon">❌</span>
+                  <div>
+                    <h2 className="od-card-title" style={{ marginBottom: 2 }}>Alasan Penolakan</h2>
+                    <p className="od-receipt-avail">Pesanan tidak dapat diproses</p>
+                  </div>
+                </div>
+                <p className="od-rejection-reason">
+                  {liveOrder.rejectionReason ?? "Pembayaran tidak dapat dikonfirmasi oleh admin."}
+                </p>
+                <p className="od-rejection-note">
+                  Silakan hubungi kami melalui WhatsApp jika ada pertanyaan.
+                </p>
+              </div>
+            )}
+
           </div>
         </div>
       </main>
+
+      {/* ── Cancel confirmation modal ── */}
+      {cancelConfirm && (
+        <div className="od-modal-overlay" onClick={() => setCancelConfirm(false)}>
+          <div className="od-modal od-modal--small" onClick={e => e.stopPropagation()}>
+            <div className="od-modal-header">
+              <h3>Batalkan Pesanan?</h3>
+              <button className="od-modal-close" onClick={() => setCancelConfirm(false)}>✕</button>
+            </div>
+            <div className="od-modal-body">
+              <p style={{ fontSize: 14, color: "#666", marginBottom: 20, lineHeight: 1.6 }}>
+                Apakah kamu yakin ingin membatalkan pesanan <strong>{liveOrder.id}</strong>?
+                Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="od-cancel-confirm-btn" onClick={handleCancel}>
+                  Ya, Batalkan
+                </button>
+                <button className="od-cancel-back-btn" onClick={() => setCancelConfirm(false)}>
+                  Kembali
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════
           PREVIEW MODAL
@@ -692,7 +876,7 @@ export default function OrderDetailPage() {
                 <div className="od-rp-head">
                   <img src="/logo-careofyou.png" alt="careofyou" className="od-rp-logo-img" />
                   <p className="od-rp-tagline">Struk Pembelian Resmi</p>
-                  <div className="od-rp-head-id">{ORDER.id}</div>
+                  <div className="od-rp-head-id">{liveOrder.id}</div>
                 </div>
 
                 {/* Success badge */}
@@ -704,10 +888,10 @@ export default function OrderDetailPage() {
                 {/* Info grid */}
                 <div className="od-rp-info-grid">
                   {[
-                    ["No. Pesanan", `#${ORDER.id}`],
-                    ["Tanggal",     ORDER.date],
-                    ["Metode",      ORDER.payment],
-                    ["Penerima",    ORDER.recipient],
+                    ["No. Pesanan", `#${liveOrder.id}`],
+                    ["Tanggal",     liveOrder.date],
+                    ["Metode",      liveOrder.payment],
+                    ["Penerima",    liveOrder.recipient],
                   ].map(([lbl, val]) => (
                     <div key={lbl} className="od-rp-info-box">
                       <p className="od-rp-info-label">{lbl}</p>
@@ -721,7 +905,7 @@ export default function OrderDetailPage() {
 
                 {/* Items */}
                 <p className="od-rp-items-label">Produk</p>
-                {ORDER.items.map((item, i) => (
+                {(liveOrder.items ?? []).map((item, i) => (
                   <div key={i} className="od-rp-item">
                     <div className="od-rp-item-dot" />
                     <div className="od-rp-item-left">
@@ -746,13 +930,13 @@ export default function OrderDetailPage() {
                 {/* Total */}
                 <div className="od-rp-total-row">
                   <span>Total Pembayaran</span>
-                  <span className="od-rp-total-val">{fmt(ORDER.total)}</span>
+                  <span className="od-rp-total-val">{fmt(liveOrder.total ?? subtotal)}</span>
                 </div>
 
                 {/* Barcode */}
                 <div className="od-rp-barcode-wrap">
-                  <Barcode value={ORDER.id} width={200} height={40} />
-                  <p className="od-rp-barcode-num">{ORDER.id.replace(/-/g, "")} 0 1 7 5</p>
+                  <Barcode value={liveOrder.id} width={200} height={40} />
+                  <p className="od-rp-barcode-num">{liveOrder.id.replace(/-/g, "")} 0 1 7 5</p>
                 </div>
 
                 {/* Footer */}

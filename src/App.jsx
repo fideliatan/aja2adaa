@@ -15,6 +15,7 @@ import OrderDetailPage from './customer/orderdetail/index.jsx'
 import { CartProvider } from './customer/context/CartContext.jsx'
 import { WishlistProvider } from './customer/context/WishlistContext.jsx'
 import { SearchProvider } from './customer/context/SearchContext.jsx'
+import { OrderProvider } from './customer/context/OrderContext.jsx'
 import CartSidebar from './customer/components/CartSidebar.jsx'
 
 function ParticleCanvas() {
@@ -108,6 +109,7 @@ function App() {
   return (
     <>
     <ParticleCanvas />
+    <OrderProvider>
     <CartProvider>
       <WishlistProvider>
         <SearchProvider>
@@ -131,6 +133,7 @@ function App() {
         </SearchProvider>
       </WishlistProvider>
     </CartProvider>
+    </OrderProvider>
     </>
   )
 }

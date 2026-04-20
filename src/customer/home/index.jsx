@@ -417,30 +417,72 @@ export default function HomePage() {
       {quickView && (
         <div className="qv-overlay" onClick={() => setQuickView(null)}>
           <div className="qv-modal" onClick={e => e.stopPropagation()}>
-            <button className="qv-close" onClick={() => setQuickView(null)}>✕</button>
+
+            {/* ─ Close ─ */}
+            <button className="qv-close" onClick={() => setQuickView(null)}>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg>
+            </button>
+
             <div className="qv-body">
+
+              {/* ─ Image column ─ */}
               <div className="qv-img-wrap">
                 <img src={quickView.image} alt={quickView.name} onError={e => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }} />
-                {quickView.bestseller && (
-                  <span className="qv-img-badge">Best Seller</span>
-                )}
+                <div className="qv-img-gradient" />
+                {quickView.bestseller && <span className="qv-img-badge">✦ Bestseller</span>}
+                <div className="qv-img-category">{quickView.category}</div>
               </div>
+
+              {/* ─ Info column ─ */}
               <div className="qv-info">
-                <p className="qv-brand">{quickView.brand}</p>
-                <h3 className="qv-name">{quickView.name}</h3>
-                <span className="qv-category-tag">{quickView.category}</span>
-                <div className="qv-stars-row">
-                  <span className="qv-stars">★ {quickView.rating}</span>
-                  <span className="qv-review-count">({quickView.reviews.toLocaleString("id-ID")} reviews)</span>
+
+                <div className="qv-info-top">
+                  <p className="qv-brand">{quickView.brand}</p>
+                  <h3 className="qv-name">{quickView.name}</h3>
+
+                  {/* Stars */}
+                  <div className="qv-stars-row">
+                    <div className="qv-stars-visual">
+                      {Array.from({ length: 5 }, (_, i) => {
+                        const filled = i < Math.floor(quickView.rating);
+                        const half   = !filled && i < quickView.rating;
+                        return (
+                          <svg key={i} width="14" height="14" viewBox="0 0 24 24" className={`qv-star${filled ? " qv-star--full" : half ? " qv-star--half" : ""}`}>
+                            <defs>
+                              {half && <linearGradient id={`hg${i}`} x1="0" x2="1" y1="0" y2="0">
+                                <stop offset="50%" stopColor="#f59e0b"/>
+                                <stop offset="50%" stopColor="#e5e7eb"/>
+                              </linearGradient>}
+                            </defs>
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                              fill={filled ? "#f59e0b" : half ? `url(#hg${i})` : "#e5e7eb"} stroke="none" />
+                          </svg>
+                        );
+                      })}
+                    </div>
+                    <span className="qv-rating-num">{quickView.rating}</span>
+                    <span className="qv-review-count">({quickView.reviews.toLocaleString("id-ID")} ulasan)</span>
+                  </div>
                 </div>
+
+                <div className="qv-divider" />
+
                 <p className="qv-desc">{quickView.desc}</p>
-                <p className="qv-price">Rp {quickView.price.toLocaleString("id-ID")}</p>
+
+                <div className="qv-divider" />
+
+                <div className="qv-price-row">
+                  <span className="qv-price">Rp {quickView.price.toLocaleString("id-ID")}</span>
+                  <span className="qv-price-note">Free ongkir</span>
+                </div>
+
                 <div className="qv-actions">
                   <button
                     className="qv-add-btn"
                     onClick={() => { addToCart(quickView); setQuickView(null); }}
                   >
-                    + Tambah ke Keranjang
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    Tambah ke Keranjang
                   </button>
                   <button
                     className={`qv-fav-btn${favorites.has(quickView.id) ? " qv-fav-btn--active" : ""}`}
@@ -450,6 +492,12 @@ export default function HomePage() {
                     <HeartIcon filled={favorites.has(quickView.id)} />
                   </button>
                 </div>
+
+                <div className="qv-trust-row">
+                  <span className="qv-trust-item">✓ Produk original</span>
+                  <span className="qv-trust-item">✓ Aman & terpercaya</span>
+                </div>
+
               </div>
             </div>
           </div>

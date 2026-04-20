@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useOrders } from "../context/OrderContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -20,17 +21,6 @@ const IconMapPin = () => (
   </svg>
 );
 
-const IconTag = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-    <line x1="7" y1="7" x2="7.01" y2="7"/>
-  </svg>
-);
-const IconCheck = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-);
 const IconStore = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -70,6 +60,7 @@ const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { addOrder } = useOrders();
 
   const cartItems = location.state?.cartItems ?? ORDER_ITEMS;
 
@@ -83,18 +74,32 @@ export default function CheckoutPage() {
   // Delivery
   const [delivery, setDelivery] = useState("regular");
 
-  // Voucher
-  const [voucher, setVoucher] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState(null);
-  const [voucherMsg, setVoucherMsg] = useState("");
-
   // Payment
   const [payment, setPayment] = useState("");
 
-  // Checkout
-  const [ordered, setOrdered] = useState(false);
+  // Proof upload modal
+  const [proofModal, setProofModal]   = useState(false);
+  const [proofFile, setProofFile]     = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
+  const [proofDrag, setProofDrag]     = useState(false);
+  const [timerLeft, setTimerLeft]     = useState(120); // 2 min
+  const [timerExpired, setTimerExpired] = useState(false);
+  const [submitted, setSubmitted]     = useState(false);
+  const [newOrderId, setNewOrderId]   = useState("");
+  const timerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  /* handlers */
+  useEffect(() => {
+    if (!proofModal || submitted) return;
+    timerRef.current = setInterval(() => {
+      setTimerLeft(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current); setTimerExpired(true); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [proofModal, submitted]);
+
   const handleAddAddress = (e) => {
     e.preventDefault();
     if (!newAddr.label || !newAddr.name || !newAddr.phone || !newAddr.address) {
@@ -109,65 +114,72 @@ export default function CheckoutPage() {
     setAddrError("");
   };
 
-  const applyVoucher = () => {
-    const code = voucher.trim().toUpperCase();
-    if (code === "CARES10") {
-      setAppliedVoucher({ code, discount: 0.1, label: "10% off" });
-      setVoucherMsg("Voucher applied! 10% discount.");
-    } else if (code === "HEMAT20K") {
-      setAppliedVoucher({ code, discount: 20000, label: "Rp 20.000 off", flat: true });
-      setVoucherMsg("Voucher applied! Rp 20.000 discount.");
-    } else {
-      setAppliedVoucher(null);
-      setVoucherMsg("Invalid voucher code.");
-    }
-  };
-
-  const removeVoucher = () => { setAppliedVoucher(null); setVoucher(""); setVoucherMsg(""); };
-
-  const subtotal     = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const deliveryFee  = DELIVERY_OPTIONS.find(d => d.id === delivery)?.fee ?? 0;
-  const discount     = appliedVoucher
-    ? (appliedVoucher.flat ? appliedVoucher.discount : Math.round(subtotal * appliedVoucher.discount))
-    : 0;
-  const total        = subtotal + deliveryFee - discount;
+  const subtotal    = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const deliveryFee = DELIVERY_OPTIONS.find(d => d.id === delivery)?.fee ?? 0;
+  const total       = subtotal + deliveryFee;
 
   const handleCheckout = () => {
     if (!payment) { alert("Please select a payment method."); return; }
-    setOrdered(true);
+    const ordId = "ORD-" + Date.now().toString().slice(-6);
+    setNewOrderId(ordId);
+    setTimerLeft(120);
+    setTimerExpired(false);
+    setProofFile(null);
+    setProofPreview(null);
+    setSubmitted(false);
+    setProofModal(true);
   };
+
+  const handleProofFile = (file) => {
+    if (!file) return;
+    setProofFile(file);
+    const reader = new FileReader();
+    reader.onload = e => setProofPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleProofSubmit = () => {
+    if (!proofFile) return;
+    clearInterval(timerRef.current);
+    const addr = addresses.find(a => a.id === selectedAddr);
+    const pay  = PAYMENT_METHODS.find(p => p.id === payment);
+    addOrder({
+      id: newOrderId,
+      status: "pending",
+      customer: addr?.name ?? "Customer",
+      date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+      items: cartItems.map(i => ({ name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? "", image: i.image ?? "" })),
+      subtotal,
+      deliveryFee,
+      total,
+      payment: pay?.label ?? payment,
+      paymentAccount: pay?.account ?? "",
+      recipient: addr?.name ?? "",
+      phone: addr?.phone ?? "",
+      address: addr?.address ?? "",
+      paymentProof: proofPreview,
+      rejectionReason: null,
+      trackingNumber: null,
+      courier: null,
+      cancelDeadlineTs: Date.now() + 24 * 60 * 60 * 1000,
+    });
+    setSubmitted(true);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setProofDrag(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) handleProofFile(file);
+  };
+
+  const fmtTimer = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const selectedPayment = PAYMENT_METHODS.find(p => p.id === payment);
   const selectedAddress  = addresses.find(a => a.id === selectedAddr);
 
-  if (ordered) {
-    return (
-      <div className="co-page">
-        <Navbar 
-          activePage="checkout"
-          allProducts={PRODUCTS}
-          onHomeClick={() => navigate("/")}
-          onProductsClick={() => navigate("/products")}
-        />
-        <div className="co-success">
-          <div className="co-success-icon"><IconClock /></div>
-          <span className="co-success-badge">Pending Review</span>
-          <h2 className="co-success-title">Waiting for Admin<br/>Payment Approval</h2>
-          <p className="co-success-sub">Please transfer <strong>{fmt(total)}</strong> to:</p>
-          <div className="co-success-payment">
-            <p className="co-success-bank">{selectedPayment?.label}</p>
-            <p className="co-success-account">{selectedPayment?.account}</p>
-            <p className="co-success-holder">a.n. {selectedPayment?.holder}</p>
-          </div>
-          <p className="co-success-note">Once your payment is confirmed by our team, your order will be processed.</p>
-          <button className="co-success-home-btn" onClick={() => navigate("/")}>← Home</button>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
+    <>
     <div className="co-page">
 
       {/* NAVBAR */}
@@ -298,42 +310,7 @@ export default function CheckoutPage() {
                 </div>
               </section>
 
-              {/* 4 · VOUCHER */}
-              <section className="co-card">
-                <div className="co-card-heading">
-                  <span className="co-card-icon"><IconTag /></span>
-                  <h2 className="co-card-title">Voucher</h2>
-                </div>
-                {appliedVoucher ? (
-                  <div className="co-voucher-applied">
-                    <div className="co-voucher-check"><IconCheck /></div>
-                    <div>
-                      <p className="co-voucher-code">{appliedVoucher.code}</p>
-                      <p className="co-voucher-label">{appliedVoucher.label}</p>
-                    </div>
-                    <button className="co-voucher-remove" onClick={removeVoucher}>Remove</button>
-                  </div>
-                ) : (
-                  <div className="co-voucher-row">
-                    <input
-                      className="co-input co-voucher-input"
-                      placeholder="Enter voucher code"
-                      value={voucher}
-                      onChange={e => { setVoucher(e.target.value); setVoucherMsg(""); }}
-                      onKeyDown={e => e.key === "Enter" && applyVoucher()}
-                    />
-                    <button className="co-voucher-btn" onClick={applyVoucher}>Apply</button>
-                  </div>
-                )}
-                {voucherMsg && (
-                  <p className={`co-voucher-msg${appliedVoucher ? " co-voucher-msg--ok" : " co-voucher-msg--err"}`}>
-                    {voucherMsg}
-                  </p>
-                )}
-                <p className="co-voucher-hint">Try: <code>CARES10</code> or <code>HEMAT20K</code></p>
-              </section>
-
-              {/* 5 · PAYMENT METHOD */}
+              {/* 4 · PAYMENT METHOD */}
               <section className="co-card">
                 <h2 className="co-card-title" style={{ marginBottom: 16 }}>Payment Method</h2>
 
@@ -393,13 +370,6 @@ export default function CheckoutPage() {
                   <span>Delivery ({DELIVERY_OPTIONS.find(d => d.id === delivery)?.label})</span>
                   <span>{fmt(deliveryFee)}</span>
                 </div>
-                {appliedVoucher && (
-                  <div className="co-summary-row co-summary-row--discount">
-                    <span>Voucher ({appliedVoucher.code})</span>
-                    <span>−{fmt(discount)}</span>
-                  </div>
-                )}
-
                 <div className="co-summary-divider"/>
 
                 <div className="co-summary-total">
@@ -436,5 +406,122 @@ export default function CheckoutPage() {
       <Footer />
 
     </div>
+
+    {/* ════════════════════════════════════════════════════
+        PAYMENT PROOF UPLOAD MODAL
+        ════════════════════════════════════════════════════ */}
+    {proofModal && (
+      <div className="co-proof-overlay" onClick={() => !submitted && setProofModal(false)}>
+        <div className="co-proof-modal" onClick={e => e.stopPropagation()}>
+
+          {!submitted ? (
+            <>
+              {/* Header */}
+              <div className="co-proof-header">
+                <div className="co-proof-header-left">
+                  <span className="co-proof-icon-wrap">💳</span>
+                  <div>
+                    <h3 className="co-proof-title">Upload Bukti Pembayaran</h3>
+                    <p className="co-proof-subtitle">Order #{newOrderId}</p>
+                  </div>
+                </div>
+                <div className={`co-proof-timer${timerExpired ? " co-proof-timer--expired" : timerLeft <= 30 ? " co-proof-timer--warn" : ""}`}>
+                  {timerExpired ? "⚠️ Waktu habis" : `⏱ ${fmtTimer(timerLeft)}`}
+                </div>
+              </div>
+
+              {timerExpired && (
+                <div className="co-proof-expired-banner">
+                  Waktu upload sudah habis, tapi kamu masih bisa mengunggah bukti. Silakan upload sekarang.
+                </div>
+              )}
+
+              {/* Payment info */}
+              <div className="co-proof-payment-box">
+                <div className="co-proof-payment-label">Transfer ke</div>
+                <div className="co-proof-payment-row">
+                  <span className="co-proof-bank-name">{selectedPayment?.label}</span>
+                  <span className="co-proof-bank-account">{selectedPayment?.account}</span>
+                </div>
+                <div className="co-proof-payment-holder">a.n. {selectedPayment?.holder}</div>
+                <div className="co-proof-amount">Total: <strong>{fmt(total)}</strong></div>
+              </div>
+
+              {/* Upload area */}
+              <div
+                className={`co-proof-dropzone${proofDrag ? " co-proof-dropzone--drag" : ""}${proofPreview ? " co-proof-dropzone--filled" : ""}`}
+                onDragOver={e => { e.preventDefault(); setProofDrag(true); }}
+                onDragLeave={() => setProofDrag(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={e => handleProofFile(e.target.files?.[0])}
+                />
+                {proofPreview ? (
+                  <div className="co-proof-preview-wrap">
+                    <img src={proofPreview} alt="preview" className="co-proof-preview-img" />
+                    <div className="co-proof-preview-info">
+                      <span className="co-proof-preview-name">✓ {proofFile?.name}</span>
+                      <span className="co-proof-preview-change">Tap to change</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="co-proof-dropzone-inner">
+                    <span className="co-proof-upload-icon">📎</span>
+                    <p className="co-proof-drop-text">Drag & drop foto bukti transfer</p>
+                    <p className="co-proof-drop-sub">atau klik untuk pilih gambar</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="co-proof-submit-btn"
+                onClick={handleProofSubmit}
+                disabled={!proofFile}
+              >
+                {proofFile ? "Kirim Bukti Pembayaran →" : "Pilih foto terlebih dahulu"}
+              </button>
+
+              <p className="co-proof-note">Pastikan foto bukti transfer terlihat jelas dan terbaca</p>
+            </>
+          ) : (
+            /* Success state */
+            <div className="co-proof-success">
+              <div className="co-proof-success-anim">🎉</div>
+              <h3 className="co-proof-success-title">Bukti Pembayaran Terkirim!</h3>
+              <p className="co-proof-success-sub">
+                Pesanan <strong>#{newOrderId}</strong> sedang menunggu konfirmasi admin.<br />
+                Kami akan memproses pesananmu secepatnya.
+              </p>
+              <div className="co-proof-success-info">
+                <span className="co-proof-success-icon-small">⏱</span>
+                Estimasi konfirmasi: 1×24 jam
+              </div>
+              <div className="co-proof-success-actions">
+                <button
+                  className="co-proof-success-primary"
+                  onClick={() => { setProofModal(false); navigate("/myprofile", { state: { tab: "orderstatus" } }); }}
+                >
+                  📦 Lihat Status Orderan
+                </button>
+                <button
+                  className="co-proof-success-ghost"
+                  onClick={() => { setProofModal(false); navigate("/"); }}
+                >
+                  Kembali ke Beranda
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    )}
+    </>
   );
 }

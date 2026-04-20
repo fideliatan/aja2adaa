@@ -2667,3 +2667,175 @@
   .adm-vh-item-num { display: none; }
 }
 
+/* ── PROOF IMAGE PANEL ──────────────────────────────────── */
+.adm-modal--wide { max-width: 680px; }
+
+.adm-proof-panel {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm-proof-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+}
+.adm-proof-img-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1.5px solid #f0d5d2;
+  background: #fdf8f7;
+  cursor: zoom-in;
+  position: relative;
+  aspect-ratio: 3/4;
+}
+.adm-proof-img-wrap--pa {
+  aspect-ratio: 3/4;
+  width: 100%;
+}
+.adm-proof-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.adm-proof-zoom-hint {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 10px 10px 8px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.adm-proof-img-wrap:hover .adm-proof-zoom-hint { opacity: 1; }
+
+.adm-proof-placeholder {
+  border-radius: 14px;
+  border: 1.5px dashed #f0d5d2;
+  background: #fdf8f7;
+  padding: 24px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #b0a8a6;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ── PROOF ZOOM OVERLAY ─────────────────────────────────── */
+.adm-proof-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+.adm-proof-zoom-img {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  object-fit: contain;
+}
+.adm-proof-zoom-close {
+  position: absolute;
+  top: 20px; right: 20px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.adm-proof-zoom-close:hover { background: rgba(255,255,255,0.25); }
+
+/* ── DELIVER DROPZONE ───────────────────────────────────── */
+.adm-deliver-dropzone {
+  border: 2px dashed #f0d5d2;
+  border-radius: 14px;
+  background: #fdf8f7;
+  padding: 24px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.adm-deliver-dropzone:hover { border-color: #c97269; background: #fdf3f1; }
+.adm-deliver-dropzone--filled { border-style: solid; border-color: #c97269; }
+.adm-deliver-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+  font-size: 13.5px;
+  text-align: center;
+}
+.adm-deliver-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.adm-deliver-preview img {
+  max-height: 180px;
+  max-width: 100%;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.adm-deliver-preview-name { font-size: 12px; font-weight: 600; color: #22c55e; }
+
+/* ── PA ORDER SELECTOR ──────────────────────────────────── */
+.adm-pa-order-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.adm-pa-order-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #f0d5d2;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+.adm-pa-order-tab--active {
+  border-color: #c97269;
+  background: #fdf3f1;
+}
+.adm-pa-order-tab-id { font-size: 12px; font-weight: 700; color: #c97269; }
+.adm-pa-order-tab-name { font-size: 12.5px; color: #555; }
+
+/* ── PA EMPTY STATE ─────────────────────────────────────── */
+.adm-pa-empty {
+  padding: 60px 24px;
+  text-align: center;
+  background: white;
+  border-radius: 18px;
+  border: 1.5px solid #f0d5d2;
+}
+

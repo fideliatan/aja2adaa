@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./index.css";
 import Navbar from "../components/Navbar";
@@ -62,6 +63,16 @@ const ArrowIcon = () => (
 export default function ContactPage() {
   const navigate = useNavigate();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
+  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.email || !form.message) return;
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 4000);
+    setForm({ name: "", email: "", subject: "", message: "" });
+  };
 
 
   return (
@@ -216,6 +227,104 @@ export default function ContactPage() {
         </div>
       </section>
 
+      {/* ══════════════ CONTACT FORM ══════════════ */}
+      <section className="ct-main">
+        <div className="ct-form-card">
+          <div className="ct-form-header">
+            <span className="ct-form-label-tag">Send a Message</span>
+            <h2 className="ct-form-title">We'd love to<br/>hear from you ✨</h2>
+            <p className="ct-form-sub">Fill out the form below and we'll get back to you as soon as possible.</p>
+          </div>
+
+          {submitted && (
+            <div className="ct-success">
+              <span className="ct-success-icon">🎉</span>
+              <span>Pesan terkirim! Kami akan membalas segera.</span>
+            </div>
+          )}
+
+          <form className="ct-form-body" onSubmit={handleSubmit}>
+            <div className="ct-row-2">
+              <div className="ct-field">
+                <label className="ct-label">Name <span className="ct-req">*</span></label>
+                <input className="ct-input" placeholder="Your name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+              </div>
+              <div className="ct-field">
+                <label className="ct-label">Email <span className="ct-req">*</span></label>
+                <input className="ct-input" type="email" placeholder="your@email.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+              </div>
+            </div>
+            <div className="ct-field">
+              <label className="ct-label">Subject</label>
+              <input className="ct-input" placeholder="What's this about?" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} />
+            </div>
+            <div className="ct-field">
+              <label className="ct-label">Message <span className="ct-req">*</span></label>
+              <textarea className="ct-input ct-textarea" placeholder="Tell us anything..." value={form.message} onChange={e => setForm({...form, message: e.target.value})} rows={5} />
+            </div>
+            <button type="submit" className="ct-submit">
+              <span className="ct-submit-shine" />
+              Send Message →
+            </button>
+          </form>
+        </div>
+
+        <div className="ct-sidebar">
+          <div className="ct-info-aside">
+            <div className="ct-aside-item">
+              <div className="ct-aside-icon ct-aside-icon--wa"><PhoneIcon /></div>
+              <div>
+                <p className="ct-aside-label">WhatsApp</p>
+                <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="ct-aside-val ct-aside-val--link">+62 812-3456-7890</a>
+              </div>
+            </div>
+            <div className="ct-aside-item">
+              <div className="ct-aside-icon ct-aside-icon--loc"><LocationIcon /></div>
+              <div>
+                <p className="ct-aside-label">Location</p>
+                <p className="ct-aside-val">Manado, North Sulawesi</p>
+              </div>
+            </div>
+            <div className="ct-aside-item">
+              <div className="ct-aside-icon ct-aside-icon--clock"><ClockIcon /></div>
+              <div>
+                <p className="ct-aside-label">Business Hours</p>
+                <p className="ct-aside-val">08:00 – 21:00 WITA</p>
+              </div>
+            </div>
+            <div className="ct-aside-item">
+              <div className="ct-aside-icon ct-aside-icon--email"><EmailIcon /></div>
+              <div>
+                <p className="ct-aside-label">Email</p>
+                <a href="mailto:hello@careofyou.id" className="ct-aside-val ct-aside-val--link">hello@careofyou.id</a>
+              </div>
+            </div>
+          </div>
+
+          <div className="ct-social-card">
+            <h3 className="ct-social-title">Follow & Shop</h3>
+            <div className="ct-social-list">
+              <a href="https://instagram.com/careofyou.id" target="_blank" rel="noreferrer" className="ct-social-item ct-social-item--ig">
+                <span className="ct-social-ico"><InstagramIcon /></span>
+                <div className="ct-social-info">
+                  <span className="ct-social-name">Instagram</span>
+                  <span className="ct-social-handle">@careofyou.id</span>
+                </div>
+                <span className="ct-social-arrow"><ArrowIcon /></span>
+              </a>
+              <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="ct-social-item ct-social-item--wa">
+                <span className="ct-social-ico"><WhatsAppIcon /></span>
+                <div className="ct-social-info">
+                  <span className="ct-social-name">WhatsApp</span>
+                  <span className="ct-social-handle">Chat now</span>
+                </div>
+                <span className="ct-social-arrow"><ArrowIcon /></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ══════════════ INFO SIDEBAR ══════════════ */}
       <section className="ct-main ct-main--solo">
 
@@ -239,30 +348,6 @@ export default function ContactPage() {
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
-          </div>
-        </div>
-
-        {/* Social */}
-        <div className="ct-social-card">
-          <h3 className="ct-social-title">Follow & Shop</h3>
-          <div className="ct-social-list">
-            <a href="https://instagram.com/careofyou.id" target="_blank" rel="noreferrer" className="ct-social-item ct-social-item--ig">
-              <span className="ct-social-ico"><InstagramIcon /></span>
-              <div className="ct-social-info">
-                <span className="ct-social-name">Instagram</span>
-                <span className="ct-social-handle">@careofyou.id</span>
-              </div>
-              <span className="ct-social-arrow"><ArrowIcon /></span>
-            </a>
-
-            <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="ct-social-item ct-social-item--wa">
-              <span className="ct-social-ico"><WhatsAppIcon /></span>
-              <div className="ct-social-info">
-                <span className="ct-social-name">WhatsApp</span>
-                <span className="ct-social-handle">Chat now</span>
-              </div>
-              <span className="ct-social-arrow"><ArrowIcon /></span>
-            </a>
           </div>
         </div>
 

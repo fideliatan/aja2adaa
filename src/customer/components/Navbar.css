@@ -229,3 +229,27 @@
 .navbar-search-input::placeholder {
   color: #cbb8b5;
 }
+
+/* ── Cart bump animation ── */
+@keyframes cartBump {
+  0%   { transform: scale(1) rotate(0deg); }
+  25%  { transform: scale(1.22) rotate(-8deg); }
+  50%  { transform: scale(1.18) rotate(6deg); }
+  75%  { transform: scale(1.12) rotate(-4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes badgePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.55); }
+  70%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+.navbar-cart-bump {
+  animation: cartBump 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.navbar-badge-pop {
+  animation: badgePop 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}

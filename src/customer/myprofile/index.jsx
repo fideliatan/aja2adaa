@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { PRODUCTS } from "../../data/products.js";
+import { useOrders } from "../context/OrderContext";
 
 /* ── Icons ─────────────────────────────────────────────── */
 const IconSearch = () => (
@@ -102,14 +103,11 @@ const IconLogOut = () => (
 
 /* ── Nav config ─────────────────────────────────────────── */
 const navItems = [
-  { id: "userinfo",      label: "User info",       icon: <IconUser /> },
-  { id: "myaddress",     label: "My Address",      icon: <IconMapPin /> },
-  { id: "adminapproval", label: "Admin Approval",  icon: <AdminPaymentApproval /> },
-  { id: "packing",       label: "Being Packed",     icon: <IconBox /> },
-  { id: "shipped",       label: "Shipped",          icon: <IconTruck /> },
-  { id: "rateorder",     label: "Rate Order",       icon: <IconStar /> },
-  { id: "setting",       label: "Settings",          icon: <IconSettings /> },
-  { id: "notifications", label: "Notifications",    icon: <IconBell /> },
+  { id: "userinfo",     label: "User info",       icon: <IconUser /> },
+  { id: "myaddress",    label: "My Address",       icon: <IconMapPin /> },
+  { id: "orderstatus",  label: "Status Orderan",   icon: <IconWallet /> },
+  { id: "setting",      label: "Settings",          icon: <IconSettings /> },
+  { id: "notifications",label: "Notifications",    icon: <IconBell /> },
 ];
 
 /* ── Sections ───────────────────────────────────────────── */
@@ -690,6 +688,157 @@ function OrderSection({ sectionKey, title }) {
 
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Order Status Section ───────────────────────────────── */
+const ORDER_STATUS_META = {
+  pending:   { label: "Menunggu Konfirmasi", color: "#e09a3a", bg: "rgba(224,154,58,0.12)",   icon: "⏳" },
+  packing:   { label: "Sedang Dikemas",      color: "#4a9fd4", bg: "rgba(74,159,212,0.12)",   icon: "📦" },
+  shipped:   { label: "Dalam Pengiriman",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)",   icon: "🚚" },
+  delivered: { label: "Terkirim",            color: "#22c55e", bg: "rgba(34,197,94,0.12)",    icon: "🎉" },
+  rejected:  { label: "Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.12)",    icon: "❌" },
+  cancelled: { label: "Dibatalkan",          color: "#aaa",    bg: "rgba(170,170,170,0.12)",  icon: "🚫" },
+};
+
+const STATUS_TABS = [
+  { key: "all",       label: "Semua"   },
+  { key: "pending",   label: "Menunggu" },
+  { key: "packing",   label: "Dikemas"  },
+  { key: "shipped",   label: "Dikirim"  },
+  { key: "delivered", label: "Terkirim" },
+  { key: "rejected",  label: "Ditolak"  },
+  { key: "cancelled", label: "Batal"    },
+];
+
+function OrderStatusSection() {
+  const navigate = useNavigate();
+  const { orders } = useOrders();
+  const [tab, setTab] = useState("all");
+  const [query, setQuery] = useState("");
+  const q = query.toLowerCase();
+
+  const filtered = orders.filter(o => {
+    const matchTab = tab === "all" || o.status === tab;
+    const matchQ   = !q || o.id.toLowerCase().includes(q) ||
+      o.items?.some(i => i.name.toLowerCase().includes(q));
+    return matchTab && matchQ;
+  });
+
+  return (
+    <div className="pr-order-section">
+      <div className="pr-order-header">
+        <div>
+          <h2 className="pr-section-title">Status Orderan</h2>
+          <p className="pr-section-sub">{orders.length} total pesanan</p>
+        </div>
+      </div>
+
+      {/* Tab filter */}
+      <div className="pr-os-tabs">
+        {STATUS_TABS.map(t => {
+          const count = t.key === "all" ? orders.length : orders.filter(o => o.status === t.key).length;
+          return (
+            <button
+              key={t.key}
+              className={`pr-os-tab${tab === t.key ? " pr-os-tab--active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+              {count > 0 && <span className="pr-os-tab-badge">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="pr-search-wrap">
+        <span className="pr-search-icon"><IconSearch /></span>
+        <input
+          className="pr-search-input"
+          type="text"
+          placeholder="Cari ID order atau produk…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        {query && <button className="pr-search-clear" onClick={() => setQuery("")}>✕</button>}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="pr-placeholder">
+          <p className="pr-placeholder-title">Belum ada pesanan</p>
+          <p className="pr-placeholder-sub">Pesanan kamu akan muncul di sini setelah checkout.</p>
+        </div>
+      ) : (
+        <div className="pr-os-list">
+          {filtered.map(order => {
+            const meta = ORDER_STATUS_META[order.status] ?? ORDER_STATUS_META.pending;
+            const itemCount = order.items?.reduce((s, i) => s + i.qty, 0) ?? 0;
+            return (
+              <div
+                key={order.id}
+                className="pr-os-card"
+                onClick={() => navigate("/orderdetail", { state: { orderId: order.id } })}
+              >
+                <div className="pr-os-card-top">
+                  <span className="pr-os-status-badge" style={{ color: meta.color, background: meta.bg }}>
+                    {meta.icon} {meta.label}
+                  </span>
+                  <span className="pr-os-date">{order.date}</span>
+                </div>
+
+                <div className="pr-os-items-row">
+                  {order.items?.slice(0, 3).map((item, i) => (
+                    <div key={i} className="pr-os-item-thumb">
+                      {item.image
+                        ? <img src={item.image} alt={item.name} />
+                        : <span>{item.name?.[0] ?? "?"}</span>
+                      }
+                    </div>
+                  ))}
+                  {(order.items?.length ?? 0) > 3 && (
+                    <div className="pr-os-item-thumb pr-os-item-more">
+                      +{order.items.length - 3}
+                    </div>
+                  )}
+                </div>
+
+                <p className="pr-os-item-summary">
+                  {order.items?.[0]?.name ?? "—"}
+                  {(order.items?.length ?? 0) > 1 && (
+                    <span className="pr-os-more-text"> & {order.items.length - 1} produk lainnya</span>
+                  )}
+                </p>
+
+                <div className="pr-os-card-bottom">
+                  <span className="pr-os-id">{order.id} · {itemCount} item</span>
+                  <div className="pr-os-right">
+                    <span className="pr-os-see-detail">Lihat Detail ›</span>
+                    <span className="pr-os-total">{fmt(order.total)}</span>
+                  </div>
+                </div>
+
+                {order.status === "pending" && order.cancelDeadlineTs && (
+                  <div className="pr-os-cancel-hint">
+                    Bisa dibatalkan · Lihat detail untuk info lebih lanjut
+                  </div>
+                )}
+                {order.status === "rejected" && order.rejectionReason && (
+                  <div className="pr-os-rejected-hint">
+                    Alasan: {order.rejectionReason}
+                  </div>
+                )}
+                {order.status === "shipped" && order.trackingNumber && (
+                  <div className="pr-os-tracking-hint">
+                    🚚 {order.courier} · {order.trackingNumber}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1372,19 +1521,17 @@ function SettingSection() {
 /* ── Main component ─────────────────────────────────────── */
 export default function MyProfile() {
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState("userinfo");
+  const location = useLocation();
+  const [activeNav, setActiveNav] = useState(location.state?.tab ?? "userinfo");
 
   const renderContent = () => {
     switch (activeNav) {
-      case "userinfo":      return <UserInfoSection />;
-      case "myaddress":     return <MyAddressSection />;
-      case "adminapproval": return <OrderSection sectionKey="adminapproval" title="Admin Approval" />;
-      case "packing":       return <OrderSection sectionKey="packing" title="Being Packed" />;
-      case "shipped":       return <OrderSection sectionKey="shipped" title="Shipped" />;
-      case "rateorder":     return <RateOrderSection />;
-      case "setting":       return <SettingSection />;
-      case "notifications": return <NotificationsSection />;
-      default:              return null;
+      case "userinfo":     return <UserInfoSection />;
+      case "myaddress":    return <MyAddressSection />;
+      case "orderstatus":  return <OrderStatusSection />;
+      case "setting":      return <SettingSection />;
+      case "notifications":return <NotificationsSection />;
+      default:             return null;
     }
   };
 

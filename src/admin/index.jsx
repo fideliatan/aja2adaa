@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PRODUCTS } from "../data/products.js";
 import "./index.css";
+import { useOrders } from "../customer/context/OrderContext";
 
 /* ═══════════════════════════════════════════════════════════
    MOCK DATA
@@ -130,6 +131,7 @@ const STATUS_META = {
   shipped:   { label: "Shipped",           color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
   delivered: { label: "Delivered",         color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
   cancelled: { label: "Cancelled",         color: "#ef4444", bg: "rgba(239,68,68,0.1)"   },
+  rejected:  { label: "Rejected",          color: "#dc2626", bg: "rgba(220,38,38,0.1)"   },
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -476,26 +478,103 @@ function Dashboard({ setActive }) {
    SECTION: ORDERS
    ═══════════════════════════════════════════════════════════ */
 function Orders() {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
-  const [tab, setTab]       = useState("all");
-  const [query, setQuery]   = useState("");
+  const { orders: ctxOrders, approveOrder, rejectOrder, shipOrder, deliverOrder, cancelOrder: ctxCancel, getOrder } = useOrders();
+  const [localOrders, setLocalOrders] = useState(MOCK_ORDERS);
+  const [tab, setTab]     = useState("all");
+  const [query, setQuery] = useState("");
 
-  const tabs = ["all", "pending", "packing", "shipped", "delivered"];
+  // Ship modal
+  const [shipModal, setShipModal]         = useState(null);
+  const [trackingInput, setTrackingInput] = useState("");
+  const [courierInput, setCourierInput]   = useState("");
 
-  const filtered = orders.filter(o => {
+  // Approve modal — shows payment proof
+  const [approveModal, setApproveModal] = useState(null); // order object
+  const [proofZoom, setProofZoom]       = useState(false);
+
+  // Deliver modal — admin uploads delivery proof
+  const [deliverModal, setDeliverModal]       = useState(null); // order id
+  const [deliverFile, setDeliverFile]         = useState(null);
+  const [deliverPreview, setDeliverPreview]   = useState(null);
+  const deliverInputRef = useState(() => ({ current: null }))[0];
+
+  // Reject
+  const [rejectModal, setRejectModal]   = useState(null); // order id
+  const [rejectReason, setRejectReason] = useState("");
+
+  const ctxIds = new Set(ctxOrders.map(o => o.id));
+  const ctxDisplay = ctxOrders.map(o => ({
+    id: o.id, customer: o.customer ?? "Customer", email: "",
+    products: o.items?.map(i => i.name) ?? [],
+    total: o.total, date: o.date, status: o.status, payment: o.payment,
+    address: o.address, paymentProof: o.paymentProof, fromCtx: true,
+  }));
+  const allOrders = [...ctxDisplay, ...localOrders.filter(o => !ctxIds.has(o.id))];
+
+  const tabs = ["all", "pending", "packing", "shipped", "delivered", "rejected", "cancelled"];
+
+  const filtered = allOrders.filter(o => {
     const matchTab = tab === "all" || o.status === tab;
     const q = query.toLowerCase();
-    const matchQ = !q || o.id.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q) || o.products.some(p => p.toLowerCase().includes(q));
+    const matchQ = !q || o.id.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q);
     return matchTab && matchQ;
   });
 
-  const advance = (id) => {
-    const flow = { pending: "packing", packing: "shipped", shipped: "delivered" };
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: flow[o.status] ?? o.status } : o));
+  const advanceLocal = (id) => {
+    const flow = { pending: "packing", packing: "shipped" };
+    setLocalOrders(prev => prev.map(o => o.id === id ? { ...o, status: flow[o.status] ?? o.status } : o));
   };
 
-  const cancel = (id) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "cancelled" } : o));
+  const handleApproveClick = (o) => {
+    if (o.fromCtx) setApproveModal(getOrder(o.id) ?? o);
+    else setApproveModal(o);
+  };
+  const confirmApprove = () => {
+    if (!approveModal) return;
+    if (approveModal.fromCtx !== false) approveOrder(approveModal.id);
+    else advanceLocal(approveModal.id);
+    setApproveModal(null);
+  };
+
+  const handleShipClick = (o) => {
+    setShipModal(o.fromCtx ? o.id : o.id);
+    setTrackingInput(""); setCourierInput("");
+  };
+  const handleShipConfirm = () => {
+    if (!trackingInput.trim()) return;
+    const o = allOrders.find(x => x.id === shipModal);
+    if (o?.fromCtx) shipOrder(shipModal, courierInput.trim() || "JNE Regular", trackingInput.trim());
+    else advanceLocal(shipModal);
+    setShipModal(null);
+  };
+
+  const handleDeliverClick = (o) => {
+    setDeliverModal(o.id);
+    setDeliverFile(null); setDeliverPreview(null);
+  };
+  const handleDeliverFile = (file) => {
+    if (!file) return;
+    setDeliverFile(file);
+    const reader = new FileReader();
+    reader.onload = e => setDeliverPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+  const handleDeliverConfirm = () => {
+    const o = allOrders.find(x => x.id === deliverModal);
+    if (o?.fromCtx) deliverOrder(deliverModal, deliverPreview);
+    else setLocalOrders(prev => prev.map(x => x.id === deliverModal ? { ...x, status: "delivered" } : x));
+    setDeliverModal(null);
+  };
+
+  const handleRejectConfirm = () => {
+    if (!rejectReason.trim()) return;
+    rejectOrder(rejectModal, rejectReason.trim());
+    setRejectModal(null); setRejectReason("");
+  };
+
+  const cancel = (id, fromCtx) => {
+    if (fromCtx) ctxCancel(id);
+    else setLocalOrders(prev => prev.map(o => o.id === id ? { ...o, status: "cancelled" } : o));
   };
 
   return (
@@ -503,7 +582,7 @@ function Orders() {
       <div className="adm-section-header">
         <div>
           <h2 className="adm-section-title">Manajemen Pesanan</h2>
-          <p className="adm-section-sub">{orders.length} total pesanan</p>
+          <p className="adm-section-sub">{allOrders.length} total pesanan</p>
         </div>
       </div>
 
@@ -512,7 +591,7 @@ function Orders() {
         {tabs.map(t => (
           <button key={t} className={`adm-tab${tab === t ? " adm-tab--active" : ""}`} onClick={() => setTab(t)}>
             {t === "all" ? "Semua" : STATUS_META[t]?.label}
-            <span className="adm-tab-count">{t === "all" ? orders.length : orders.filter(o => o.status === t).length}</span>
+            <span className="adm-tab-count">{t === "all" ? allOrders.length : allOrders.filter(o => o.status === t).length}</span>
           </button>
         ))}
       </div>
@@ -520,18 +599,17 @@ function Orders() {
       {/* Search */}
       <div className="adm-search-bar">
         <IcSearch />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari order ID, customer, produk…" className="adm-search-input" />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari order ID atau nama customer…" className="adm-search-input" />
         {query && <button className="adm-search-clear" onClick={() => setQuery("")}>✕</button>}
       </div>
 
-      {/* Table */}
+      {/* Table — no Products column */}
       <div className="adm-card adm-table-card">
         <table className="adm-table adm-table--orders">
           <thead>
             <tr>
               <th>Order ID</th>
               <th>Customer</th>
-              <th>Produk</th>
               <th>Total</th>
               <th>Tanggal</th>
               <th>Status</th>
@@ -540,24 +618,19 @@ function Orders() {
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="adm-empty-row">Tidak ada pesanan ditemukan.</td></tr>
+              <tr><td colSpan={6} className="adm-empty-row">Tidak ada pesanan ditemukan.</td></tr>
             ) : filtered.map(o => {
-              const st = STATUS_META[o.status];
+              const st = STATUS_META[o.status] ?? { label: o.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
               return (
                 <tr key={o.id}>
                   <td><span className="adm-order-id">{o.id}</span></td>
                   <td>
                     <div className="adm-customer-cell">
-                      <Avatar name={o.customer} size={30} />
+                      <Avatar name={o.customer} size={28} />
                       <div>
                         <p className="adm-customer-name">{o.customer}</p>
-                        <p className="adm-customer-email">{o.email}</p>
+                        <p className="adm-customer-email">{o.payment}</p>
                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="adm-products-cell">
-                      {o.products.map((p, i) => <span key={i} className="adm-product-tag">{p}</span>)}
                     </div>
                   </td>
                   <td><strong>{fmt(o.total)}</strong></td>
@@ -567,13 +640,23 @@ function Orders() {
                   </td>
                   <td>
                     <div className="adm-action-btns">
-                      {["pending","packing","shipped"].includes(o.status) && (
-                        <button className="adm-act-btn adm-act-btn--primary" onClick={() => advance(o.id)}>
-                          {o.status === "pending" ? <><IcCheck /> Approve</> : o.status === "packing" ? <><IcTruck /> Ship</> : <><IcCheck /> Delivered</>}
+                      {o.status === "pending" && (
+                        <>
+                          <button className="adm-act-btn adm-act-btn--primary" onClick={() => handleApproveClick(o)}>
+                            <IcCheck /> Approve
+                          </button>
+                          <button className="adm-act-btn adm-act-btn--danger" title="Tolak" onClick={() => { setRejectModal(o.id); setRejectReason(""); }}>✕</button>
+                        </>
+                      )}
+                      {o.status === "packing" && (
+                        <button className="adm-act-btn adm-act-btn--primary" onClick={() => handleShipClick(o)}>
+                          <IcTruck /> Ship
                         </button>
                       )}
-                      {o.status !== "delivered" && o.status !== "cancelled" && (
-                        <button className="adm-act-btn adm-act-btn--danger" title="Cancel" onClick={() => cancel(o.id)}>✕</button>
+                      {o.status === "shipped" && (
+                        <button className="adm-act-btn adm-act-btn--primary" onClick={() => handleDeliverClick(o)}>
+                          <IcCheck /> Selesai
+                        </button>
                       )}
                     </div>
                   </td>
@@ -583,6 +666,178 @@ function Orders() {
           </tbody>
         </table>
       </div>
+
+      {/* ── Approve modal — with payment proof viewer ── */}
+      {approveModal && (
+        <div className="adm-modal-overlay" onClick={() => setApproveModal(null)}>
+          <div className="adm-modal adm-modal--wide" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Verifikasi & Approve Pembayaran</h3>
+              <button className="adm-modal-close" onClick={() => setApproveModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body" style={{ display: "flex", gap: 20 }}>
+              {/* Proof image */}
+              <div className="adm-proof-panel">
+                <p className="adm-proof-label">Bukti Transfer Customer</p>
+                {approveModal.paymentProof && approveModal.paymentProof.startsWith("data:") ? (
+                  <div className="adm-proof-img-wrap" onClick={() => setProofZoom(true)} title="Klik untuk perbesar">
+                    <img src={approveModal.paymentProof} alt="Bukti TF" className="adm-proof-img" />
+                    <div className="adm-proof-zoom-hint">🔍 Klik untuk perbesar</div>
+                  </div>
+                ) : (
+                  <div className="adm-proof-placeholder">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c97269" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    <p>Bukti transfer dari order ini<br/>tidak tersedia sebagai gambar</p>
+                    <p style={{ fontSize: 12, color: "#bbb" }}>{approveModal.payment} · {fmt(approveModal.total)}</p>
+                  </div>
+                )}
+              </div>
+              {/* Order summary */}
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Ringkasan Order</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    ["Order ID", approveModal.id],
+                    ["Customer", approveModal.customer],
+                    ["Metode Bayar", approveModal.payment],
+                    ["Total", fmt(approveModal.total)],
+                    ["Tanggal", approveModal.date],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, paddingBottom: 6, borderBottom: "1px solid #f5eeec" }}>
+                      <span style={{ color: "#999" }}>{k}</span>
+                      <span style={{ fontWeight: 600, color: "#2d2d2d" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="adm-modal-hint" style={{ marginTop: 14 }}>
+                  Pastikan nominal transfer sesuai sebelum menyetujui.
+                </div>
+              </div>
+            </div>
+            <div className="adm-modal-footer">
+              <button className="adm-pa-approve-btn" onClick={confirmApprove}><IcCheck /> Setujui Pembayaran</button>
+              <button className="adm-ghost-btn" onClick={() => setApproveModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Proof zoom overlay ── */}
+      {proofZoom && approveModal?.paymentProof && (
+        <div className="adm-proof-zoom-overlay" onClick={() => setProofZoom(false)}>
+          <img src={approveModal.paymentProof} alt="Bukti TF Full" className="adm-proof-zoom-img" />
+          <button className="adm-proof-zoom-close" onClick={() => setProofZoom(false)}>✕</button>
+        </div>
+      )}
+
+      {/* ── Ship modal ── */}
+      {shipModal && (
+        <div className="adm-modal-overlay" onClick={() => setShipModal(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Input Info Pengiriman</h3>
+              <button className="adm-modal-close" onClick={() => setShipModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <p style={{ marginBottom: 14, fontSize: 13.5, color: "#666" }}>
+                Kurir dan nomor resi untuk order <strong>{shipModal}</strong>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>KURIR</label>
+                  <input className="adm-modal-textarea" style={{ minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
+                    placeholder="JNE Regular, SiCepat HALU, J&T Express…"
+                    value={courierInput} onChange={e => setCourierInput(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>NOMOR RESI *</label>
+                  <input className="adm-modal-textarea" style={{ minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
+                    placeholder="JNE20250415001234"
+                    value={trackingInput} onChange={e => setTrackingInput(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <div className="adm-modal-footer">
+              <button className="adm-act-btn adm-act-btn--primary" style={{ padding: "10px 20px" }}
+                onClick={handleShipConfirm} disabled={!trackingInput.trim()}>
+                <IcTruck /> Konfirmasi Kirim
+              </button>
+              <button className="adm-ghost-btn" onClick={() => setShipModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deliver modal — admin uploads delivery proof ── */}
+      {deliverModal && (
+        <div className="adm-modal-overlay" onClick={() => setDeliverModal(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Konfirmasi Selesai Dikirim</h3>
+              <button className="adm-modal-close" onClick={() => setDeliverModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <p style={{ marginBottom: 14, fontSize: 13.5, color: "#666" }}>
+                Upload foto bukti paket sudah sampai / diterima customer untuk order <strong>{deliverModal}</strong>.
+              </p>
+              <input ref={r => deliverInputRef.current = r} type="file" accept="image/*" style={{ display: "none" }}
+                onChange={e => handleDeliverFile(e.target.files?.[0])} />
+              <div
+                className={`adm-deliver-dropzone${deliverPreview ? " adm-deliver-dropzone--filled" : ""}`}
+                onClick={() => deliverInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); handleDeliverFile(e.dataTransfer.files?.[0]); }}
+              >
+                {deliverPreview ? (
+                  <div className="adm-deliver-preview">
+                    <img src={deliverPreview} alt="Bukti kirim" />
+                    <p className="adm-deliver-preview-name">✓ {deliverFile?.name}</p>
+                    <p style={{ fontSize: 11, color: "#aaa" }}>Klik untuk ganti foto</p>
+                  </div>
+                ) : (
+                  <div className="adm-deliver-empty">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c97269" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <p>Drag & drop atau <span style={{ color: "#c97269", fontWeight: 700 }}>pilih foto</span></p>
+                    <p style={{ fontSize: 11, color: "#bbb" }}>JPG, PNG — maks 5 MB</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="adm-modal-footer">
+              <button className="adm-pa-approve-btn" onClick={handleDeliverConfirm}>
+                <IcCheck /> Tandai Selesai
+              </button>
+              <button className="adm-ghost-btn" onClick={() => handleDeliverConfirm()}>
+                Selesai tanpa foto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject modal ── */}
+      {rejectModal && (
+        <div className="adm-modal-overlay" onClick={() => setRejectModal(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Tolak Pembayaran</h3>
+              <button className="adm-modal-close" onClick={() => setRejectModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <p style={{ marginBottom: 12, fontSize: 13.5, color: "#666" }}>Alasan penolakan (akan ditampilkan ke customer):</p>
+              <textarea className="adm-modal-textarea" rows={4}
+                placeholder="Bukti transfer tidak sesuai, nominal tidak cocok, dll."
+                value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+            </div>
+            <div className="adm-modal-footer">
+              <button className="adm-pa-reject-btn" onClick={handleRejectConfirm} disabled={!rejectReason.trim()}>
+                Konfirmasi Tolak
+              </button>
+              <button className="adm-ghost-btn" onClick={() => setRejectModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1472,17 +1727,40 @@ const VERIFY_HISTORY_DATA = [
    SECTION: PAYMENT APPROVAL
    ═══════════════════════════════════════════════════════════ */
 function PaymentApproval() {
+  const { orders, approveOrder, rejectOrder } = useOrders();
   const [approveModal, setApproveModal] = useState(false);
   const [rejectModal,  setRejectModal]  = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [approveStep,  setApproveStep]  = useState("confirm"); // confirm | loading | success
+  const [approveStep,  setApproveStep]  = useState("confirm");
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [proofZoom, setProofZoom] = useState(false);
+
+  const pendingOrders = orders.filter(o => o.status === "pending");
+  const rawOrder = pendingOrders.find(o => o.id === selectedOrderId) ?? pendingOrders[0] ?? PENDING_PAYMENT_ORDER;
+  // Normalize — context orders may lack some fields that PENDING_PAYMENT_ORDER has
+  const order = {
+    ...PENDING_PAYMENT_ORDER,
+    ...rawOrder,
+    items: rawOrder.items ?? PENDING_PAYMENT_ORDER.items,
+    fraud: rawOrder.fraud ?? { status: "safe" },
+    email: rawOrder.email ?? "",
+    phone: rawOrder.phone ?? "",
+  };
 
   const handleApprove = () => {
     setApproveStep("loading");
-    setTimeout(() => setApproveStep("success"), 2500);
+    setTimeout(() => {
+      approveOrder(order.id);
+      setApproveStep("success");
+    }, 1800);
   };
 
-  const order = PENDING_PAYMENT_ORDER;
+  const handleRejectConfirm = () => {
+    if (!rejectReason.trim()) return;
+    rejectOrder(order.id, rejectReason.trim());
+    setRejectModal(false);
+    setRejectReason("");
+  };
 
   return (
     <div className="adm-section">
@@ -1492,12 +1770,36 @@ function PaymentApproval() {
           <p className="adm-section-sub">Review dan setujui pembayaran customer</p>
         </div>
         <div className="adm-pa-pending-badge">
-          <IcCreditCard /> 1 pesanan menunggu persetujuan
+          <IcCreditCard /> {pendingOrders.length} pesanan menunggu persetujuan
         </div>
       </div>
 
+      {/* ── Pending order selector ── */}
+      {pendingOrders.length > 1 && (
+        <div className="adm-pa-order-selector">
+          {pendingOrders.map(o => (
+            <button
+              key={o.id}
+              className={`adm-pa-order-tab${(selectedOrderId ?? pendingOrders[0]?.id) === o.id ? " adm-pa-order-tab--active" : ""}`}
+              onClick={() => setSelectedOrderId(o.id)}
+            >
+              <span className="adm-pa-order-tab-id">#{o.id}</span>
+              <span className="adm-pa-order-tab-name">{o.customer}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {pendingOrders.length === 0 && (
+        <div className="adm-pa-empty">
+          <div style={{ fontSize: 40 }}>✅</div>
+          <p style={{ fontWeight: 700, color: "#2d2d2d", marginTop: 12 }}>Semua pembayaran sudah diverifikasi</p>
+          <p style={{ fontSize: 13.5, color: "#999", marginTop: 4 }}>Tidak ada pembayaran yang perlu di-review saat ini.</p>
+        </div>
+      )}
+
       {/* ── Order Ticket ── */}
-      <div className="adm-pa-ticket">
+      {pendingOrders.length > 0 && <div className="adm-pa-ticket">
 
         {/* Ticket header bar */}
         <div className="adm-pa-ticket-bar">
@@ -1561,19 +1863,33 @@ function PaymentApproval() {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Bukti Transfer</p>
-              <div className="adm-pa-proof">
-                <div className="adm-pa-proof-icon-wrap">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-                  </svg>
+              {order.paymentProof && order.paymentProof.startsWith("data:") ? (
+                <div className="adm-proof-img-wrap adm-proof-img-wrap--pa" onClick={() => setProofZoom(true)} title="Klik untuk perbesar">
+                  <img src={order.paymentProof} alt="Bukti TF" className="adm-proof-img" />
+                  <div className="adm-proof-zoom-hint">🔍 Klik untuk perbesar</div>
                 </div>
-                <div>
-                  <p className="adm-pa-proof-method">{order.payment}</p>
-                  <p className="adm-pa-proof-time">15 Apr 2025 · 14:32 WIB</p>
-                  <p className="adm-pa-proof-amount">{fmt(order.total)}</p>
+              ) : (
+                <div className="adm-pa-proof">
+                  <div className="adm-pa-proof-icon-wrap">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="adm-pa-proof-method">{order.payment}</p>
+                    <p className="adm-pa-proof-time">{order.date} · Upload via web</p>
+                    <p className="adm-pa-proof-amount">{fmt(order.total)}</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
+            {/* Proof zoom overlay for PaymentApproval */}
+            {proofZoom && order.paymentProof?.startsWith("data:") && (
+              <div className="adm-proof-zoom-overlay" onClick={() => setProofZoom(false)}>
+                <img src={order.paymentProof} alt="Bukti TF Full" className="adm-proof-zoom-img" />
+                <button className="adm-proof-zoom-close" onClick={() => setProofZoom(false)}>✕</button>
+              </div>
+            )}
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Fraud Monitoring</p>
@@ -1617,7 +1933,7 @@ function PaymentApproval() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ════ MODAL APPROVE ════ */}
       {approveModal && (
@@ -1692,7 +2008,7 @@ function PaymentApproval() {
             <div className="adm-modal-footer">
               <button
                 className="adm-pa-reject-btn"
-                onClick={() => setRejectModal(false)}
+                onClick={handleRejectConfirm}
                 disabled={!rejectReason.trim()}
               >
                 Konfirmasi Tolak
