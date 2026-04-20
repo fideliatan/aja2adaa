@@ -5,6 +5,7 @@ const CartContext = createContext(null);
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cartBump, setCartBump] = useState(0);
 
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -19,6 +20,7 @@ export function CartProvider({ children }) {
       }
       return [...prev, { ...product, qty: 1 }];
     });
+    setCartBump((n) => n + 1);
   };
 
   const updateQty = (id, delta) => {
@@ -35,7 +37,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider
-      value={{ cart, cartOpen, setCartOpen, addToCart, updateQty, removeItem, cartCount, cartTotal }}
+      value={{ cart, cartOpen, setCartOpen, addToCart, updateQty, removeItem, cartCount, cartTotal, cartBump }}
     >
       {children}
     </CartContext.Provider>

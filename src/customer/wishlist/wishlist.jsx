@@ -4,11 +4,13 @@ import "./wishlist.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/CartContext";
 import { PRODUCTS } from "../../data/products.js";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
   const { wishlistItems, removeFromWishlist } = useWishlist();
+  const { addToCart } = useCart();
   const [addedIds, setAddedIds] = useState([]);
 
   const removeItem = (id) => {
@@ -18,11 +20,16 @@ export default function WishlistPage() {
 
   const addToBag = (id) => {
     if (!addedIds.includes(id)) {
+      const item = wishlistItems.find((i) => i.id === id);
+      if (item) addToCart(item);
       setAddedIds((prev) => [...prev, id]);
     }
   };
 
   const addAllToBag = () => {
+    wishlistItems.forEach((item) => {
+      if (!addedIds.includes(item.id)) addToCart(item);
+    });
     setAddedIds(wishlistItems.map((i) => i.id));
   };
 

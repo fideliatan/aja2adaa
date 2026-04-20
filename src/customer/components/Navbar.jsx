@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Navbar.css";
 import { useCart } from "../context/CartContext";
@@ -14,9 +14,20 @@ export default function Navbar({
   setSearchOpen: externalSetSearchOpen = null,
 }) {
   const navigate = useNavigate();
-  const { cartCount, setCartOpen } = useCart();
+  const { cartCount, setCartOpen, cartBump } = useCart();
   const { searchQuery, performSearch, openSearchPanel } = useSearch();
   const [internalSearchOpen, setInternalSearchOpen] = useState(false);
+  const [cartBumping, setCartBumping] = useState(false);
+  const prevBump = useRef(0);
+
+  useEffect(() => {
+    if (cartBump > prevBump.current) {
+      prevBump.current = cartBump;
+      setCartBumping(true);
+      const t = setTimeout(() => setCartBumping(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [cartBump]);
   
   // Use external state if provided, otherwise use internal state
   const searchOpen = externalSearchOpen !== null ? externalSearchOpen : internalSearchOpen;
@@ -95,14 +106,14 @@ export default function Navbar({
           </button>
 
           <button
-            className={`navbar-icon-btn navbar-cart-btn${activePage === "checkout" ? " navbar-icon-active" : ""}`}
+            className={`navbar-icon-btn navbar-cart-btn${activePage === "checkout" ? " navbar-icon-active" : ""}${cartBumping ? " navbar-cart-bump" : ""}`}
             title="Cart"
             onClick={() => setCartOpen(true)}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
             </svg>
-            {cartCount > 0 && <span className="navbar-cart-badge">{cartCount}</span>}
+            {cartCount > 0 && <span className={`navbar-cart-badge${cartBumping ? " navbar-badge-pop" : ""}`}>{cartCount}</span>}
           </button>
 
           <button

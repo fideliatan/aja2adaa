@@ -14,10 +14,9 @@ const SHOP_CATEGORIES = [
   { id: "skincare", name: "Skincare", label: "Glow", desc: "Cleansers, toners, serums & moisturizers", img: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=600&h=450&q=80" },
   { id: "makeup", name: "Makeup", label: "Tint", desc: "Easy everyday picks for lips, base & more", img: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=600&h=450&q=80" },
   { id: "haircare", name: "Haircare", label: "Care", desc: "Scalp, strands & styling support", img: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&h=450&q=80" },
-  { id: "tools", name: "Tools", label: "Tools", desc: "Little extras that complete the routine", img: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=600&h=450&q=80" },
+  { id: "bodycare", name: "Body Care", label: "Body", desc: "Body wash, scrubs & everything in between", img: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=600&h=450&q=80" },
 ];
 
-const BEST_SELLERS = [PRODUCTS[2], PRODUCTS[3], PRODUCTS[4], PRODUCTS[5]];
 
 const TRUST_ITEMS = [
   { icon: "Original", title: "Produk Original", sub: "Pilihan aman untuk beauty routine harian" },
@@ -60,29 +59,6 @@ const STORE_HIGHLIGHTS = [
   },
 ];
 
-const BEAUTY_EDITS = [
-  {
-    eyebrow: "Daily reset",
-    title: "Fresh Morning Shelf",
-    desc: "Untuk rutinitas pagi yang ringan, praktis, dan gampang diulang tiap hari.",
-    accent: "rose",
-    items: [PRODUCTS[0], PRODUCTS[7], PRODUCTS[3]],
-  },
-  {
-    eyebrow: "Glow lineup",
-    title: "Hydration and Brightening",
-    desc: "Kalau kamu suka kulit terasa plump dan tampil lebih fresh, edit ini pas buat dilihat duluan.",
-    accent: "peach",
-    items: [PRODUCTS[1], PRODUCTS[2], PRODUCTS[10]],
-  },
-  {
-    eyebrow: "Night care",
-    title: "PM Recovery Picks",
-    desc: "Isi shelf malam dengan produk yang fokus bantu menutup hari dengan nyaman.",
-    accent: "sand",
-    items: [PRODUCTS[5], PRODUCTS[14], PRODUCTS[17]],
-  },
-];
 
 function formatRupiah(number) {
   return "Rp " + number.toLocaleString("id-ID");
@@ -216,6 +192,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ══ CARA BELANJA ══ */}
+      <section className="how-section">
+        <div className="how-header">
+          <p className="how-label">Mudah &amp; Cepat</p>
+          <h2 className="how-title">Cara belanja di website kami</h2>
+          <p className="how-sub">Masuk ke katalog, pilih produk, lalu checkout dengan langkah yang simple.</p>
+        </div>
+        <div className="how-steps">
+          <div className="how-step">
+            <div className="how-step-num">1</div>
+            <div className="how-step-icon">🔍</div>
+            <p className="how-step-title">Browse Produk</p>
+            <p className="how-step-desc">Jelajahi halaman Products, filter kategori, atau cari produk yang kamu butuhkan.</p>
+          </div>
+          <div className="how-step-arrow">→</div>
+          <div className="how-step">
+            <div className="how-step-num">2</div>
+            <div className="how-step-icon">🛒</div>
+            <p className="how-step-title">Tambah ke Keranjang</p>
+            <p className="how-step-desc">Pilih produk favoritmu dan tambahkan ke keranjang belanja dengan satu klik.</p>
+          </div>
+          <div className="how-step-arrow">→</div>
+          <div className="how-step">
+            <div className="how-step-num">3</div>
+            <div className="how-step-icon">✅</div>
+            <p className="how-step-title">Checkout &amp; Selesai</p>
+            <p className="how-step-desc">Isi data pengiriman dan selesaikan pembayaran dengan mudah dan aman.</p>
+          </div>
+        </div>
+      </section>
+
       <section className="home-marquee">
         <div className="home-marquee-shell">
           <div className="home-marquee-track">
@@ -281,42 +288,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-section home-edits">
-        <div className="home-section-header home-section-header--stacked">
-          <div>
-            <h2 className="home-section-title">Curated beauty edits</h2>
-            <p className="home-section-sub">
-              Beberapa ide shelf yang bisa bantu pengunjung langsung kebayang mau belanja apa.
-            </p>
-          </div>
-        </div>
-
-        <div className="home-edit-grid">
-          {BEAUTY_EDITS.map((edit) => (
-            <article key={edit.title} className={`home-edit-card home-edit-card--${edit.accent}`}>
-              <span className="home-edit-eyebrow">{edit.eyebrow}</span>
-              <h3 className="home-edit-title">{edit.title}</h3>
-              <p className="home-edit-desc">{edit.desc}</p>
-
-              <div className="home-edit-products">
-                {edit.items.map((item) => (
-                  <div key={item.id} className="home-edit-product">
-                    <img src={item.image} alt={item.name} className="home-edit-product-img" />
-                    <div className="home-edit-product-copy">
-                      <span className="home-edit-product-name">{item.name}</span>
-                      <span className="home-edit-product-meta">{item.category}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button className="home-edit-btn" onClick={goToProducts}>
-                Open Products page
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
 
       <section className="promo-banner-wrap">
         <div className="promo-banner">
@@ -345,17 +316,23 @@ export default function HomePage() {
           <button className="section-view-all" onClick={goToProducts}>Lihat semua →</button>
         </div>
         <div className="top3-grid">
-          {TOP3.map((product, idx) => {
-            const rank = idx + 1;
-            const rankEmoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+          {/* Display order: rank2 left, rank1 center (most prominent), rank3 right */}
+          {[1, 0, 2].map((topIdx) => {
+            const product = TOP3[topIdx];
+            const rank = topIdx + 1;
             const maxReviews = TOP3[0].reviews;
+            const rankMedal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+            const rankNum = rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd";
             return (
               <div
                 key={product.id}
                 className={`top3-card${rank === 1 ? " top3-card--1" : ""}`}
                 onClick={() => setQuickView(product)}
               >
-                <div className={`top3-rank-badge top3-rank-badge--${rank}`}>{rankEmoji}</div>
+                <div className={`top3-rank-badge top3-rank-badge--${rank}`}>
+                  <span className="top3-rank-medal">{rankMedal}</span>
+                  <span className="top3-rank-num">{rankNum}</span>
+                </div>
                 <button
                   className={`top3-fav-btn${favorites.has(product.id) ? " top3-fav-btn--active" : ""}`}
                   onClick={e => { e.stopPropagation(); handleToggleFavorite(product); }}
@@ -433,72 +410,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-section" style={{ marginBottom: 60 }}>
-        <div className="home-section-header">
-          <h2 className="home-section-title">Best Sellers</h2>
-          <button className="section-view-all" onClick={goToProducts}>
-            View all products
-          </button>
-        </div>
-        <div className="bestseller-grid">
-          {BEST_SELLERS.map((product, index) => (
-            <div key={product.id} className="bestseller-card">
-              {index === 0 && <span className="product-badge product-badge--hot">Top Pick</span>}
-              {index === 2 && <span className="product-badge product-badge--new">Just In</span>}
-              <div className="bestseller-img-wrap">
-                <img src={product.image} alt={product.name} className="bestseller-img" onError={e => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }} />
-                <button
-                  className={`cat-fav-btn${favorites.has(product.id) ? " cat-fav-btn--active" : ""}`}
-                  onClick={() => handleToggleFavorite(product)}
-                >
-                  <HeartIcon filled={favorites.has(product.id)} />
-                </button>
-              </div>
-              <div className="bestseller-info">
-                <p className="bestseller-category-tag">{product.category}</p>
-                <p className="bestseller-name">{product.name}</p>
-                <p className="bestseller-reviews">
-                  ★ {product.rating} <span>({product.reviews} reviews)</span>
-                </p>
-                <p className="bestseller-price">{formatRupiah(product.price)}</p>
-                <button className="add-to-bag-btn" onClick={() => addToCart(product)}>
-                  Add to Bag
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="how-section">
-        <div className="how-header">
-          <p className="how-label">Mudah & Cepat</p>
-          <h2 className="how-title">Cara belanja di website kami</h2>
-          <p className="how-sub">Masuk ke katalog, pilih produk, lalu checkout dengan langkah yang simple.</p>
-        </div>
-        <div className="how-steps">
-          <div className="how-step">
-            <div className="how-step-num">1</div>
-            <div className="how-step-icon">Pick</div>
-            <h3 className="how-step-title">Browse Produk</h3>
-            <p className="how-step-desc">Masuk ke page Products dan lihat kategori, search, atau item favorit yang lagi kamu cari.</p>
-          </div>
-          <div className="how-step-arrow">→</div>
-          <div className="how-step">
-            <div className="how-step-num">2</div>
-            <div className="how-step-icon">Bag</div>
-            <h3 className="how-step-title">Tambah ke Bag</h3>
-            <p className="how-step-desc">Simpan ke wishlist kalau masih galau, atau langsung tambahkan ke keranjang kalau sudah yakin.</p>
-          </div>
-          <div className="how-step-arrow">→</div>
-          <div className="how-step">
-            <div className="how-step-num">3</div>
-            <div className="how-step-icon">Done</div>
-            <h3 className="how-step-title">Checkout</h3>
-            <p className="how-step-desc">Isi data, pilih metode pembayaran, dan pesananmu siap masuk ke proses berikutnya.</p>
-          </div>
-        </div>
-      </section>
 
       <Footer />
 

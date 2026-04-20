@@ -129,10 +129,6 @@ export default function ContactPage() {
               <WhatsAppIcon />
               Chat WhatsApp
             </a>
-            <a href="mailto:hello@careofyou.id" className="ct-btn-outline">
-              Send Email
-              <ArrowIcon />
-            </a>
           </div>
         </div>
 
@@ -182,14 +178,6 @@ export default function ContactPage() {
               desc: "Chat directly for the fastest & friendliest response!",
               value: "+62 812-3456-7890",
               href: "https://wa.me/6281234567890",
-            },
-            {
-              icon: <EmailIcon />,
-              color: "blue",
-              label: "Email",
-              desc: "Send detailed inquiries or business partnership requests.",
-              value: "hello@careofyou.id",
-              href: "mailto:hello@careofyou.id",
             },
             {
               icon: <LocationIcon />,
@@ -245,7 +233,7 @@ export default function ContactPage() {
               title="Careofyou Location Manado"
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d63874.36706540688!2d124.80235!3d1.47420!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x328726b9b5e5bc4b%3A0x7a0bba4c41d7e020!2sManado%2C%20Kota%20Manado%2C%20Sulawesi%20Utara!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
               width="100%"
-              height="220"
+              height="380"
               style={{ border: 0, display: "block" }}
               allowFullScreen=""
               loading="lazy"
@@ -275,16 +263,6 @@ export default function ContactPage() {
               </div>
               <span className="ct-social-arrow"><ArrowIcon /></span>
             </a>
-          </div>
-        </div>
-
-        {/* Payment */}
-        <div className="ct-payment-card">
-          <h3 className="ct-payment-title">Payment Methods</h3>
-          <div className="ct-payment-grid">
-            {["BCA", "BNI", "DANA", "COD"].map((p) => (
-              <div key={p} className="ct-payment-chip">{p}</div>
-            ))}
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import ProductPage from './customer/product/index.jsx'
 import WishlistPage from './customer/wishlist/wishlist.jsx'
 import ContactPage from './customer/contact/index.jsx'
 import CheckoutPage from './customer/checkout/index.jsx'
+import ForgotPasswordPage from './forgotpass/index.jsx'
 import AdminPage from './admin/index.jsx'
 import OrderDetailPage from './customer/orderdetail/index.jsx'
 import { CartProvider } from './customer/context/CartContext.jsx'
@@ -115,6 +116,7 @@ function App() {
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />
               <Route path="/2fa" element={<TwoFAPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/myprofile" element={<MyProfilePage />} />

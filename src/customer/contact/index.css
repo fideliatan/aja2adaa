@@ -411,8 +411,8 @@
 
 .ct-info-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
 
 .ct-info-card {
@@ -513,9 +513,9 @@
   color: #2d2d2d;
 }
 
-/* solo layout — no form, just the three cards in a row */
+/* solo layout — map (bigger) + social side by side */
 .ct-main--solo {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 360px;
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;

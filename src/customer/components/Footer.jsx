@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router-dom";
 import "./Footer.css";
 
 export default function Footer() {
+  const navigate = useNavigate();
   return (
     <footer className="footer">
       <div className="footer-top">
@@ -35,24 +37,15 @@ export default function Footer() {
       <div className="footer-links-row">
         <div className="footer-col">
           <p className="footer-col-title">Shop</p>
-          <span>Skincare</span>
-          <span>Makeup</span>
-          <span>Haircare</span>
-          <span>Tools & Accessories</span>
+          <span onClick={() => navigate("/products")}>Skincare</span>
+          <span onClick={() => navigate("/products")}>Makeup</span>
+          <span onClick={() => navigate("/products")}>Haircare</span>
+          <span onClick={() => navigate("/products")}>Body Care</span>
         </div>
         <div className="footer-col">
           <p className="footer-col-title">Help</p>
-          <span>FAQ</span>
-          <span>Shipping Info</span>
-          <span>Return Policy</span>
-          <span>Contact Us</span>
-        </div>
-        <div className="footer-col">
-          <p className="footer-col-title">Company</p>
-          <span>About Us</span>
-          <span>Skincare Guide</span>
-          <span>Blog</span>
-          <span>Careers</span>
+          <span onClick={() => navigate("/contact")}>Return Policy</span>
+          <span onClick={() => navigate("/contact")}>Contact Us</span>
         </div>
       </div>
 

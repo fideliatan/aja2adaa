@@ -9,7 +9,14 @@ import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
 import { PRODUCTS, FALLBACK_IMG } from "../../data/products.js";
 
-const PRODUCT_CATEGORIES = ["All", ...new Set(PRODUCTS.map((p) => p.category))];
+const BROAD_CATEGORIES = ["All", "Skincare", "Makeup", "Haircare", "Body Care"];
+
+const CATEGORY_MAP = {
+  Skincare: ["Cleanser", "Toner", "Serum", "Moisturizer", "Sunscreen", "Eye Cream", "Essence", "Exfoliator", "Face Mask", "Skincare"],
+  Makeup: ["Makeup", "Foundation", "Lipstick", "Mascara", "Blush", "Eyeshadow", "Concealer", "Primer", "Setting Spray"],
+  Haircare: ["Haircare", "Shampoo", "Conditioner", "Hair Mask", "Hair Oil", "Hair Serum"],
+  "Body Care": ["Body Care", "Body Wash", "Body Lotion", "Body Scrub", "Tools", "Tools & Accessories"],
+};
 
 function formatRupiah(number) {
   return "Rp " + number.toLocaleString("id-ID");
@@ -40,7 +47,12 @@ export default function ProductPage() {
     ? searchResults
     : activeCategory === "All"
     ? PRODUCTS
-    : PRODUCTS.filter((p) => p.category === activeCategory);
+    : PRODUCTS.filter((p) => {
+        const mapped = CATEGORY_MAP[activeCategory];
+        return mapped
+          ? mapped.some(c => p.category?.toLowerCase() === c.toLowerCase())
+          : p.category === activeCategory;
+      });
 
   const handleToggleFavorite = (product) => {
     if (favorites.has(product.id)) {
@@ -81,7 +93,7 @@ export default function ProductPage() {
               <span>{searchQuery.trim() ? "matching items" : "products ready"}</span>
             </div>
             <div className="product-stat">
-              <strong>{PRODUCT_CATEGORIES.length - 1}</strong>
+              <strong>{BROAD_CATEGORIES.length - 1}</strong>
               <span>categories</span>
             </div>
             <div className="product-stat">
@@ -94,7 +106,7 @@ export default function ProductPage() {
         <div className="product-hero-card">
           <p className="product-hero-card-label">Popular Categories</p>
           <div className="product-chip-list">
-            {PRODUCT_CATEGORIES.slice(1, 5).map((category) => (
+            {BROAD_CATEGORIES.slice(1, 5).map((category) => (
               <span key={category} className="product-chip">{category}</span>
             ))}
           </div>
@@ -128,7 +140,7 @@ export default function ProductPage() {
 
         {!searchQuery.trim() && (
           <div className="category-tabs">
-            {PRODUCT_CATEGORIES.map((cat) => (
+            {BROAD_CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 className={`category-tab${activeCategory === cat ? " category-tab--active" : ""}`}
