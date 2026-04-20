@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { PRODUCTS } from "../data/products.js";
+import { PRODUCTS } from "../../data/products.js";
 
 /* ─── Icons ──────────────────────────────────────────────── */
 const IconClock = () => (

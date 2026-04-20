@@ -4,7 +4,7 @@ import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
-import { PRODUCTS } from "../data/products.js";
+import { PRODUCTS } from "../../data/products.js";
 
 /* ─── Helper ───────────────────────────────────────────────── */
 function fmt(n) {

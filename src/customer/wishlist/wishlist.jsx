@@ -4,7 +4,7 @@ import "./wishlist.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useWishlist } from "../context/WishlistContext";
-import { PRODUCTS } from "../data/products.js";
+import { PRODUCTS } from "../../data/products.js";
 
 export default function WishlistPage() {
   const navigate = useNavigate();

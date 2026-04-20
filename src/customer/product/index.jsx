@@ -7,7 +7,7 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
-import { PRODUCTS, FALLBACK_IMG } from "../data/products.js";
+import { PRODUCTS, FALLBACK_IMG } from "../../data/products.js";
 
 const PRODUCT_CATEGORIES = ["All", ...new Set(PRODUCTS.map((p) => p.category))];
 

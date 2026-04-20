@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
-import { PRODUCTS, FALLBACK_IMG } from "../data/products.js";
+import { PRODUCTS, FALLBACK_IMG } from "../../data/products.js";
 
 // Top 3 by review count (most reviews = best seller)
 const TOP3 = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
