@@ -12,6 +12,44 @@ function fmt(n) {
   return "Rp " + n.toLocaleString("id-ID");
 }
 
+function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
+    if (!dataUrl.startsWith("data:image")) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+/* ─── Click-to-view proof file badge ──────────────────────── */
+function OdProofFile({ label, src, caption }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <>
+      <button className="od-proof-file-btn" onClick={() => setOpen(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        {label}
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
+      </button>
+      {caption && <p className="od-proof-file-caption">{caption}</p>}
+      {open && (
+        <div className="od-proof-zoom-overlay" onClick={() => setOpen(false)}>
+          <img src={src} alt={label} className="od-proof-zoom-img" />
+          <button className="od-proof-zoom-close" onClick={() => setOpen(false)}>✕</button>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─── Dummy Order Data ─────────────────────────────────────── */
 const ORDER = {
   id: "ORD-017",
@@ -502,11 +540,25 @@ function Barcode({ value, width = 200, height = 44 }) {
 export default function OrderDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { getOrder, cancelOrder } = useOrders();
+  const { getOrder, cancelOrder, addReturn, returns } = useOrders();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
   const [previewOpen, setPreviewOpen]     = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason]   = useState("");
+  const [cancelCustom, setCancelCustom]   = useState("");
   const [timeLeft, setTimeLeft]           = useState(null);
+
+  // Return popup state
+  const [returnStep, setReturnStep]           = useState(0); // 0=closed, 1=select items, 2=upload receipt+reason, 3=upload photo, 4=submitted
+  const [returnQtys, setReturnQtys]           = useState({});
+  const [returnReceiptFile, setReturnReceiptFile] = useState(null);
+  const [returnReceiptB64, setReturnReceiptB64]   = useState(null);
+  const [returnReason, setReturnReason]           = useState("");
+  const [returnCustomReason, setReturnCustomReason] = useState("");
+  const [returnPhotoFile, setReturnPhotoFile]     = useState(null);
+  const [returnPhotoB64, setReturnPhotoB64]       = useState(null);
+  const receiptInputRef = useState(() => ({ current: null }))[0];
+  const photoInputRef   = useState(() => ({ current: null }))[0];
 
   const orderId = location.state?.orderId ?? ORDER.id;
   const liveOrder = getOrder(orderId) ?? ORDER;
@@ -540,8 +592,71 @@ export default function OrderDetailPage() {
   const receiptReady = isReceiptAvailable(liveOrder.status);
 
   const handleCancel = () => {
-    cancelOrder(liveOrder.id);
+    const reason = cancelReason === "Lainnya" ? cancelCustom.trim() : cancelReason;
+    cancelOrder(liveOrder.id, reason);
     setCancelConfirm(false);
+    setCancelReason("");
+    setCancelCustom("");
+  };
+
+  const openReturnPopup = () => {
+    const initQtys = {};
+    (liveOrder.items ?? []).forEach(item => { initQtys[item.name] = item.qty; });
+    setReturnQtys(initQtys);
+    setReturnReceiptFile(null); setReturnReceiptB64(null);
+    setReturnReason(""); setReturnCustomReason("");
+    setReturnPhotoFile(null); setReturnPhotoB64(null);
+    setReturnStep(1);
+  };
+
+  const handleReturnReceiptFile = (file) => {
+    if (!file) return;
+    setReturnReceiptFile(file);
+    setReturnReceiptB64(null);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const result = await compressImage(e.target.result);
+      setReturnReceiptB64(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReturnPhotoFile = (file) => {
+    if (!file) return;
+    setReturnPhotoFile(file);
+    setReturnPhotoB64(null);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const result = await compressImage(e.target.result);
+      setReturnPhotoB64(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const submitReturn = () => {
+    const selectedItems = (liveOrder.items ?? [])
+      .filter(item => (returnQtys[item.name] ?? 0) > 0)
+      .map(item => ({ ...item, qty: returnQtys[item.name] }));
+
+    const ret = {
+      id: `RET-${Date.now().toString().slice(-6)}`,
+      orderId: liveOrder.id,
+      customer: liveOrder.recipient ?? liveOrder.customer ?? "Customer",
+      email: "",
+      date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+      reason: returnReason === "Lainnya" ? returnCustomReason : returnReason,
+      status: "pending",
+      monitoringFlag: null,
+      products: selectedItems,
+      conditionNote: returnReason === "Lainnya" ? returnCustomReason : returnReason,
+      photos: returnPhotoB64 ? [returnPhotoB64] : [],
+      receiptB64: returnReceiptB64,
+      productPhotoB64: returnPhotoB64,
+      qrCode: "—", scannedQr: "—", qrStatus: null,
+      total: selectedItems.reduce((s, i) => s + i.price * i.qty, 0),
+    };
+    addReturn(ret);
+    setReturnStep(4);
   };
 
   return (
@@ -795,15 +910,16 @@ export default function OrderDetailPage() {
                     <p className="od-receipt-avail">Pesanan sudah sampai ke tujuan</p>
                   </div>
                 </div>
-                {liveOrder.deliveryProof ? (
-                  <div className="od-delivery-proof-img-wrap">
-                    <img src={liveOrder.deliveryProof} alt="Bukti kirim" className="od-delivery-proof-img" />
-                    <p className="od-delivery-proof-caption">Foto bukti pengiriman dari kurir</p>
-                  </div>
+                {liveOrder.deliveryProof && liveOrder.deliveryProof.startsWith("data:") ? (
+                  <OdProofFile
+                    label="bukti-pengiriman.jpg"
+                    src={liveOrder.deliveryProof}
+                    caption="Foto bukti pengiriman dari kurir"
+                  />
                 ) : (
                   <p className="od-delivery-proof-note">Kurir telah mengkonfirmasi pengiriman paket.</p>
                 )}
-                <button className="od-return-btn" onClick={() => alert("Fitur return akan segera hadir!")}>
+                <button className="od-return-btn" onClick={openReturnPopup}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
                   Ajukan Return / Pengembalian
                 </button>
@@ -829,32 +945,393 @@ export default function OrderDetailPage() {
               </div>
             )}
 
+            {/* ── Return status card (if customer submitted a return) ── */}
+            {(() => {
+              const myReturn = (returns ?? []).find(r => r.orderId === liveOrder.id);
+              if (!myReturn) return null;
+              const RETURN_STATUS = {
+                pending:    { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: "⏳" },
+                flagged:    { label: "Sedang Ditinjau",            color: "#f97316", bg: "rgba(249,115,22,0.1)",  icon: "🔍" },
+                processing: { label: "Return Sedang Diproses",     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)",  icon: "📦" },
+                completed:  { label: "Return Selesai",             color: "#22c55e", bg: "rgba(34,197,94,0.1)",   icon: "✅" },
+                rejected:   { label: "Return Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.1)",   icon: "❌" },
+              };
+              const rs = RETURN_STATUS[myReturn.status] ?? { label: myReturn.status, color: "#aaa", bg: "rgba(170,170,170,0.1)", icon: "📋" };
+              return (
+                <div className="od-card od-return-status-card" style={{ borderLeft: `3px solid ${rs.color}` }}>
+                  <div className="od-return-status-header">
+                    <span style={{ fontSize: 22 }}>{rs.icon}</span>
+                    <div>
+                      <h2 className="od-card-title" style={{ marginBottom: 2 }}>Status Return</h2>
+                      <span className="od-return-status-pill" style={{ color: rs.color, background: rs.bg }}>{rs.label}</span>
+                    </div>
+                  </div>
+                  <div className="od-return-status-body">
+                    <div className="od-return-status-row">
+                      <span>ID Return</span>
+                      <strong>{myReturn.id}</strong>
+                    </div>
+                    <div className="od-return-status-row">
+                      <span>Tanggal Pengajuan</span>
+                      <strong>{myReturn.date}</strong>
+                    </div>
+                    <div className="od-return-status-row">
+                      <span>Alasan</span>
+                      <strong style={{ maxWidth: 200, textAlign: "right" }}>{myReturn.reason}</strong>
+                    </div>
+                    <div className="od-return-status-row">
+                      <span>Total Refund</span>
+                      <strong>{fmt(myReturn.total)}</strong>
+                    </div>
+                  </div>
+                  {myReturn.status === "pending" && (
+                    <p className="od-return-status-note">Tim kami sedang meninjau pengajuan returnmu. Proses biasanya 1–3 hari kerja.</p>
+                  )}
+                  {myReturn.status === "processing" && (
+                    <p className="od-return-status-note" style={{ color: "#4a9fd4" }}>Return kamu sudah disetujui dan sedang diproses. Refund akan masuk dalam 3–5 hari kerja.</p>
+                  )}
+                  {myReturn.status === "completed" && (
+                    <p className="od-return-status-note" style={{ color: "#22c55e" }}>Return selesai diproses. Refund sudah dikirimkan. Terima kasih!</p>
+                  )}
+                  {myReturn.status === "rejected" && (
+                    <p className="od-return-status-note" style={{ color: "#ef4444" }}>Pengajuan return ditolak. Hubungi CS kami untuk informasi lebih lanjut.</p>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         </div>
       </main>
 
-      {/* ── Cancel confirmation modal ── */}
+      {/* ── Cancel modal — multi-step with reasons ── */}
       {cancelConfirm && (
         <div className="od-modal-overlay" onClick={() => setCancelConfirm(false)}>
-          <div className="od-modal od-modal--small" onClick={e => e.stopPropagation()}>
+          <div className="od-modal od-cancel-modal" onClick={e => e.stopPropagation()}>
             <div className="od-modal-header">
-              <h3>Batalkan Pesanan?</h3>
+              <div>
+                <h3>Batalkan Pesanan</h3>
+                <p className="od-modal-sub">#{liveOrder.id}</p>
+              </div>
               <button className="od-modal-close" onClick={() => setCancelConfirm(false)}>✕</button>
             </div>
             <div className="od-modal-body">
-              <p style={{ fontSize: 14, color: "#666", marginBottom: 20, lineHeight: 1.6 }}>
-                Apakah kamu yakin ingin membatalkan pesanan <strong>{liveOrder.id}</strong>?
-                Tindakan ini tidak dapat dibatalkan.
-              </p>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button className="od-cancel-confirm-btn" onClick={handleCancel}>
-                  Ya, Batalkan
+              <p className="od-cancel-reason-title">Pilih alasan pembatalan:</p>
+              <div className="od-cancel-reasons">
+                {[
+                  "Tidak jadi beli",
+                  "Ingin ganti produk lain",
+                  "Harga terlalu mahal",
+                  "Alamat pengiriman salah",
+                  "Proses pembayaran bermasalah",
+                  "Lainnya",
+                ].map(reason => (
+                  <label key={reason} className={`od-cancel-reason-option${cancelReason === reason ? " od-cancel-reason-option--active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="cancel-reason"
+                      value={reason}
+                      checked={cancelReason === reason}
+                      onChange={() => setCancelReason(reason)}
+                      style={{ display: "none" }}
+                    />
+                    <span className="od-cancel-reason-radio" />
+                    {reason}
+                  </label>
+                ))}
+              </div>
+              {cancelReason === "Lainnya" && (
+                <textarea
+                  className="od-cancel-custom-input"
+                  rows={3}
+                  placeholder="Ceritakan alasanmu di sini…"
+                  value={cancelCustom}
+                  onChange={e => setCancelCustom(e.target.value)}
+                />
+              )}
+              <div className="od-cancel-modal-warning">
+                ⚠ Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <button
+                  className="od-cancel-confirm-btn"
+                  disabled={!cancelReason || (cancelReason === "Lainnya" && !cancelCustom.trim())}
+                  onClick={handleCancel}
+                >
+                  Konfirmasi Batalkan
                 </button>
                 <button className="od-cancel-back-btn" onClick={() => setCancelConfirm(false)}>
                   Kembali
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          RETURN POPUP — multi-step
+          ════════════════════════════════════════════════════ */}
+      {returnStep > 0 && (
+        <div className="od-modal-overlay" onClick={() => returnStep !== 4 && setReturnStep(0)}>
+          <div className={`od-modal od-return-modal${returnStep === 2 && returnReceiptB64 ? " od-return-modal--extended" : ""}`} onClick={e => e.stopPropagation()}>
+
+            {/* Step indicator */}
+            {returnStep < 4 && (
+              <div className="od-return-steps-bar">
+                {["Pilih Produk", "Bukti & Alasan", "Foto Produk"].map((label, i) => (
+                  <div key={i} className={`od-return-step-item${returnStep === i + 1 ? " od-return-step-item--active" : returnStep > i + 1 ? " od-return-step-item--done" : ""}`}>
+                    <div className="od-return-step-num">{returnStep > i + 1 ? "✓" : i + 1}</div>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* STEP 1: Select products */}
+            {returnStep === 1 && (
+              <>
+                <div className="od-modal-header">
+                  <div>
+                    <h3>Ajukan Return</h3>
+                    <p className="od-modal-sub">Pilih produk yang ingin dikembalikan</p>
+                  </div>
+                  <button className="od-modal-close" onClick={() => setReturnStep(0)}>✕</button>
+                </div>
+                <div className="od-modal-body">
+                  <div className="od-return-product-list">
+                    {(liveOrder.items ?? []).map((item, i) => (
+                      <div key={i} className="od-return-product-row">
+                        <div className="od-return-product-img">
+                          {item.image
+                            ? <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />
+                            : <span>{item.name?.[0]}</span>
+                          }
+                        </div>
+                        <div className="od-return-product-info">
+                          <p className="od-return-product-name">{item.name}</p>
+                          <p className="od-return-product-price">{fmt(item.price)}</p>
+                        </div>
+                        <div className="od-return-qty-ctrl">
+                          {item.qty > 1 ? (
+                            <>
+                              <button className="od-rqty-btn" onClick={() => setReturnQtys(p => ({ ...p, [item.name]: Math.max(0, (p[item.name] ?? item.qty) - 1) }))}>−</button>
+                              <span className="od-rqty-val">{returnQtys[item.name] ?? item.qty}</span>
+                              <button className="od-rqty-btn" onClick={() => setReturnQtys(p => ({ ...p, [item.name]: Math.min(item.qty, (p[item.name] ?? item.qty) + 1) }))}>+</button>
+                            </>
+                          ) : (
+                            <label className="od-return-check-label">
+                              <input
+                                type="checkbox"
+                                checked={(returnQtys[item.name] ?? 1) > 0}
+                                onChange={e => setReturnQtys(p => ({ ...p, [item.name]: e.target.checked ? 1 : 0 }))}
+                                style={{ display: "none" }}
+                              />
+                              <span className={`od-return-checkbox${(returnQtys[item.name] ?? 1) > 0 ? " od-return-checkbox--checked" : ""}`}>
+                                {(returnQtys[item.name] ?? 1) > 0 ? "✓" : ""}
+                              </span>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="od-modal-footer">
+                  <button
+                    className="od-return-next-btn"
+                    disabled={(liveOrder.items ?? []).every(item => (returnQtys[item.name] ?? 0) === 0)}
+                    onClick={() => setReturnStep(2)}
+                  >
+                    Lanjut →
+                  </button>
+                  <button className="od-cancel-back-btn" onClick={() => setReturnStep(0)}>Batal</button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2: Upload receipt + reason */}
+            {returnStep === 2 && (
+              <>
+                <div className="od-modal-header">
+                  <div>
+                    <h3>Bukti Pembelian & Alasan</h3>
+                    <p className="od-modal-sub">Upload e-receipt dan pilih alasan return</p>
+                  </div>
+                  <button className="od-modal-close" onClick={() => setReturnStep(0)}>✕</button>
+                </div>
+                <div className="od-modal-body">
+                  {/* Receipt upload */}
+                  <p className="od-return-section-label">Upload E-Receipt / Bukti Pembelian</p>
+                  <input ref={r => receiptInputRef.current = r} type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+                    onChange={e => handleReturnReceiptFile(e.target.files?.[0])} />
+                  <div
+                    className={`od-return-dropzone${returnReceiptB64 ? " od-return-dropzone--filled" : ""}`}
+                    onClick={() => receiptInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => { e.preventDefault(); handleReturnReceiptFile(e.dataTransfer.files?.[0]); }}
+                  >
+                    {returnReceiptB64 ? (
+                      <div className="od-return-file-preview">
+                        {returnReceiptB64.startsWith("data:image") ? (
+                          <img src={returnReceiptB64} alt="receipt" style={{ maxHeight: 120, borderRadius: 8, objectFit: "contain" }} />
+                        ) : (
+                          <div className="od-return-pdf-chip">📄 {returnReceiptFile?.name}</div>
+                        )}
+                        <p className="od-return-file-ok">✓ File berhasil diupload</p>
+                        <p style={{ fontSize: 11, color: "#aaa" }}>Klik untuk ganti file</p>
+                      </div>
+                    ) : (
+                      <div className="od-return-dropzone-empty">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c97269" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p>Drag & drop atau <span style={{ color: "#c97269", fontWeight: 700 }}>pilih file</span></p>
+                        <p style={{ fontSize: 11, color: "#bbb" }}>JPG, PNG, PDF — maks 5 MB</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reason section — only shown after receipt uploaded */}
+                  {returnReceiptB64 && (
+                    <div className="od-return-reason-section">
+                      <p className="od-return-section-label">Alasan Return</p>
+                      <div className="od-cancel-reasons">
+                        {[
+                          "Produk rusak / cacat",
+                          "Produk tidak sesuai deskripsi",
+                          "Barang salah dikirim",
+                          "Reaksi alergi terhadap produk",
+                          "Produk kedaluwarsa",
+                          "Lainnya",
+                        ].map(r => (
+                          <label key={r} className={`od-cancel-reason-option${returnReason === r ? " od-cancel-reason-option--active" : ""}`}>
+                            <input type="radio" name="return-reason" value={r} checked={returnReason === r}
+                              onChange={() => setReturnReason(r)} style={{ display: "none" }} />
+                            <span className="od-cancel-reason-radio" />
+                            {r}
+                          </label>
+                        ))}
+                      </div>
+                      {returnReason === "Lainnya" && (
+                        <textarea
+                          className="od-cancel-custom-input"
+                          rows={2}
+                          placeholder="Jelaskan alasan return kamu…"
+                          value={returnCustomReason}
+                          onChange={e => setReturnCustomReason(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="od-modal-footer">
+                  <button className="od-return-next-btn"
+                    disabled={!returnReceiptB64 || !returnReason || (returnReason === "Lainnya" && !returnCustomReason.trim())}
+                    onClick={() => setReturnStep(3)}>
+                    Lanjut →
+                  </button>
+                  <button className="od-cancel-back-btn" onClick={() => setReturnStep(1)}>← Kembali</button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 3: Upload product photo */}
+            {returnStep === 3 && (
+              <>
+                <div className="od-modal-header">
+                  <div>
+                    <h3>Foto Kondisi Produk</h3>
+                    <p className="od-modal-sub">Upload foto produk yang ingin dikembalikan</p>
+                  </div>
+                  <button className="od-modal-close" onClick={() => setReturnStep(0)}>✕</button>
+                </div>
+                <div className="od-modal-body">
+                  {/* WARNING banner */}
+                  <div className="od-return-photo-warning">
+                    <div className="od-return-warning-icon">⚠️</div>
+                    <div>
+                      <p className="od-return-warning-title">PERHATIAN — FOTO HARUS JELAS!</p>
+                      <p className="od-return-warning-desc">
+                        Pastikan foto menunjukkan kondisi produk secara lengkap dan jelas. Foto buram, terlalu gelap, atau tidak menampilkan produk secara keseluruhan dapat menyebabkan pengajuan return ditolak.
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="od-return-section-label" style={{ marginTop: 16 }}>Upload Foto Produk</p>
+                  <input ref={r => photoInputRef.current = r} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => handleReturnPhotoFile(e.target.files?.[0])} />
+                  <div
+                    className={`od-return-dropzone od-return-dropzone--photo${returnPhotoB64 ? " od-return-dropzone--filled" : ""}`}
+                    onClick={() => photoInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => { e.preventDefault(); handleReturnPhotoFile(e.dataTransfer.files?.[0]); }}
+                  >
+                    {returnPhotoB64 ? (
+                      <div className="od-return-file-preview">
+                        <img src={returnPhotoB64} alt="product" style={{ maxHeight: 160, borderRadius: 10, objectFit: "contain" }} />
+                        <p className="od-return-file-ok">✓ {returnPhotoFile?.name}</p>
+                        <p style={{ fontSize: 11, color: "#aaa" }}>Klik untuk ganti foto</p>
+                      </div>
+                    ) : (
+                      <div className="od-return-dropzone-empty">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c97269" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <p style={{ fontWeight: 600 }}>Upload foto produk yang akan dikembalikan</p>
+                        <p style={{ fontSize: 11, color: "#bbb" }}>JPG, PNG — pastikan foto jelas dan terang</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="od-modal-footer">
+                  <button
+                    className="od-return-next-btn od-return-submit-btn"
+                    disabled={!returnPhotoB64}
+                    onClick={submitReturn}
+                  >
+                    Submit Pengajuan Return
+                  </button>
+                  <button className="od-cancel-back-btn" onClick={() => setReturnStep(2)}>← Kembali</button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 4: Success / waiting state */}
+            {returnStep === 4 && (
+              <>
+                <div className="od-modal-header" style={{ border: "none" }}>
+                  <div />
+                  <button className="od-modal-close" onClick={() => setReturnStep(0)}>✕</button>
+                </div>
+                <div className="od-return-success-body">
+                  <div className="od-return-success-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <h3 className="od-return-success-title">Pengajuan Return Terkirim!</h3>
+                  <p className="od-return-success-desc">
+                    Pengajuan return kamu untuk pesanan <strong>{liveOrder.id}</strong> sedang dalam proses review oleh tim kami.
+                  </p>
+                  <div className="od-return-waiting-card">
+                    <div className="od-return-waiting-row">
+                      <span>⏳</span>
+                      <div>
+                        <p className="od-return-waiting-title">Menunggu Persetujuan Admin</p>
+                        <p className="od-return-waiting-sub">Estimasi review 1–3 hari kerja. Kamu akan dihubungi via email atau WhatsApp.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="od-return-success-tips">
+                    <p className="od-return-tips-title">Yang perlu kamu lakukan:</p>
+                    <ul className="od-return-tips-list">
+                      <li>Simpan produk yang akan dikembalikan dengan aman</li>
+                      <li>Jangan buang kemasan asli produk</li>
+                      <li>Tunggu konfirmasi dari tim careofyou</li>
+                    </ul>
+                  </div>
+                  <button className="od-return-next-btn" style={{ marginTop: 20, width: "100%" }} onClick={() => setReturnStep(0)}>
+                    Tutup
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}

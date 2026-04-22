@@ -64,7 +64,15 @@ const SEED_ORDERS = [
 function load() {
   try {
     const saved = localStorage.getItem("coy_orders_v2");
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const orders = JSON.parse(saved);
+      // Migrate: replace "__img__" placeholders left over from old split-storage format
+      return orders.map(o => ({
+        ...o,
+        paymentProof:  o.paymentProof  === "__img__" ? null : o.paymentProof,
+        deliveryProof: o.deliveryProof === "__img__" ? null : o.deliveryProof,
+      }));
+    }
   } catch (_) {}
   return SEED_ORDERS;
 }
@@ -73,25 +81,62 @@ function save(orders) {
   try { localStorage.setItem("coy_orders_v2", JSON.stringify(orders)); } catch (_) {}
 }
 
+function loadReturns() {
+  try {
+    const saved = localStorage.getItem("coy_returns_v1");
+    if (saved) return JSON.parse(saved);
+  } catch (_) {}
+  return [];
+}
+
+function saveReturns(returns) {
+  try { localStorage.setItem("coy_returns_v1", JSON.stringify(returns)); } catch (_) {}
+}
+
 export function OrderProvider({ children }) {
   const [orders, setOrders] = useState(load);
+  const [returns, setReturns] = useState(loadReturns);
 
-  useEffect(() => { save(orders); }, [orders]);
+  useEffect(() => {
+    save(orders);
+  }, [orders]);
+
+  useEffect(() => { saveReturns(returns); }, [returns]);
+
+  // Sync across browser tabs via storage events
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "coy_orders_v2") {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed) setOrders(parsed);
+        } catch (_) {}
+      }
+      if (e.key === "coy_returns_v1") {
+        try { const v = JSON.parse(e.newValue); if (v) setReturns(v); } catch (_) {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const update = (id, patch) =>
     setOrders(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o));
 
   const addOrder    = (order)               => setOrders(prev => [order, ...prev]);
-  const cancelOrder = (id)                  => update(id, { status: "cancelled" });
+  const cancelOrder = (id, reason)           => update(id, { status: "cancelled", cancelReason: reason ?? null });
   const approveOrder= (id)                  => update(id, { status: "packing", cancelDeadlineTs: null });
   const rejectOrder = (id, reason)          => update(id, { status: "rejected", rejectionReason: reason });
   const shipOrder   = (id, courier, tracking) => update(id, { status: "shipped", courier, trackingNumber: tracking });
   const deliverOrder= (id, deliveryProof)   => update(id, { status: "delivered", deliveryProof: deliveryProof ?? null });
   const getOrder    = (id)                  => orders.find(o => o.id === id);
+  const addReturn   = (ret)                 => setReturns(prev => [ret, ...prev]);
+  const updateReturn= (id, patch)           => setReturns(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
 
   return (
     <OrderContext.Provider value={{
       orders, addOrder, cancelOrder, approveOrder, rejectOrder, shipOrder, deliverOrder, getOrder,
+      returns, addReturn, updateReturn,
     }}>
       {children}
     </OrderContext.Provider>

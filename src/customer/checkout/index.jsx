@@ -56,6 +56,23 @@ const PAYMENT_METHODS = [
 
 const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
 
+/* Compress a base64 data-URL to max 1200px / JPEG 0.75 so it fits localStorage */
+function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback: use original
+    img.src = dataUrl;
+  });
+}
+
 /* ─── Main component ─────────────────────────────────────── */
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -88,6 +105,7 @@ export default function CheckoutPage() {
   const [newOrderId, setNewOrderId]   = useState("");
   const timerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const proofDataRef = useRef(null);
 
   useEffect(() => {
     if (!proofModal || submitted) return;
@@ -133,16 +151,23 @@ export default function CheckoutPage() {
   const handleProofFile = (file) => {
     if (!file) return;
     setProofFile(file);
+    proofDataRef.current = null;
     const reader = new FileReader();
-    reader.onload = e => setProofPreview(e.target.result);
+    reader.onload = async (e) => {
+      const compressed = await compressImage(e.target.result);
+      proofDataRef.current = compressed;
+      setProofPreview(compressed);
+    };
     reader.readAsDataURL(file);
   };
 
   const handleProofSubmit = () => {
-    if (!proofFile) return;
+    const proof = proofDataRef.current ?? proofPreview;
+    if (!proof) return;
     clearInterval(timerRef.current);
-    const addr = addresses.find(a => a.id === selectedAddr);
-    const pay  = PAYMENT_METHODS.find(p => p.id === payment);
+    const addr        = addresses.find(a => a.id === selectedAddr);
+    const pay         = PAYMENT_METHODS.find(p => p.id === payment);
+    const deliveryOpt = DELIVERY_OPTIONS.find(d => d.id === delivery);
     addOrder({
       id: newOrderId,
       status: "pending",
@@ -157,8 +182,11 @@ export default function CheckoutPage() {
       recipient: addr?.name ?? "",
       phone: addr?.phone ?? "",
       address: addr?.address ?? "",
-      paymentProof: proofPreview,
+      delivery: deliveryOpt?.label ?? delivery,
+      deliveryId: delivery,
+      paymentProof: proof,
       rejectionReason: null,
+      cancelReason: null,
       trackingNumber: null,
       courier: null,
       cancelDeadlineTs: Date.now() + 24 * 60 * 60 * 1000,
@@ -482,9 +510,13 @@ export default function CheckoutPage() {
               <button
                 className="co-proof-submit-btn"
                 onClick={handleProofSubmit}
-                disabled={!proofFile}
+                disabled={!proofPreview}
               >
-                {proofFile ? "Kirim Bukti Pembayaran →" : "Pilih foto terlebih dahulu"}
+                {!proofFile
+                  ? "Pilih foto terlebih dahulu"
+                  : !proofPreview
+                    ? "⏳ Memproses foto..."
+                    : "Kirim Bukti Pembayaran →"}
               </button>
 
               <p className="co-proof-note">Pastikan foto bukti transfer terlihat jelas dan terbaca</p>
