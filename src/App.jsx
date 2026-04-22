@@ -2,7 +2,6 @@ import './App.css'
 import { useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import AuthPage from './auth/index.jsx'
-import TwoFAPage from './2fa/index.jsx'
 import MyProfilePage from './customer/myprofile/index.jsx'
 import HomePage from './customer/home/index.jsx'
 import ProductPage from './customer/product/index.jsx'
@@ -117,7 +116,6 @@ function App() {
             <Routes>
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />
-              <Route path="/2fa" element={<TwoFAPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/admin" element={<AdminPage />} />
