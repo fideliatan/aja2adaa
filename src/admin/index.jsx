@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PRODUCTS } from "../data/products.js";
 import "./index.css";
 import { useOrders } from "../customer/context/OrderContext";
+import { getCaseRiskSummary, getMonitoringSummary } from "./risk-data.js";
+import {
+  CaseRiskPanel,
+  CompactRiskIndicator,
+  MonitoringSummaryCards,
+  RiskScoreCard,
+  SessionRiskSummary,
+  StepUpVerificationModal,
+  TrustedDeviceCard,
+} from "./risk-monitoring.jsx";
 
 /* ═══════════════════════════════════════════════════════════
    MOCK DATA
@@ -124,6 +134,27 @@ const YEARLY_REVENUE = [
 ];
 
 const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
+const SECURITY_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatSecurityTimestamp(date = new Date()) {
+  return SECURITY_TIME_FORMATTER.format(date);
+}
+
+function createSecurityTimelineEvent(prefix, type, label, status = "success") {
+  return {
+    id: `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type,
+    label,
+    timestamp: formatSecurityTimestamp(),
+    status,
+  };
+}
 
 function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
   return new Promise((resolve) => {
@@ -357,6 +388,7 @@ function Dashboard({ setActive }) {
   const totalRevenue = MOCK_ORDERS.reduce((s, o) => s + o.total, 0);
   const totalOrders  = MOCK_ORDERS.length;
   const totalCustomers = MOCK_CUSTOMERS.length;
+  const monitoringSummary = getMonitoringSummary();
 
   const stats = [
     { label: "Total Revenue",   value: fmt(totalRevenue), sub: "+18% bulan ini",  icon: <IcRevenue />,   color: "rose"   },
@@ -393,6 +425,8 @@ function Dashboard({ setActive }) {
         ))}
       </div>
 
+      <MonitoringSummaryCards summary={monitoringSummary} />
+
       <div className="adm-dash-grid">
         <RevenueChart />
 
@@ -409,6 +443,13 @@ function Dashboard({ setActive }) {
                 <p className="adm-alert-sub">Payment confirmation pending</p>
               </div>
               <button className="adm-alert-btn" onClick={() => setActive("orders")}>View</button>
+            </div>
+            <div className="adm-alert-item adm-alert-item--warn">
+              <span className="adm-alert-dot" />
+              <div>
+                <p className="adm-alert-title">{monitoringSummary.highRiskCases} High Risk Cases</p>
+                <p className="adm-alert-sub">Manual review recommended before approval</p>
+              </div>
             </div>
             <div className="adm-alert-item adm-alert-item--green">
               <span className="adm-alert-dot adm-alert-dot--green" />
@@ -434,12 +475,14 @@ function Dashboard({ setActive }) {
                 <th>Order ID</th>
                 <th>Customer</th>
                 <th>Total</th>
+                <th>Risk</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {recentOrders.map(o => {
                 const st = STATUS_META[o.status];
+                const riskSummary = getCaseRiskSummary("order", o.id);
                 return (
                   <tr key={o.id}>
                     <td><span className="adm-order-id">{o.id}</span></td>
@@ -450,6 +493,7 @@ function Dashboard({ setActive }) {
                       </div>
                     </td>
                     <td><strong>{fmt(o.total)}</strong></td>
+                    <td><CompactRiskIndicator summary={riskSummary} /></td>
                     <td>
                       <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>
                         {st.label}
@@ -550,14 +594,16 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
               <th>Customer</th>
               <th>Total</th>
               <th>Tanggal</th>
+              <th>Risk</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={5} className="adm-empty-row">Tidak ada pesanan ditemukan.</td></tr>
+              <tr><td colSpan={6} className="adm-empty-row">Tidak ada pesanan ditemukan.</td></tr>
             ) : filtered.map(o => {
               const st = STATUS_META[o.status] ?? { label: o.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
+              const riskSummary = getCaseRiskSummary("order", o.id);
               return (
                 <tr
                   key={o.id}
@@ -578,6 +624,7 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
                   </td>
                   <td><strong>{fmt(o.total)}</strong></td>
                   <td className="adm-date-cell">{o.date}</td>
+                  <td><CompactRiskIndicator summary={riskSummary} /></td>
                   <td>
                     <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
                   </td>
@@ -1147,14 +1194,16 @@ function Returns({ goToReturnDetail }) {
               <th>Produk</th>
               <th>Total Refund</th>
               <th>Tanggal</th>
+              <th>Risk</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="adm-empty-row">Tidak ada permintaan return di kategori ini.</td></tr>
+              <tr><td colSpan={8} className="adm-empty-row">Tidak ada permintaan return di kategori ini.</td></tr>
             ) : filtered.map(r => {
               const st = RETURN_STATUS_META[r.status] ?? { label: r.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
+              const riskSummary = getCaseRiskSummary("return", r.id);
               return (
                 <tr key={r.id} className="adm-table-row--clickable" onClick={() => goToReturnDetail(r.id)}>
                   <td><span className="adm-order-id">{r.id}</span></td>
@@ -1175,6 +1224,7 @@ function Returns({ goToReturnDetail }) {
                   </td>
                   <td><strong>{fmt(r.total)}</strong></td>
                   <td className="adm-date-cell">{r.date}</td>
+                  <td><CompactRiskIndicator summary={riskSummary} /></td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
@@ -1197,6 +1247,7 @@ function Returns({ goToReturnDetail }) {
 function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const { returns: ctxReturns, updateReturn } = useOrders();
   const allReturns = buildAllReturns(ctxReturns);
+  const initialReturnId = selectedReturnId ?? allReturns[0]?.id;
 
   const [localId,       setLocalId]       = useState(selectedReturnId ?? allReturns[0]?.id);
   const [localStatuses, setLocalStatuses] = useState({});
@@ -1205,12 +1256,38 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const [verifyResult,  setVerifyResult]  = useState(null);
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
+  const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary("return", initialReturnId));
+  const [stepUpState,   setStepUpState]   = useState({
+    open: false,
+    actionKey: "",
+    actionLabel: "",
+    reasons: [],
+    helperText: "",
+  });
+  const stepUpActionRef = useRef(null);
 
   const currentId  = localId ?? allReturns[0]?.id;
   const ret        = allReturns.find(r => r.id === currentId) ?? allReturns[0];
   const currentIdx = allReturns.findIndex(r => r.id === currentId);
   const curStatus  = ret ? (localStatuses[ret.id] ?? ret.status) : null;
   const curQr      = ret ? (localQr[ret.id] ?? ret.qrStatus)     : null;
+
+  useEffect(() => {
+    if (selectedReturnId) setLocalId(selectedReturnId);
+  }, [selectedReturnId]);
+
+  useEffect(() => {
+    if (!ret?.id) return;
+    setRiskSummary(getCaseRiskSummary("return", ret.id));
+    setStepUpState({
+      open: false,
+      actionKey: "",
+      actionLabel: "",
+      reasons: [],
+      helperText: "",
+    });
+    stepUpActionRef.current = null;
+  }, [ret?.id]);
 
   const patchReturn = (id, patch) => {
     if (ret?.fromCtx) updateReturn(id, patch);
@@ -1227,12 +1304,123 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
       const result  = matched ? "valid" : "invalid";
       setVerifyResult(result);
       setLocalQr(p => ({ ...p, [ret.id]: result }));
+      setRiskSummary((prev) => ({
+        ...prev,
+        timeline: [
+          ...prev.timeline,
+          createSecurityTimelineEvent(
+            ret.id.toLowerCase(),
+            "qr",
+            matched ? "QR verification passed" : "QR verification failed",
+            matched ? "success" : "danger"
+          ),
+        ],
+      }));
       if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
       else patchReturn(ret.id, { qrStatus: result });
     }, 1400);
   };
 
   const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setVerifyResult(null); setScanning(false); };
+
+  const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
+    const config = riskSummary.stepUpConfig?.[actionKey];
+    const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+
+    setRiskSummary((prev) => ({
+      ...prev,
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          ret.id.toLowerCase(),
+          "step-up",
+          `Step-up verification triggered for ${actionLabel}`,
+          "warning"
+        ),
+      ],
+    }));
+
+    stepUpActionRef.current = onVerified;
+    setStepUpState({
+      open: true,
+      actionKey,
+      actionLabel,
+      reasons: finalReasons,
+      helperText: config?.helperText ?? "Masukkan OTP admin untuk melanjutkan aksi sensitif ini.",
+    });
+  };
+
+  const closeStepUp = () => {
+    setStepUpState({
+      open: false,
+      actionKey: "",
+      actionLabel: "",
+      reasons: [],
+      helperText: "",
+    });
+    stepUpActionRef.current = null;
+  };
+
+  const handleStepUpSuccess = () => {
+    const pendingAction = stepUpActionRef.current;
+
+    setRiskSummary((prev) => ({
+      ...prev,
+      sessionRiskState: {
+        ...prev.sessionRiskState,
+        otpRequired: false,
+        accessState:
+          prev.sessionRiskState.accessState === "OTP Required"
+            ? "High Risk"
+            : prev.sessionRiskState.accessState,
+      },
+      trustedDeviceStatus: {
+        ...prev.trustedDeviceStatus,
+        verificationRequired: false,
+        verificationStatus: "Step-up verified for current session",
+      },
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          ret.id.toLowerCase(),
+          "otp",
+          `OTP verified for ${stepUpState.actionLabel}`,
+          "success"
+        ),
+      ],
+    }));
+
+    closeStepUp();
+    pendingAction?.();
+  };
+
+  const handleResolveFlag = (flag) => {
+    requestStepUp({
+      actionKey: "resolveHighRiskFlag",
+      actionLabel: `Resolve ${flag.title}`,
+      reasons: [
+        `Flag ${flag.ruleCode} masih aktif pada case ini.`,
+        "Resolving high risk flag memerlukan verifikasi tambahan.",
+      ],
+      onVerified: () => {
+        setRiskSummary((prev) => ({
+          ...prev,
+          flags: prev.flags.map((item) =>
+            item.id === flag.id ? { ...item, status: "resolved" } : item
+          ),
+          timeline: [
+            ...prev.timeline,
+            createSecurityTimelineEvent(
+              ret.id.toLowerCase(),
+              "risk",
+              `High-risk flag resolved: ${flag.title}`,
+              "success"
+            ),
+          ],
+        }));
+      },
+    });
+  };
 
   if (!ret) return (
     <div className="adm-section">
@@ -1244,7 +1432,6 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const st      = RETURN_STATUS_META[curStatus] ?? { label: curStatus, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
   const photos  = ret.photos ?? [];
   const receipt = ret.receiptB64 ?? null;
-
   return (
     <div className="adm-section">
 
@@ -1258,6 +1445,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         <span className="adm-od-breadcrumb-id">{ret.id}</span>
         <span className="adm-status-pill" style={{ color: st.color, background: st.bg, fontSize: 12, padding: "3px 10px" }}>{st.label}</span>
         {ret.monitoringFlag && <span className="adm-return-flag" style={{ marginLeft: 4, fontSize: 12 }}>⚠ {ret.monitoringFlag}</span>}
+        <CompactRiskIndicator summary={riskSummary} />
         <div className="adm-od-nav-btns">
           <button className="adm-od-nav-btn" disabled={currentIdx <= 0} onClick={() => navTo(allReturns[currentIdx - 1])}>‹</button>
           <span className="adm-od-nav-label">{currentIdx + 1} / {allReturns.length}</span>
@@ -1372,6 +1560,21 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           <div className="adm-pa-body-right">
 
             <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Session Risk</p>
+              <SessionRiskSummary state={riskSummary.sessionRiskState} compact />
+            </div>
+
+            <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Trusted Device</p>
+              <TrustedDeviceCard device={riskSummary.trustedDeviceStatus} compact />
+            </div>
+
+            <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Risk Monitoring</p>
+              <RiskScoreCard summary={riskSummary} compact />
+            </div>
+
+            <div className="adm-pa-block">
               <p className="adm-pa-block-label">Verifikasi QR Produk</p>
               <div style={{ border: "1.5px solid var(--adm-border)", borderRadius: 14, padding: 16 }}>
                 <div className="adm-qr-steps">
@@ -1433,15 +1636,84 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     📦 Return sedang diproses. Tandai selesai setelah refund dilakukan.
                   </div>
                   <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
-                  <button className="adm-pa-reject-btn" onClick={() => patchReturn(ret.id, { status: "rejected" })}>✕ Tolak Return</button>
+                  <button
+                    className="adm-pa-reject-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "rejectReturn",
+                      actionLabel: "Reject Return",
+                      onVerified: () => {
+                        setRiskSummary((prev) => ({
+                          ...prev,
+                          timeline: [
+                            ...prev.timeline,
+                            createSecurityTimelineEvent(
+                              ret.id.toLowerCase(),
+                              "action",
+                              "Sensitive action confirmed: Reject Return",
+                              "success"
+                            ),
+                          ],
+                        }));
+                        patchReturn(ret.id, { status: "rejected" });
+                      },
+                    })}
+                  >
+                    ✕ Tolak Return
+                  </button>
                 </div>
               ) : (
                 <div className="adm-pa-actions">
                   <p style={{ fontSize: 12.5, color: "#888", marginBottom: 10 }}>
                     {curQr === "valid" ? "✓ QR terverifikasi — siap diputuskan." : "Scan QR dulu untuk verifikasi, atau putuskan langsung."}
                   </p>
-                  <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "processing" })}><IcCheck /> Setujui Return</button>
-                  <button className="adm-pa-reject-btn" onClick={() => patchReturn(ret.id, { status: "rejected" })}>✕ Tolak Return</button>
+                  <button
+                    className="adm-pa-approve-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "approveReturn",
+                      actionLabel: "Approve Return",
+                      onVerified: () => {
+                        setRiskSummary((prev) => ({
+                          ...prev,
+                          timeline: [
+                            ...prev.timeline,
+                            createSecurityTimelineEvent(
+                              ret.id.toLowerCase(),
+                              "action",
+                              "Sensitive action confirmed: Approve Return",
+                              "success"
+                            ),
+                          ],
+                        }));
+                        patchReturn(ret.id, { status: "processing" });
+                      },
+                    })}
+                  >
+                    <IcCheck /> Setujui Return
+                  </button>
+                  <button
+                    className="adm-pa-reject-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "rejectReturn",
+                      actionLabel: "Reject Return",
+                      onVerified: () => {
+                        setRiskSummary((prev) => ({
+                          ...prev,
+                          timeline: [
+                            ...prev.timeline,
+                            createSecurityTimelineEvent(
+                              ret.id.toLowerCase(),
+                              "action",
+                              "Sensitive action confirmed: Reject Return",
+                              "success"
+                            ),
+                          ],
+                        }));
+                        patchReturn(ret.id, { status: "rejected" });
+                      },
+                    })}
+                  >
+                    ✕ Tolak Return
+                  </button>
                 </div>
               )}
             </div>
@@ -1449,6 +1721,18 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           </div>
         </div>
       </div>
+
+      <CaseRiskPanel summary={riskSummary} entityLabel={`return ${ret.id}`} onResolveFlag={handleResolveFlag} />
+
+      <StepUpVerificationModal
+        open={stepUpState.open}
+        actionLabel={stepUpState.actionLabel}
+        caseId={ret.id}
+        reasons={stepUpState.reasons}
+        helperText={stepUpState.helperText}
+        onClose={closeStepUp}
+        onSuccess={handleStepUpSuccess}
+      />
 
       {/* Zoom overlays */}
       {receiptZoom && receipt && !receipt.startsWith("data:application/pdf") && (
@@ -1545,12 +1829,15 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     })),
   ];
 
-  const [localId, setLocalId] = useState(selectedOrderId ?? allOrders[0]?.id);
+  const initialOrderId = selectedOrderId ?? allOrders[0]?.id;
+  const [localId, setLocalId] = useState(initialOrderId);
   const currentId = localId ?? allOrders[0]?.id;
   const order = allOrders.find(o => o.id === currentId) ?? allOrders[0];
 
   // Sync when prop changes (coming from Orders table click)
-  useState(() => { if (selectedOrderId) setLocalId(selectedOrderId); });
+  useEffect(() => {
+    if (selectedOrderId) setLocalId(selectedOrderId);
+  }, [selectedOrderId]);
 
   // Action state
   const [approveModal, setApproveModal] = useState(false);
@@ -1566,6 +1853,15 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const deliverInputRef = useState(() => ({ current: null }))[0];
   const [proofZoom,    setProofZoom]    = useState(false);
   const [deliverProofZoom, setDeliverProofZoom] = useState(false);
+  const [riskSummary, setRiskSummary] = useState(() => getCaseRiskSummary("order", initialOrderId));
+  const [stepUpState, setStepUpState] = useState({
+    open: false,
+    actionKey: "",
+    actionLabel: "",
+    reasons: [],
+    helperText: "",
+  });
+  const stepUpActionRef = useRef(null);
 
   const [localStatuses, setLocalStatuses] = useState({});
   const [localShip, setLocalShip] = useState({});
@@ -1573,11 +1869,143 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const getStatus = (o) => localStatuses[o.id] ?? o.status;
   const curStatus = order ? getStatus(order) : null;
 
+  useEffect(() => {
+    if (!order?.id) return;
+    setRiskSummary(getCaseRiskSummary("order", order.id));
+    setStepUpState({
+      open: false,
+      actionKey: "",
+      actionLabel: "",
+      reasons: [],
+      helperText: "",
+    });
+    stepUpActionRef.current = null;
+    setApproveModal(false);
+    setApproveStep("confirm");
+    setRejectModal(false);
+    setRejectReason("");
+    setShipModal(false);
+    setDeliverModal(false);
+    setDeliverFile(null);
+    setDeliverPreview(null);
+  }, [order?.id]);
+
+  const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
+    const config = riskSummary.stepUpConfig?.[actionKey];
+    const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+
+    setRiskSummary((prev) => ({
+      ...prev,
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          order.id.toLowerCase(),
+          "step-up",
+          `Step-up verification triggered for ${actionLabel}`,
+          "warning"
+        ),
+      ],
+    }));
+
+    stepUpActionRef.current = onVerified;
+    setStepUpState({
+      open: true,
+      actionKey,
+      actionLabel,
+      reasons: finalReasons,
+      helperText: config?.helperText ?? "Masukkan OTP admin untuk melanjutkan aksi sensitif ini.",
+    });
+  };
+
+  const closeStepUp = () => {
+    setStepUpState({
+      open: false,
+      actionKey: "",
+      actionLabel: "",
+      reasons: [],
+      helperText: "",
+    });
+    stepUpActionRef.current = null;
+  };
+
+  const handleStepUpSuccess = () => {
+    const pendingAction = stepUpActionRef.current;
+
+    setRiskSummary((prev) => ({
+      ...prev,
+      sessionRiskState: {
+        ...prev.sessionRiskState,
+        otpRequired: false,
+        accessState:
+          prev.sessionRiskState.accessState === "OTP Required"
+            ? "High Risk"
+            : prev.sessionRiskState.accessState,
+      },
+      trustedDeviceStatus: {
+        ...prev.trustedDeviceStatus,
+        verificationRequired: false,
+        verificationStatus: "Step-up verified for current session",
+      },
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          order.id.toLowerCase(),
+          "otp",
+          `OTP verified for ${stepUpState.actionLabel}`,
+          "success"
+        ),
+      ],
+    }));
+
+    closeStepUp();
+    pendingAction?.();
+  };
+
+  const handleResolveFlag = (flag) => {
+    requestStepUp({
+      actionKey: "resolveHighRiskFlag",
+      actionLabel: `Resolve ${flag.title}`,
+      reasons: [
+        `Flag ${flag.ruleCode} masih aktif pada case ini.`,
+        "Resolving high risk flag memerlukan verifikasi tambahan.",
+      ],
+      onVerified: () => {
+        setRiskSummary((prev) => ({
+          ...prev,
+          flags: prev.flags.map((item) =>
+            item.id === flag.id ? { ...item, status: "resolved" } : item
+          ),
+          timeline: [
+            ...prev.timeline,
+            createSecurityTimelineEvent(
+              order.id.toLowerCase(),
+              "risk",
+              `High-risk flag resolved: ${flag.title}`,
+              "success"
+            ),
+          ],
+        }));
+      },
+    });
+  };
+
   const handleApprove = () => {
     setApproveStep("loading");
     setTimeout(() => {
       if (order.fromCtx) approveOrder(order.id);
       else setLocalStatuses(p => ({ ...p, [order.id]: "packing" }));
+      setRiskSummary((prev) => ({
+        ...prev,
+        timeline: [
+          ...prev.timeline,
+          createSecurityTimelineEvent(
+            order.id.toLowerCase(),
+            "action",
+            "Sensitive action confirmed: Approve Payment",
+            "success"
+          ),
+        ],
+      }));
       setApproveStep("success");
     }, 1600);
   };
@@ -1586,6 +2014,18 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     if (!rejectReason.trim()) return;
     if (order.fromCtx) rejectOrder(order.id, rejectReason.trim());
     else setLocalStatuses(p => ({ ...p, [order.id]: "rejected" }));
+    setRiskSummary((prev) => ({
+      ...prev,
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          order.id.toLowerCase(),
+          "action",
+          "Sensitive action confirmed: Reject Payment",
+          "success"
+        ),
+      ],
+    }));
     setRejectModal(false);
     setRejectReason("");
   };
@@ -1631,7 +2071,6 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const shipInfo = localShip[order.id] ?? { courier: order.courier, trackingNumber: order.trackingNumber };
   const pendingCount = allOrders.filter(o => getStatus(o) === "pending").length;
   const currentIdx = allOrders.findIndex(o => o.id === currentId);
-
   return (
     <div className="adm-section">
 
@@ -1644,6 +2083,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         <span className="adm-od-breadcrumb-sep">›</span>
         <span className="adm-od-breadcrumb-id">{order.id}</span>
         <span className="adm-status-pill" style={{ color: st.color, background: st.bg, fontSize: 12, padding: "3px 10px" }}>{st.label}</span>
+        <CompactRiskIndicator summary={riskSummary} />
         {pendingCount > 0 && (
           <span className="adm-pa-pending-badge" style={{ marginLeft: "auto" }}>
             <IcCreditCard /> {pendingCount} pending
@@ -1764,7 +2204,22 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
           {/* ── RIGHT ── */}
           <div className="adm-pa-body-right">
 
+            <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Session Risk</p>
+              <SessionRiskSummary state={riskSummary.sessionRiskState} compact />
+            </div>
+
+            <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Trusted Device</p>
+              <TrustedDeviceCard device={riskSummary.trustedDeviceStatus} compact />
+            </div>
+
             {/* Payment proof — click to view */}
+            <div className="adm-pa-block">
+              <p className="adm-pa-block-label">Risk Monitoring</p>
+              <RiskScoreCard summary={riskSummary} compact />
+            </div>
+
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Bukti Transfer</p>
               {order.paymentProof && order.paymentProof.startsWith("data:") ? (
@@ -1799,29 +2254,35 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
               </div>
             )}
 
-            {/* Fraud */}
-            <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Fraud Monitoring</p>
-              <div className="adm-pa-fraud adm-pa-fraud--safe">
-                <div className="adm-pa-fraud-ico">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                </div>
-                <div>
-                  <p className="adm-pa-fraud-title">Transaksi Aman</p>
-                  <p className="adm-pa-fraud-desc">Tidak ada aktivitas mencurigakan</p>
-                </div>
-              </div>
-            </div>
-
             {/* Actions based on status */}
             <div className="adm-pa-block adm-pa-block--last">
               <p className="adm-pa-block-label">Aksi</p>
               {curStatus === "pending" && (
                 <div className="adm-pa-actions">
-                  <button className="adm-pa-approve-btn" onClick={() => { setApproveModal(true); setApproveStep("confirm"); }}>
+                  <button
+                    className="adm-pa-approve-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "approvePayment",
+                      actionLabel: "Approve Payment",
+                      onVerified: () => {
+                        setApproveModal(true);
+                        setApproveStep("confirm");
+                      },
+                    })}
+                  >
                     <IcCheck /> Approve Pembayaran
                   </button>
-                  <button className="adm-pa-reject-btn" onClick={() => { setRejectModal(true); setRejectReason(""); }}>
+                  <button
+                    className="adm-pa-reject-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "rejectPayment",
+                      actionLabel: "Reject Payment",
+                      onVerified: () => {
+                        setRejectModal(true);
+                        setRejectReason("");
+                      },
+                    })}
+                  >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Tolak Pembayaran
                   </button>
@@ -1856,6 +2317,18 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
       </div>
 
       {/* ── Proof zoom overlays ── */}
+      <CaseRiskPanel summary={riskSummary} entityLabel={`order ${order.id}`} onResolveFlag={handleResolveFlag} />
+
+      <StepUpVerificationModal
+        open={stepUpState.open}
+        actionLabel={stepUpState.actionLabel}
+        caseId={order.id}
+        reasons={stepUpState.reasons}
+        helperText={stepUpState.helperText}
+        onClose={closeStepUp}
+        onSuccess={handleStepUpSuccess}
+      />
+
       {proofZoom && order.paymentProof?.startsWith("data:") && (
         <div className="adm-proof-zoom-overlay" onClick={() => setProofZoom(false)}>
           <img src={order.paymentProof} alt="Bukti TF Full" className="adm-proof-zoom-img" />
