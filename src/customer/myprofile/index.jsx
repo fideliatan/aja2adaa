@@ -5,6 +5,8 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { PRODUCTS } from "../../data/products.js";
 import { useOrders } from "../context/OrderContext";
+import { useMockData } from "../../context/MockDataContext.jsx";
+import { SEED_USER_PROFILES } from "../../data/seeds.js";
 
 /* ── Icons ─────────────────────────────────────────────── */
 const IconSearch = () => (
@@ -112,13 +114,17 @@ const navItems = [
 
 /* ── Sections ───────────────────────────────────────────── */
 function UserInfoSection() {
+  const { session } = useMockData();
+  const profile = SEED_USER_PROFILES[session?.userId] ?? {};
+  const nameParts = (session?.name ?? "").split(" ");
+
   const [form, setForm] = useState({
-    firstName: "Sara",
-    lastName: "Tancredi",
-    email: "Sara Tancredi@gmail.com",
-    phone: "(+98) 9123728167",
-    location: "New York, USA",
-    postalCode: "23728167",
+    firstName: profile.firstName ?? nameParts[0] ?? "",
+    lastName:  profile.lastName  ?? nameParts.slice(1).join(" ") ?? "",
+    email:     session?.email ?? "",
+    phone:     profile.phone ?? "",
+    location:  profile.location ?? "Indonesia",
+    postalCode: profile.postalCode ?? "",
   });
   const [saved, setSaved] = useState(false);
 
@@ -187,19 +193,10 @@ function UserInfoSection() {
 }
 
 /* ── My Address Section ─────────────────────────────────── */
-const initialAddresses = [
-  {
-    id: 1,
-    label: "Home",
-    name: "Sara Tancredi",
-    phone: "(+98) 9123728167",
-    address: "123 Main Street, New York, NY 10001, USA",
-    isMain: true,
-  },
-];
-
 function MyAddressSection() {
-  const [addresses, setAddresses] = useState(initialAddresses);
+  const { session } = useMockData();
+  const profile = SEED_USER_PROFILES[session?.userId] ?? {};
+  const [addresses, setAddresses] = useState(profile.addresses ?? []);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ label: "", name: "", phone: "", address: "" });
   const [error, setError] = useState("");
@@ -717,11 +714,17 @@ const STATUS_TABS = [
 function OrderStatusSection() {
   const navigate = useNavigate();
   const { orders } = useOrders();
+  const { session } = useMockData();
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
   const q = query.toLowerCase();
 
-  const filtered = orders.filter(o => {
+  // Hanya tampilkan order milik user yang sedang login
+  const myOrders = session
+    ? orders.filter(o => o.customerId === session.userId || o.customer === session.name)
+    : [];
+
+  const filtered = myOrders.filter(o => {
     const matchTab = tab === "all" || o.status === tab;
     const matchQ   = !q || o.id.toLowerCase().includes(q) ||
       o.items?.some(i => i.name.toLowerCase().includes(q));
@@ -733,14 +736,14 @@ function OrderStatusSection() {
       <div className="pr-order-header">
         <div>
           <h2 className="pr-section-title">Status Orderan</h2>
-          <p className="pr-section-sub">{orders.length} total pesanan</p>
+          <p className="pr-section-sub">{myOrders.length} total pesanan</p>
         </div>
       </div>
 
       {/* Tab filter */}
       <div className="pr-os-tabs">
         {STATUS_TABS.map(t => {
-          const count = t.key === "all" ? orders.length : orders.filter(o => o.status === t.key).length;
+          const count = t.key === "all" ? myOrders.length : myOrders.filter(o => o.status === t.key).length;
           return (
             <button
               key={t.key}
@@ -1522,7 +1525,14 @@ function SettingSection() {
 export default function MyProfile() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, logoutUser } = useMockData();
   const [activeNav, setActiveNav] = useState(location.state?.tab ?? "userinfo");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login", { replace: true });
+  };
 
   const renderContent = () => {
     switch (activeNav) {
@@ -1537,6 +1547,49 @@ export default function MyProfile() {
 
   return (
     <div className="pr-page">
+
+      {/* ── LOGOUT CONFIRM POPUP ── */}
+      {showLogoutConfirm && (
+        <div className="pr-modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+          <div
+            className="pr-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 400, padding: "32px 28px", textAlign: "center" }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%",
+              background: "rgba(214,134,124,0.12)", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+            }}>
+              <IconLogOut />
+            </div>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1a1a1a", margin: "0 0 8px" }}>
+              Yakin mau keluar?
+            </h3>
+            <p style={{ fontSize: "0.875rem", color: "#666", margin: "0 0 28px", lineHeight: 1.5 }}>
+              Kamu akan keluar dari akun <strong>{session.email}</strong>.<br />
+              Sesi login akan dihapus.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                className="pr-modal-btn"
+                style={{ minWidth: 100, background: "#f5f5f5", color: "#444" }}
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Batal
+              </button>
+              <button
+                className="pr-modal-btn"
+                style={{ minWidth: 100, background: "#c4706a", color: "#fff" }}
+                onClick={handleLogout}
+              >
+                Ya, Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── NAVBAR ── */}
       <Navbar
@@ -1564,7 +1617,7 @@ export default function MyProfile() {
               </div>
             ))}
           </nav>
-          <div className="pr-sidebar-logout" onClick={() => navigate("/")}>
+          <div className="pr-sidebar-logout" onClick={() => setShowLogoutConfirm(true)}>
             <span className="pr-nav-icon"><IconLogOut /></span>
             <span>Log out</span>
           </div>

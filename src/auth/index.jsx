@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./index.css";
+import { useMockData } from "../context/MockDataContext.jsx";
 
-const ADMIN_CREDENTIALS = {
-  email: "admin@gmail.com",
-  password: "admin123",
-};
-
-const ADMIN_OTP_CODE = "123456";
 const OTP_LENGTH = 6;
 const OTP_MAX_ATTEMPTS = 3;
 const OTP_RESEND_SECONDS = 30;
@@ -107,6 +102,9 @@ export default function AuthPage() {
   const switchTimerRef = useRef(null);
   const otpInputsRef = useRef([]);
 
+  const { loginUser, verifyOtp, setUserSession, generateOtp, resendOtp } = useMockData();
+  const [pendingUser, setPendingUser] = useState(null);
+
   const [mode, setMode] = useState(
     location.pathname === "/register" ? "register" : "login"
   );
@@ -129,7 +127,7 @@ export default function AuthPage() {
   const [otpDigits, setOtpDigits] = useState(createEmptyOtp);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
-  const [otpNotice, setOtpNotice] = useState(getOtpNotice(ADMIN_CREDENTIALS.email));
+  const [otpNotice, setOtpNotice] = useState("");
   const [otpAttemptsLeft, setOtpAttemptsLeft] = useState(OTP_MAX_ATTEMPTS);
   const [otpResendSeconds, setOtpResendSeconds] = useState(OTP_RESEND_SECONDS);
   const [otpLockSeconds, setOtpLockSeconds] = useState(0);
@@ -180,11 +178,11 @@ export default function AuthPage() {
     window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
   }, [otpAttemptsLeft, otpLockSeconds, otpModalOpen]);
 
-  const resetOtpFlow = (email = ADMIN_CREDENTIALS.email) => {
+  const resetOtpFlow = (email = "") => {
     setOtpDigits(createEmptyOtp());
     setOtpLoading(false);
     setOtpError("");
-    setOtpNotice(getOtpNotice(email));
+    setOtpNotice(email ? getOtpNotice(email) : "");
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
     setOtpLockSeconds(0);
@@ -222,27 +220,40 @@ export default function AuthPage() {
     }
   };
 
+  const LOGIN_ERROR_MSG = {
+    user_not_found:    "Email atau password salah.",
+    wrong_password:    "Email atau password salah.",
+    account_locked:    "Akun terkunci sementara. Coba lagi beberapa menit lagi.",
+    account_suspended: "Akun ini telah dinonaktifkan. Hubungi kami untuk bantuan.",
+  };
+
   const handleLogin = (event) => {
     event.preventDefault();
     setLoginLoading(true);
     setLoginError("");
 
-    const normalizedEmail = loginForm.email.trim().toLowerCase();
+    const email    = loginForm.email.trim().toLowerCase();
+    const password = loginForm.password;
 
     window.setTimeout(() => {
       setLoginLoading(false);
 
-      if (normalizedEmail === ADMIN_CREDENTIALS.email) {
-        if (loginForm.password !== ADMIN_CREDENTIALS.password) {
-          setLoginError("Email atau password salah.");
-          return;
-        }
+      const result = loginUser(email, password);
 
-        openOtpModal(normalizedEmail);
+      if (!result.success) {
+        setLoginError(LOGIN_ERROR_MSG[result.reason] ?? "Login gagal. Silakan coba lagi.");
         return;
       }
 
-      navigate("/");
+      setPendingUser(result.user);
+
+      if (result.needsOtp) {
+        generateOtp(result.user.id);
+        openOtpModal(email);
+      } else {
+        setUserSession(result.user);
+        navigate("/");
+      }
     }, 900);
   };
 
@@ -366,39 +377,48 @@ export default function AuthPage() {
     window.setTimeout(() => {
       setOtpLoading(false);
 
-      if (code === ADMIN_OTP_CODE) {
+      const result = verifyOtp(pendingUser.id, code);
+
+      if (result.success) {
         closeOtpModal();
-        navigate("/admin");
+        setUserSession(pendingUser);
+        navigate(pendingUser.role === "admin" ? "/admin" : "/");
+        return;
+      }
+
+      setOtpDigits(createEmptyOtp());
+      window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
+
+      if (result.reason === "otp_max_attempts" || result.reason === "otp_expired") {
+        setOtpAttemptsLeft(0);
+        setOtpLockSeconds(OTP_LOCK_SECONDS);
+        setOtpResendSeconds(OTP_RESEND_SECONDS);
+        setOtpError(`OTP salah 3 kali. Sistem dikunci ${OTP_LOCK_SECONDS} detik sebelum bisa dicoba lagi.`);
         return;
       }
 
       const nextAttempts = otpAttemptsLeft - 1;
-      setOtpDigits(createEmptyOtp());
-      window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
-
       if (nextAttempts <= 0) {
         setOtpAttemptsLeft(0);
         setOtpLockSeconds(OTP_LOCK_SECONDS);
         setOtpResendSeconds(OTP_RESEND_SECONDS);
-        setOtpError(
-          `OTP salah 3 kali. Sistem dikunci ${OTP_LOCK_SECONDS} detik sebelum bisa dicoba lagi.`
-        );
+        setOtpError(`OTP salah 3 kali. Sistem dikunci ${OTP_LOCK_SECONDS} detik sebelum bisa dicoba lagi.`);
         return;
       }
-
       setOtpAttemptsLeft(nextAttempts);
       setOtpError(`OTP salah. Sisa percobaan ${nextAttempts} kali.`);
     }, 800);
   };
 
   const handleOtpResend = () => {
-    if (otpResendSeconds > 0 || otpLoading || otpLockSeconds > 0) return;
+    if (otpResendSeconds > 0 || otpLoading || otpLockSeconds > 0 || !pendingUser) return;
 
+    resendOtp(pendingUser.id);
     setOtpDigits(createEmptyOtp());
     setOtpError("");
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
-    setOtpNotice("Kode OTP baru sudah dikirim. Silakan cek email admin kamu.");
+    setOtpNotice("Kode OTP baru sudah dikirim. Silakan cek email kamu.");
     window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
   };
 

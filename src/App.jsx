@@ -1,6 +1,6 @@
 import './App.css'
 import { useEffect, useRef } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import AuthPage from './auth/index.jsx'
 import MyProfilePage from './customer/myprofile/index.jsx'
 import HomePage from './customer/home/index.jsx'
@@ -15,7 +15,23 @@ import { CartProvider } from './customer/context/CartContext.jsx'
 import { WishlistProvider } from './customer/context/WishlistContext.jsx'
 import { SearchProvider } from './customer/context/SearchContext.jsx'
 import { OrderProvider } from './customer/context/OrderContext.jsx'
+import { MockDataProvider, useMockData } from './context/MockDataContext.jsx'
 import CartSidebar from './customer/components/CartSidebar.jsx'
+
+// Redirect ke /login kalau belum ada session
+function ProtectedRoute({ children }) {
+  const { session } = useMockData()
+  if (!session) return <Navigate to="/login" replace />
+  return children
+}
+
+// Redirect ke /login kalau bukan admin
+function AdminRoute({ children }) {
+  const { session } = useMockData()
+  if (!session) return <Navigate to="/login" replace />
+  if (session.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}
 
 function ParticleCanvas() {
   const canvasRef = useRef(null);
@@ -108,23 +124,32 @@ function App() {
   return (
     <>
     <ParticleCanvas />
+    <MockDataProvider>
     <OrderProvider>
     <CartProvider>
       <WishlistProvider>
         <SearchProvider>
           <Router>
             <Routes>
-              <Route path="/login" element={<AuthPage />} />
-              <Route path="/register" element={<AuthPage />} />
+              {/* ── Public routes ── */}
+              <Route path="/"              element={<HomePage />} />
+              <Route path="/products"      element={<ProductPage />} />
+              <Route path="/contact"       element={<ContactPage />} />
+              <Route path="/login"         element={<AuthPage />} />
+              <Route path="/register"      element={<AuthPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/myprofile" element={<MyProfilePage />} />
-              <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductPage />} />
-              <Route path="/wishlist" element={<WishlistPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/orderdetail" element={<OrderDetailPage />} />
+
+              {/* ── Protected: harus login ── */}
+              <Route path="/myprofile"   element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
+              <Route path="/checkout"    element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+              <Route path="/orderdetail" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+              <Route path="/wishlist"    element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+
+              {/* ── Admin only ── */}
+              <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+
+              {/* ── Fallback ── */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <CartSidebar />
           </Router>
@@ -132,6 +157,7 @@ function App() {
       </WishlistProvider>
     </CartProvider>
     </OrderProvider>
+    </MockDataProvider>
     </>
   )
 }
