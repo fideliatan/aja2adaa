@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2 } from "lucide-react";
+=======
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import { PRODUCTS } from "../data/products.js";
 import "./index.css";
 import { useOrders } from "../customer/context/OrderContext";
@@ -984,11 +987,19 @@ function Settings() {
    SECTION: NOTIFICATIONS
    ═══════════════════════════════════════════════════════════ */
 const NOTIF_TYPE_META = {
+<<<<<<< HEAD
   order:   { label: "Order",    color: "#e09a3a", bg: "rgba(224,154,58,0.08)",   icon: <ShoppingBag size={16} /> },
   payment: { label: "Payment",  color: "#22c55e", bg: "rgba(34,197,94,0.08)",    icon: <CreditCard size={16} /> },
   shipped: { label: "Shipping", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",  icon: <Truck size={16} /> },
   return:  { label: "Return",   color: "#ef4444", bg: "rgba(239,68,68,0.08)",    icon: <RotateCcw size={16} /> },
   review:  { label: "Review",   color: "#4a9fd4", bg: "rgba(74,159,212,0.08)",  icon: <Star size={16} /> },
+=======
+  order:   { label: "Order",    color: "#e09a3a", bg: "rgba(224,154,58,0.08)",   icon: "🛍️" },
+  payment: { label: "Payment",  color: "#22c55e", bg: "rgba(34,197,94,0.08)",    icon: "💳" },
+  shipped: { label: "Shipping", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",  icon: "🚚" },
+  return:  { label: "Return",   color: "#ef4444", bg: "rgba(239,68,68,0.08)",    icon: "↩️" },
+  review:  { label: "Review",   color: "#4a9fd4", bg: "rgba(74,159,212,0.08)",  icon: "⭐" },
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 };
 
 function Notifications() {
@@ -1175,7 +1186,11 @@ function Returns({ goToReturnDetail }) {
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span className="adm-status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
+<<<<<<< HEAD
                       {r.monitoringFlag && <span title={r.monitoringFlag}><AlertTriangle size={14} /></span>}
+=======
+                      {r.monitoringFlag && <span title={r.monitoringFlag} style={{ fontSize: 14 }}>⚠️</span>}
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                     </div>
                   </td>
                 </tr>
@@ -1404,7 +1419,11 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         <span className="adm-od-breadcrumb-sep">›</span>
         <span className="adm-od-breadcrumb-id">{ret.id}</span>
         <span className="adm-status-pill" style={{ color: st.color, background: st.bg, fontSize: 12, padding: "3px 10px" }}>{st.label}</span>
+<<<<<<< HEAD
         {ret.monitoringFlag && <span className="adm-return-flag" style={{ marginLeft: 4, fontSize: 12 }}><AlertTriangle size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {ret.monitoringFlag}</span>}
+=======
+        {ret.monitoringFlag && <span className="adm-return-flag" style={{ marginLeft: 4, fontSize: 12 }}>⚠ {ret.monitoringFlag}</span>}
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
         <CompactRiskIndicator summary={riskSummary} />
         <div className="adm-od-nav-btns">
           <button className="adm-od-nav-btn" disabled={currentIdx <= 0} onClick={() => navTo(allReturns[currentIdx - 1])}>‹</button>
@@ -1440,7 +1459,11 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
               </div>
               {ret.monitoringFlag && (
                 <div className="adm-return-flag-block" style={{ marginTop: 10 }}>
+<<<<<<< HEAD
                   <span className="adm-return-flag adm-return-flag--lg"><AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {ret.monitoringFlag}</span>
+=======
+                  <span className="adm-return-flag adm-return-flag--lg">⚠ {ret.monitoringFlag}</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <p className="adm-return-flag-note">Aktivitas return customer ini ditandai. Tinjau dengan cermat sebelum menyetujui.</p>
                 </div>
               )}
@@ -1587,13 +1610,21 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
               <p className="adm-pa-block-label">Keputusan Admin</p>
               {curStatus === "completed" || curStatus === "rejected" ? (
                 <div className="adm-od-resolved-note">
+<<<<<<< HEAD
                   <span style={{ fontSize: 20 }}>{curStatus === "completed" ? <CheckCircle size={20} /> : <Ban size={20} />}</span>
+=======
+                  <span style={{ fontSize: 20 }}>{curStatus === "completed" ? "✅" : "🚫"}</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <p>Return ini sudah {curStatus === "completed" ? "selesai diproses" : "ditolak"}.</p>
                 </div>
               ) : curStatus === "processing" ? (
                 <div className="adm-pa-actions">
                   <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
+<<<<<<< HEAD
                     <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
+=======
+                    📦 Return sedang diproses. Tandai selesai setelah refund dilakukan.
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   </div>
                   <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
                   <button
@@ -2259,7 +2290,11 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
               {(curStatus === "delivered" || curStatus === "cancelled" || curStatus === "rejected") && (
                 <div className="adm-od-resolved-note">
                   <span style={{ fontSize: curStatus === "delivered" ? 20 : 18 }}>
+<<<<<<< HEAD
                     {curStatus === "delivered" ? <CheckCircle size={20} /> : <Ban size={18} />}
+=======
+                    {curStatus === "delivered" ? "✅" : "🚫"}
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   </span>
                   <p>Pesanan ini sudah {curStatus === "delivered" ? "selesai" : curStatus === "cancelled" ? "dibatalkan" : "ditolak"}.</p>
                 </div>
@@ -2443,7 +2478,11 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                 disabled={deliverFile && !deliverPreview}
                 onClick={handleDeliverConfirm}>
                 {deliverFile && !deliverPreview
+<<<<<<< HEAD
                   ? <><Loader2 size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Memproses foto...</>
+=======
+                  ? "⏳ Memproses foto..."
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   : <><IcCheck /> Tandai Selesai</>}
               </button>
               <button className="adm-ghost-btn" onClick={() => { setDeliverPreview(null); setDeliverFile(null); handleDeliverConfirm(); }}>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+<<<<<<< HEAD
 import { Clock, Package, Truck, PartyPopper, XCircle, Ban, Search, FileText, Heart, ClipboardList, ShoppingBag, CheckCircle, AlertTriangle } from "lucide-react";
+=======
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import { useOrders } from "../context/OrderContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
@@ -78,10 +81,17 @@ const STATUS_CONFIG = {
 };
 
 const ORDER_STEPS = [
+<<<<<<< HEAD
   { key: "pending",   label: "Menunggu",  icon: <Clock size={16} /> },
   { key: "packing",   label: "Dikemas",   icon: <Package size={16} /> },
   { key: "shipped",   label: "Dikirim",   icon: <Truck size={16} /> },
   { key: "delivered", label: "Sampai",    icon: <PartyPopper size={16} /> },
+=======
+  { key: "pending",   label: "Menunggu",  icon: "⏳" },
+  { key: "packing",   label: "Dikemas",   icon: "📦" },
+  { key: "shipped",   label: "Dikirim",   icon: "🚚" },
+  { key: "delivered", label: "Sampai",    icon: "🎉" },
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 ];
 const STEP_ORDER = ORDER_STEPS.map(s => s.key);
 
@@ -421,7 +431,11 @@ function buildReceiptHtml(order, logoDataUrl = "") {
 
     <!-- Footer -->
     <div class="rc-footer">
+<<<<<<< HEAD
       <div class="rc-footer-main">Terima kasih sudah belanja di careofyou</div>
+=======
+      <div class="rc-footer-main">Terima kasih sudah belanja di careofyou 🌸</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
       <div class="rc-footer-sub">Simpan struk ini sebagai bukti pembelian resmi kamu</div>
       <div class="rc-footer-brand">careofyou.id</div>
     </div>
@@ -702,7 +716,11 @@ export default function OrderDetailPage() {
         {/* ── REJECTED state ── */}
         {liveOrder.status === "rejected" && (
           <div className="od-rejected-banner">
+<<<<<<< HEAD
             <div className="od-rejected-icon"><XCircle size={32} /></div>
+=======
+            <div className="od-rejected-icon">❌</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <div>
               <p className="od-rejected-title">Pesanan Ditolak</p>
               <p className="od-rejected-reason">
@@ -715,7 +733,11 @@ export default function OrderDetailPage() {
         {/* ── CANCELLED state ── */}
         {liveOrder.status === "cancelled" && (
           <div className="od-cancelled-banner">
+<<<<<<< HEAD
             <div className="od-cancelled-icon"><Ban size={32} /></div>
+=======
+            <div className="od-cancelled-icon">🚫</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <div>
               <p className="od-cancelled-title">Pesanan Dibatalkan</p>
               <p className="od-cancelled-reason">Pesanan ini telah dibatalkan.</p>
@@ -814,7 +836,11 @@ export default function OrderDetailPage() {
             {canCancel && (
               <div className="od-cancel-card">
                 <div className="od-cancel-info">
+<<<<<<< HEAD
                   <span className="od-cancel-info-icon"><Clock size={16} /></span>
+=======
+                  <span className="od-cancel-info-icon">⏱</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <div>
                     <p className="od-cancel-info-title">Bisa Dibatalkan</p>
                     <p className="od-cancel-info-sub">
@@ -854,7 +880,11 @@ export default function OrderDetailPage() {
             {liveOrder.status === "shipped" && liveOrder.trackingNumber && (
               <div className="od-card od-tracking-card">
                 <div className="od-tracking-header">
+<<<<<<< HEAD
                   <span className="od-tracking-icon"><Truck size={20} /></span>
+=======
+                  <span className="od-tracking-icon">🚚</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <div>
                     <h2 className="od-card-title" style={{ marginBottom: 2 }}>Nomor Resi</h2>
                     <p className="od-receipt-avail">Pesanan sedang dalam pengiriman</p>
@@ -870,7 +900,11 @@ export default function OrderDetailPage() {
             {/* ── Pending / waiting card ── */}
             {liveOrder.status === "pending" && (
               <div className="od-card od-waiting-card">
+<<<<<<< HEAD
                 <div className="od-waiting-icon"><Clock size={32} /></div>
+=======
+                <div className="od-waiting-icon">⏳</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                 <p className="od-waiting-title">Menunggu Konfirmasi Admin</p>
                 <p className="od-waiting-sub">
                   Bukti pembayaran kamu sedang diperiksa. Estimasi konfirmasi 1×24 jam.
@@ -940,7 +974,11 @@ export default function OrderDetailPage() {
             {liveOrder.status === "rejected" && (
               <div className="od-card od-rejection-card">
                 <div className="od-rejection-header">
+<<<<<<< HEAD
                   <span className="od-rejection-icon"><XCircle size={22} /></span>
+=======
+                  <span className="od-rejection-icon">❌</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <div>
                     <h2 className="od-card-title" style={{ marginBottom: 2 }}>Alasan Penolakan</h2>
                     <p className="od-receipt-avail">Pesanan tidak dapat diproses</p>
@@ -960,6 +998,7 @@ export default function OrderDetailPage() {
               const myReturn = (returns ?? []).find(r => r.orderId === liveOrder.id);
               if (!myReturn) return null;
               const RETURN_STATUS = {
+<<<<<<< HEAD
                 pending:    { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: <Clock size={20} /> },
                 flagged:    { label: "Sedang Ditinjau",            color: "#f97316", bg: "rgba(249,115,22,0.1)",  icon: <Search size={20} /> },
                 processing: { label: "Return Sedang Diproses",     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)",  icon: <Package size={20} /> },
@@ -967,6 +1006,15 @@ export default function OrderDetailPage() {
                 rejected:   { label: "Return Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.1)",   icon: <XCircle size={20} /> },
               };
               const rs = RETURN_STATUS[myReturn.status] ?? { label: myReturn.status, color: "#aaa", bg: "rgba(170,170,170,0.1)", icon: <ClipboardList size={20} /> };
+=======
+                pending:    { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: "⏳" },
+                flagged:    { label: "Sedang Ditinjau",            color: "#f97316", bg: "rgba(249,115,22,0.1)",  icon: "🔍" },
+                processing: { label: "Return Sedang Diproses",     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)",  icon: "📦" },
+                completed:  { label: "Return Selesai",             color: "#22c55e", bg: "rgba(34,197,94,0.1)",   icon: "✅" },
+                rejected:   { label: "Return Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.1)",   icon: "❌" },
+              };
+              const rs = RETURN_STATUS[myReturn.status] ?? { label: myReturn.status, color: "#aaa", bg: "rgba(170,170,170,0.1)", icon: "📋" };
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
               return (
                 <div className="od-card od-return-status-card" style={{ borderLeft: `3px solid ${rs.color}` }}>
                   <div className="od-return-status-header">
@@ -1060,7 +1108,11 @@ export default function OrderDetailPage() {
                 />
               )}
               <div className="od-cancel-modal-warning">
+<<<<<<< HEAD
                 <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.
+=======
+                ⚠ Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button
@@ -1186,7 +1238,11 @@ export default function OrderDetailPage() {
                         {returnReceiptB64.startsWith("data:image") ? (
                           <img src={returnReceiptB64} alt="receipt" style={{ maxHeight: 120, borderRadius: 8, objectFit: "contain" }} />
                         ) : (
+<<<<<<< HEAD
                           <div className="od-return-pdf-chip"><FileText size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {returnReceiptFile?.name}</div>
+=======
+                          <div className="od-return-pdf-chip">📄 {returnReceiptFile?.name}</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                         )}
                         <p className="od-return-file-ok">✓ File berhasil diupload</p>
                         <p style={{ fontSize: 11, color: "#aaa" }}>Klik untuk ganti file</p>
@@ -1257,7 +1313,11 @@ export default function OrderDetailPage() {
                 <div className="od-modal-body">
                   {/* WARNING banner */}
                   <div className="od-return-photo-warning">
+<<<<<<< HEAD
                     <div className="od-return-warning-icon"><AlertTriangle size={22} /></div>
+=======
+                    <div className="od-return-warning-icon">⚠️</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                     <div>
                       <p className="od-return-warning-title">PERHATIAN — FOTO HARUS JELAS!</p>
                       <p className="od-return-warning-desc">
@@ -1320,7 +1380,11 @@ export default function OrderDetailPage() {
                   </p>
                   <div className="od-return-waiting-card">
                     <div className="od-return-waiting-row">
+<<<<<<< HEAD
                       <span><Clock size={16} /></span>
+=======
+                      <span>⏳</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                       <div>
                         <p className="od-return-waiting-title">Menunggu Persetujuan Admin</p>
                         <p className="od-return-waiting-sub">Estimasi review 1–3 hari kerja. Kamu akan dihubungi via email atau WhatsApp.</p>
@@ -1428,7 +1492,11 @@ export default function OrderDetailPage() {
 
                 {/* Footer */}
                 <div className="od-rp-footer">
+<<<<<<< HEAD
                   <p className="od-rp-footer-text">Terima kasih sudah belanja di careofyou <Heart size={14} style={{ display: "inline", verticalAlign: "middle" }} /></p>
+=======
+                  <p className="od-rp-footer-text">Terima kasih sudah belanja di careofyou 🌸</p>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <p className="od-rp-footer-sub">Simpan struk ini sebagai bukti pembelian resmi</p>
                   <p className="od-rp-footer-brand">careofyou.id</p>
                 </div>
@@ -1448,7 +1516,11 @@ export default function OrderDetailPage() {
         </div>
         {cart.length === 0 ? (
           <div className="cart-empty">
+<<<<<<< HEAD
             <span className="cart-empty-icon"><ShoppingBag size={40} /></span>
+=======
+            <span className="cart-empty-icon">🛍️</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p>Keranjangmu kosong</p>
             <button className="cart-shop-btn" onClick={() => { setCartOpen(false); navigate("/"); }}>
               Mulai Belanja

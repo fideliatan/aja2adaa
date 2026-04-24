@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+<<<<<<< HEAD
 import { Clock, Package, Truck, CheckCircle, XCircle, Ban, ShoppingBag, Tag, PartyPopper } from "lucide-react";
+=======
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -465,7 +468,11 @@ function OrderSection({ sectionKey, title }) {
   const orderTotal = (order) =>
     order.products.reduce((s, p) => s + p.price * p.qty, 0) + order.deliveryFee;
 
+<<<<<<< HEAD
   const statusEmoji = sectionKey === "adminapproval" ? <Clock size={14} /> : sectionKey === "packing" ? <Package size={14} /> : <Truck size={14} />;
+=======
+  const statusEmoji = sectionKey === "adminapproval" ? "⏳" : sectionKey === "packing" ? "📦" : "🚚";
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 
   return (
     <div className="pr-order-section">
@@ -694,12 +701,21 @@ function OrderSection({ sectionKey, title }) {
 
 /* ── Order Status Section ───────────────────────────────── */
 const ORDER_STATUS_META = {
+<<<<<<< HEAD
   pending:   { label: "Menunggu Konfirmasi", color: "#e09a3a", bg: "rgba(224,154,58,0.12)",   icon: <Clock size={14} /> },
   packing:   { label: "Sedang Dikemas",      color: "#4a9fd4", bg: "rgba(74,159,212,0.12)",   icon: <Package size={14} /> },
   shipped:   { label: "Dalam Pengiriman",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)",   icon: <Truck size={14} /> },
   delivered: { label: "Terkirim",            color: "#22c55e", bg: "rgba(34,197,94,0.12)",    icon: <PartyPopper size={14} /> },
   rejected:  { label: "Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.12)",    icon: <XCircle size={14} /> },
   cancelled: { label: "Dibatalkan",          color: "#aaa",    bg: "rgba(170,170,170,0.12)",  icon: <Ban size={14} /> },
+=======
+  pending:   { label: "Menunggu Konfirmasi", color: "#e09a3a", bg: "rgba(224,154,58,0.12)",   icon: "⏳" },
+  packing:   { label: "Sedang Dikemas",      color: "#4a9fd4", bg: "rgba(74,159,212,0.12)",   icon: "📦" },
+  shipped:   { label: "Dalam Pengiriman",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)",   icon: "🚚" },
+  delivered: { label: "Terkirim",            color: "#22c55e", bg: "rgba(34,197,94,0.12)",    icon: "🎉" },
+  rejected:  { label: "Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.12)",    icon: "❌" },
+  cancelled: { label: "Dibatalkan",          color: "#aaa",    bg: "rgba(170,170,170,0.12)",  icon: "🚫" },
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 };
 
 const STATUS_TABS = [
@@ -837,7 +853,11 @@ function OrderStatusSection() {
                 )}
                 {order.status === "shipped" && order.trackingNumber && (
                   <div className="pr-os-tracking-hint">
+<<<<<<< HEAD
                     <Truck size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {order.courier} · {order.trackingNumber}
+=======
+                    🚚 {order.courier} · {order.trackingNumber}
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   </div>
                 )}
               </div>
@@ -864,12 +884,21 @@ const MOCK_NOTIFICATIONS = [
 ];
 
 const NOTIF_META = {
+<<<<<<< HEAD
   order:     { icon: <ShoppingBag size={16} />, color: "#e09a3a", bg: "rgba(224,154,58,0.1)"  },
   payment:   { icon: <CheckCircle size={16} />, color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
   packing:   { icon: <Package size={16} />,     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)"  },
   shipped:   { icon: <Truck size={16} />,       color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
   delivered: { icon: <PartyPopper size={16} />, color: "#5aab6d", bg: "rgba(90,171,109,0.1)"  },
   promo:     { icon: <Tag size={16} />,         color: "#d6867c", bg: "rgba(214,134,124,0.1)" },
+=======
+  order:     { icon: "🛍️", color: "#e09a3a", bg: "rgba(224,154,58,0.1)"  },
+  payment:   { icon: "✅", color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
+  packing:   { icon: "📦", color: "#4a9fd4", bg: "rgba(74,159,212,0.1)"  },
+  shipped:   { icon: "🚚", color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
+  delivered: { icon: "🎉", color: "#5aab6d", bg: "rgba(90,171,109,0.1)"  },
+  promo:     { icon: "🏷️", color: "#d6867c", bg: "rgba(214,134,124,0.1)" },
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 };
 
 function NotificationsSection() {

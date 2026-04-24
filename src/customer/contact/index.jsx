@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { Mail, Zap, Shield, Truck, Sparkles, PartyPopper, ShoppingBag } from "lucide-react";
+=======
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -111,7 +114,11 @@ export default function ContactPage() {
           </h1>
           <p className="ct-hero-desc">
             Have a question, a special order, or just want to say hi?
+<<<<<<< HEAD
             The Careofyou team is here to help you anytime <Mail size={16} style={{ display: "inline", verticalAlign: "middle" }} />
+=======
+            The Careofyou team is here to help you anytime 💌
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
           </p>
 
           <div className="ct-hero-stats">
@@ -151,26 +158,42 @@ export default function ContactPage() {
             <div className="ct-ring ct-ring-2" />
             <div className="ct-ring ct-ring-3" />
             <div className="ct-ring-center">
+<<<<<<< HEAD
               <span className="ct-ring-emoji"><Mail size={28} /></span>
+=======
+              <span className="ct-ring-emoji">💌</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             </div>
           </div>
 
           <div className="ct-float-card ct-fc-1">
+<<<<<<< HEAD
             <span className="ct-fc-icon"><Zap size={20} /></span>
+=======
+            <span className="ct-fc-icon">⚡</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <div className="ct-fc-info">
               <span className="ct-fc-val">Fast Reply</span>
               <span className="ct-fc-sub">Avg 30 min</span>
             </div>
           </div>
           <div className="ct-float-card ct-fc-2">
+<<<<<<< HEAD
             <span className="ct-fc-icon"><Shield size={20} /></span>
+=======
+            <span className="ct-fc-icon">🛡️</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <div className="ct-fc-info">
               <span className="ct-fc-val">100% Safe</span>
               <span className="ct-fc-sub">Guaranteed</span>
             </div>
           </div>
           <div className="ct-float-card ct-fc-3">
+<<<<<<< HEAD
             <span className="ct-fc-icon"><Truck size={20} /></span>
+=======
+            <span className="ct-fc-icon">🚚</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <div className="ct-fc-info">
               <span className="ct-fc-val">Free Shipping</span>
               <span className="ct-fc-sub">Min. Rp 150K</span>
@@ -233,13 +256,21 @@ export default function ContactPage() {
         <div className="ct-form-card">
           <div className="ct-form-header">
             <span className="ct-form-label-tag">Send a Message</span>
+<<<<<<< HEAD
             <h2 className="ct-form-title">We'd love to<br/>hear from you <Sparkles size={18} style={{ display: "inline", verticalAlign: "middle" }} /></h2>
+=======
+            <h2 className="ct-form-title">We'd love to<br/>hear from you ✨</h2>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p className="ct-form-sub">Fill out the form below and we'll get back to you as soon as possible.</p>
           </div>
 
           {submitted && (
             <div className="ct-success">
+<<<<<<< HEAD
               <span className="ct-success-icon"><PartyPopper size={24} /></span>
+=======
+              <span className="ct-success-icon">🎉</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
               <span>Pesan terkirim! Kami akan membalas segera.</span>
             </div>
           )}
@@ -368,7 +399,11 @@ export default function ContactPage() {
         </div>
         {cart.length === 0 ? (
           <div className="cart-empty">
+<<<<<<< HEAD
             <span className="cart-empty-icon"><ShoppingBag size={40} /></span>
+=======
+            <span className="cart-empty-icon">🛍️</span>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p>Your cart is empty</p>
             <button className="cart-shop-btn" onClick={() => { setCartOpen(false); navigate("/"); }}>
               Start Shopping

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { Search, ShoppingCart, CheckCircle, Trophy, Sparkles } from "lucide-react";
+=======
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -202,21 +205,33 @@ export default function HomePage() {
         <div className="how-steps">
           <div className="how-step">
             <div className="how-step-num">1</div>
+<<<<<<< HEAD
             <div className="how-step-icon"><Search size={28} /></div>
+=======
+            <div className="how-step-icon">🔍</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p className="how-step-title">Browse Produk</p>
             <p className="how-step-desc">Jelajahi halaman Products, filter kategori, atau cari produk yang kamu butuhkan.</p>
           </div>
           <div className="how-step-arrow">→</div>
           <div className="how-step">
             <div className="how-step-num">2</div>
+<<<<<<< HEAD
             <div className="how-step-icon"><ShoppingCart size={28} /></div>
+=======
+            <div className="how-step-icon">🛒</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p className="how-step-title">Tambah ke Keranjang</p>
             <p className="how-step-desc">Pilih produk favoritmu dan tambahkan ke keranjang belanja dengan satu klik.</p>
           </div>
           <div className="how-step-arrow">→</div>
           <div className="how-step">
             <div className="how-step-num">3</div>
+<<<<<<< HEAD
             <div className="how-step-icon"><CheckCircle size={28} /></div>
+=======
+            <div className="how-step-icon">✅</div>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p className="how-step-title">Checkout &amp; Selesai</p>
             <p className="how-step-desc">Isi data pengiriman dan selesaikan pembayaran dengan mudah dan aman.</p>
           </div>
@@ -310,7 +325,11 @@ export default function HomePage() {
       <section className="top3-section">
         <div className="top3-section-head">
           <div>
+<<<<<<< HEAD
             <p className="top3-eyebrow"><Trophy size={16} /> Produk Terlaris</p>
+=======
+            <p className="top3-eyebrow">🏆 Produk Terlaris</p>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <h2 className="top3-title">Top 3 Pilihan Pelanggan</h2>
           </div>
           <button className="section-view-all" onClick={goToProducts}>Lihat semua →</button>
@@ -321,8 +340,12 @@ export default function HomePage() {
             const product = TOP3[topIdx];
             const rank = topIdx + 1;
             const maxReviews = TOP3[0].reviews;
+<<<<<<< HEAD
             const medalColor = rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : "#CD7F32";
             const rankMedal = <Trophy size={14} color={medalColor} />;
+=======
+            const rankMedal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             const rankNum = rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd";
             return (
               <div
@@ -373,7 +396,11 @@ export default function HomePage() {
       <section className="hscroll-section">
         <div className="hscroll-head">
           <div>
+<<<<<<< HEAD
             <p className="top3-eyebrow"><Sparkles size={16} /> Semua Produk</p>
+=======
+            <p className="top3-eyebrow">✨ Semua Produk</p>
+>>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <h2 className="top3-title">Browse & Geser →</h2>
           </div>
           <button className="section-view-all" onClick={goToProducts}>Lihat halaman produk →</button>
