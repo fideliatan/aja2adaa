@@ -5,6 +5,7 @@ import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { PRODUCTS } from "../../data/products.js";
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 /* ─── Icons ──────────────────────────────────────────────── */
 const IconClock = () => (
@@ -78,6 +79,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addOrder } = useOrders();
+  const { session, currentUser } = useMockData();
 
   const cartItems = location.state?.cartItems ?? ORDER_ITEMS;
 
@@ -172,6 +174,8 @@ export default function CheckoutPage() {
       id: newOrderId,
       status: "pending",
       customer: addr?.name ?? "Customer",
+      customerId: session?.userId ?? null,
+      email: currentUser?.email ?? session?.email ?? "",
       date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
       items: cartItems.map(i => ({ name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? "", image: i.image ?? "" })),
       subtotal,
@@ -190,6 +194,12 @@ export default function CheckoutPage() {
       trackingNumber: null,
       courier: null,
       cancelDeadlineTs: Date.now() + 24 * 60 * 60 * 1000,
+      sessionSnapshot: {
+        userId: session?.userId ?? null,
+        loginAt: session?.loginAt ?? null,
+        deviceStatus: session?.deviceStatus ?? "trusted",
+        deviceInfo: session?.deviceInfo ?? {},
+      },
     });
     setSubmitted(true);
   };

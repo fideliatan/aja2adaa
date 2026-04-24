@@ -420,7 +420,135 @@ export const SEED_ORDERS = [
 ];
 
 // ── RETURNS ────────────────────────────────────────────────────
-export const SEED_RETURNS = [];
+export const SEED_RETURNS = [
+  {
+    id: "RET-001",
+    orderId: "ORD-007",
+    customerId: "USR-002",
+    customer: "Sara Tancredi",
+    email: "sara@example.com",
+    date: "9 Apr 2025",
+    createdAt: "2025-04-09T10:20:00.000Z",
+    reason: "Produk rusak / cacat",
+    status: "pending",
+    monitoringFlag: null,
+    products: [
+      {
+        name: "5X Ceramide Barrier Moisture Gel",
+        qty: 1,
+        price: 149000,
+        image: "https://placehold.co/72x72/fdeaea/c4706a?text=Gel",
+      },
+    ],
+    conditionNote: "Kemasan penyok dan seal produk terlihat bocor saat paket dibuka.",
+    photos: ["https://placehold.co/320x240/fdeaea/c4706a?text=Return+Photo"],
+    receiptB64: null,
+    productPhotoB64: null,
+    qrCode: "PROD-UNIT-20250405-001",
+    scannedQr: "PROD-UNIT-20250405-001",
+    qrStatus: null,
+    total: 149000,
+    statusHistory: [
+      {
+        id: "RET-HIST-001",
+        status: "pending",
+        actorId: "USR-002",
+        actorRole: "customer",
+        note: "Return request submitted by customer.",
+        createdAt: "2025-04-09T10:20:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "RET-002",
+    orderId: "ORD-017",
+    customerId: "USR-004",
+    customer: "Dewi Larasati",
+    email: "dewi@example.com",
+    date: "18 Apr 2025",
+    createdAt: "2025-04-18T08:45:00.000Z",
+    reason: "Barang salah dikirim",
+    status: "processing",
+    monitoringFlag: "Return abuse risk",
+    products: [
+      {
+        name: "Ceramide Barrier Cream",
+        qty: 1,
+        price: 146000,
+        image: "https://placehold.co/72x72/fdeaea/c4706a?text=CB",
+      },
+    ],
+    conditionNote: "Produk yang datang tidak sesuai dengan item yang tercantum pada order.",
+    photos: ["https://placehold.co/320x240/fce8e6/c4706a?text=Return+Evidence"],
+    receiptB64: null,
+    productPhotoB64: null,
+    qrCode: "PROD-UNIT-20250414-017",
+    scannedQr: "PROD-UNIT-20250414-999",
+    qrStatus: "invalid",
+    total: 146000,
+    statusHistory: [
+      {
+        id: "RET-HIST-002",
+        status: "pending",
+        actorId: "USR-004",
+        actorRole: "customer",
+        note: "Return request submitted by customer.",
+        createdAt: "2025-04-18T08:45:00.000Z",
+      },
+      {
+        id: "RET-HIST-003",
+        status: "processing",
+        actorId: "USR-001",
+        actorRole: "admin",
+        note: "Return moved to manual review after QR mismatch.",
+        createdAt: "2025-04-18T10:00:00.000Z",
+      },
+    ],
+  },
+];
+
+export const SEED_APPROVAL_STATUS_CHANGES = [
+  {
+    id: "APP-001",
+    entityType: "order",
+    entityId: "ORD-014",
+    fromStatus: "pending",
+    toStatus: "packing",
+    actorId: "USR-001",
+    actorRole: "admin",
+    note: "Payment approved by admin.",
+    createdAt: new Date(_now - 3 * 86400000).toISOString(),
+  },
+  {
+    id: "APP-002",
+    entityType: "return",
+    entityId: "RET-002",
+    fromStatus: "pending",
+    toStatus: "processing",
+    actorId: "USR-001",
+    actorRole: "admin",
+    note: "Return moved to manual review due to QR mismatch.",
+    createdAt: "2025-04-18T10:00:00.000Z",
+  },
+];
+
+export const INITIAL_MOCK_DATA = {
+  meta: {
+    version: 3,
+    seededAt: new Date(_now).toISOString(),
+    source: "seed",
+  },
+  users: SEED_USERS,
+  session: null,
+  otpRecords: [],
+  loginAttempts: SEED_LOGIN_ATTEMPTS,
+  trustedDevices: SEED_TRUSTED_DEVICES,
+  monitoringFlags: SEED_MONITORING_FLAGS,
+  activityTimeline: SEED_ACTIVITY_TIMELINE,
+  orders: SEED_ORDERS,
+  returns: SEED_RETURNS,
+  approvalStatusChanges: SEED_APPROVAL_STATUS_CHANGES,
+};
 
 // ── USER PROFILES (data profil per user untuk My Profile page) ─
 // Dipake untuk init form di UserInfoSection & MyAddressSection.

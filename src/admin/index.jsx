@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { PRODUCTS } from "../data/products.js";
 import "./index.css";
 import { useOrders } from "../customer/context/OrderContext";
-import { getCaseRiskSummary, getMonitoringSummary } from "./risk-data.js";
+import { useMockData } from "../context/MockDataContext.jsx";
+import {
+  getAdminNotifications,
+  getCaseRiskSummary,
+  getMonitoringSummary,
+} from "./risk-data.js";
 import {
   CaseRiskPanel,
   CompactRiskIndicator,
@@ -17,90 +22,6 @@ import {
 /* ═══════════════════════════════════════════════════════════
    MOCK DATA
    ═══════════════════════════════════════════════════════════ */
-const MOCK_ORDERS = [
-  { id: "ORD-011", customer: "Sara Tancredi",    email: "sara@gmail.com",     products: ["Vitamin C Serum", "Sunscreen Aqua Gel"],                 total: 294000, date: "15 Apr 2025", status: "pending",   payment: "BCA Transfer",  address: "Jl. Sudirman No. 12, Jakarta" },
-  { id: "ORD-012", customer: "Maya Sari",        email: "maya@gmail.com",     products: ["Daily Moisturizer SPF 30", "Hydra Boost Toner"],         total: 260000, date: "15 Apr 2025", status: "pending",   payment: "GoPay",         address: "Jl. Gatot Subroto No. 5, Jakarta" },
-  { id: "ORD-013", customer: "Hana Lestari",     email: "hana@gmail.com",     products: ["5X Ceramide Barrier Moisture Gel"],                      total: 149000, date: "14 Apr 2025", status: "pending",   payment: "BNI Transfer",  address: "Perumahan Indah Blok C No. 3, Surabaya" },
-  { id: "ORD-014", customer: "Rina Kusuma",      email: "rina@gmail.com",     products: ["Retinol Night Cream"],                                   total: 210000, date: "15 Apr 2025", status: "packing",   payment: "OVO",           address: "Jl. Malioboro No. 88, Yogyakarta" },
-  { id: "ORD-015", customer: "Tiara Putri",      email: "tiara@gmail.com",    products: ["Gentle Foaming Cleanser", "Rose Water Mist"],            total: 174000, date: "14 Apr 2025", status: "packing",   payment: "BCA Transfer",  address: "Jl. Pemuda No. 21, Semarang" },
-  { id: "ORD-016", customer: "Ayu Rahayu",       email: "ayu@gmail.com",      products: ["Niacinamide 10% + Zinc Serum", "Pore Tightening Toner"], total: 318000, date: "13 Apr 2025", status: "packing",   payment: "DANA",          address: "Jl. A. Yani No. 44, Bandung" },
-  { id: "ORD-017", customer: "Dewi Larasati",    email: "dewi@gmail.com",     products: ["Hyaluronic Acid Serum", "Ceramide Barrier Cream"],       total: 335000, date: "14 Apr 2025", status: "shipped",   payment: "BNI Transfer",  address: "Jl. Diponegoro No. 7, Medan" },
-  { id: "ORD-018", customer: "Fitri Handayani",  email: "fitri@gmail.com",    products: ["SPF 50 UV Defense Serum", "Peptide Eye Cream"],          total: 410000, date: "13 Apr 2025", status: "shipped",   payment: "GoPay",         address: "Komplek Griya Permai No. 15, Makassar" },
-  { id: "ORD-019", customer: "Sari Dewi",        email: "saridewi@gmail.com", products: ["AHA BHA Exfoliating Toner"],                             total: 135000, date: "12 Apr 2025", status: "shipped",   payment: "BCA Transfer",  address: "Jl. Raya Bogor KM 30, Depok" },
-  { id: "ORD-001", customer: "Bunga Citra",      email: "bunga@gmail.com",    products: ["Brightening Facial Mask"],                               total: 45000,  date: "14 Apr 2025", status: "delivered", payment: "OVO",           address: "Jl. Kartini No. 9, Surabaya" },
-  { id: "ORD-002", customer: "Nadia Rahman",     email: "nadia@gmail.com",    products: ["AHA BHA Exfoliating Toner"],                             total: 135000, date: "12 Apr 2025", status: "delivered", payment: "BCA Transfer",  address: "Jl. Imam Bonjol No. 3, Semarang" },
-  { id: "ORD-003", customer: "Lilis Permata",    email: "lilis@gmail.com",    products: ["Niacinamide Essence"],                                   total: 130000, date: "11 Apr 2025", status: "delivered", payment: "DANA",          address: "Jl. Veteran No. 11, Bandung" },
-  { id: "ORD-004", customer: "Sinta Wulandari",  email: "sinta@gmail.com",    products: ["Collagen Sleeping Pack", "Tea Tree Spot Gel"],           total: 233000, date: "11 Apr 2025", status: "delivered", payment: "GoPay",         address: "Jl. Pahlawan No. 6, Malang" },
-];
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1,  type: "order",    title: "New order received",            body: "ORD-011 from Sara Tancredi — Rp 294,000 via BCA Transfer",       time: "2 min ago",  read: false },
-  { id: 2,  type: "order",    title: "New order received",            body: "ORD-012 from Maya Sari — Rp 260,000 via GoPay",                   time: "8 min ago",  read: false },
-  { id: 3,  type: "order",    title: "New order received",            body: "ORD-013 from Hana Lestari — Rp 149,000 via BNI Transfer",         time: "15 min ago", read: false },
-  { id: 4,  type: "payment",  title: "Payment confirmed",             body: "ORD-014 — Rina Kusuma's OVO payment has been verified",           time: "32 min ago", read: false },
-  { id: 5,  type: "payment",  title: "Payment confirmed",             body: "ORD-015 — Tiara Putri's BCA transfer verified (Rp 174,000)",      time: "1 hr ago",   read: false },
-  { id: 6,  type: "shipped",  title: "Order marked as shipped",       body: "ORD-017 — JNE tracking JNE20250414001 sent to Dewi Larasati",     time: "2 hr ago",   read: true  },
-  { id: 7,  type: "shipped",  title: "Order marked as shipped",       body: "ORD-018 — SiCepat HALU tracking dispatched to Fitri Handayani",  time: "3 hr ago",   read: true  },
-  { id: 8,  type: "return",   title: "Return request submitted",      body: "ORD-007 — Sara Tancredi requested a return: Item arrived damaged", time: "5 hr ago",   read: true  },
-  { id: 9,  type: "review",   title: "New product review",            body: "5★ review on 5X Ceramide Barrier Moisture Gel by Rina Kusuma",   time: "Yesterday",  read: true  },
-  { id: 10, type: "review",   title: "New product review",            body: "4★ review on Retinol Night Cream by Tiara Putri",                 time: "Yesterday",  read: true  },
-  { id: 11, type: "shipped",  title: "Delivery confirmed",            body: "ORD-001 — Bunga Citra confirmed receipt of her order",            time: "2 days ago", read: true  },
-  { id: 12, type: "order",    title: "Order cancelled",               body: "ORD-020 — Wulandari Putri cancelled before payment (BCA)",       time: "2 days ago", read: true  },
-];
-
-const MOCK_RETURN_REQUESTS = [
-  {
-    id: "RET-001", orderId: "ORD-001", customer: "Bunga Citra", email: "bunga@gmail.com",
-    date: "14 Apr 2025", reason: "Product received damaged",
-    status: "pending", monitoringFlag: null,
-    products: [{ name: "Brightening Facial Mask", qty: 1, price: 45000 }],
-    conditionNote: "Box arrived crushed, product was leaking from the seal.",
-    photos: ["photo1.jpg", "photo2.jpg"],
-    qrCode: "PROD-UNIT-20250401-0001", scannedQr: "PROD-UNIT-20250401-0001", qrStatus: null, total: 45000,
-  },
-  {
-    id: "RET-002", orderId: "ORD-002", customer: "Nadia Rahman", email: "nadia@gmail.com",
-    date: "13 Apr 2025", reason: "Wrong item received",
-    status: "pending", monitoringFlag: "Return abuse risk",
-    products: [{ name: "AHA BHA Exfoliating Toner", qty: 1, price: 135000 }],
-    conditionNote: "Received a different product than what was ordered.",
-    photos: ["photo3.jpg"],
-    qrCode: "PROD-UNIT-20250330-0042", scannedQr: "PROD-UNIT-20250405-0017", qrStatus: null, total: 135000,
-  },
-  {
-    id: "RET-003", orderId: "ORD-003", customer: "Lilis Permata", email: "lilis@gmail.com",
-    date: "12 Apr 2025", reason: "Product does not match description",
-    status: "flagged", monitoringFlag: "Unusual login activity",
-    products: [{ name: "Niacinamide Essence", qty: 1, price: 130000 }],
-    conditionNote: "Product texture and scent differ from store description.",
-    photos: ["photo4.jpg"],
-    qrCode: "PROD-UNIT-20250311-0089", scannedQr: "PROD-UNIT-20250312-0099", qrStatus: "invalid", total: 130000,
-  },
-  {
-    id: "RET-004", orderId: "ORD-004", customer: "Sinta Wulandari", email: "sinta@gmail.com",
-    date: "11 Apr 2025", reason: "Allergic reaction to product",
-    status: "approved", monitoringFlag: null,
-    products: [
-      { name: "Collagen Sleeping Pack", qty: 1, price: 155000 },
-      { name: "Tea Tree Spot Gel",      qty: 1, price: 78000 },
-    ],
-    conditionNote: "Developed rash after first use, stopped immediately.",
-    photos: ["photo5.jpg", "photo6.jpg"],
-    qrCode: "PROD-UNIT-20250311-0088", scannedQr: "PROD-UNIT-20250311-0088", qrStatus: "valid", total: 233000,
-  },
-];
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: "Sara Tancredi",   email: "sara@gmail.com",  orders: 3, spent: 629000,  joined: "Jan 2025", status: "active" },
-  { id: 2, name: "Rina Kusuma",     email: "rina@gmail.com",  orders: 1, spent: 210000,  joined: "Feb 2025", status: "active" },
-  { id: 3, name: "Dewi Larasati",   email: "dewi@gmail.com",  orders: 2, spent: 670000,  joined: "Mar 2025", status: "active" },
-  { id: 4, name: "Bunga Citra",     email: "bunga@gmail.com", orders: 5, spent: 890000,  joined: "Nov 2024", status: "active" },
-  { id: 5, name: "Maya Sari",       email: "maya@gmail.com",  orders: 1, spent: 260000,  joined: "Apr 2025", status: "new"    },
-  { id: 6, name: "Tiara Putri",     email: "tiara@gmail.com", orders: 2, spent: 348000,  joined: "Mar 2025", status: "active" },
-  { id: 7, name: "Nadia Rahman",    email: "nadia@gmail.com", orders: 4, spent: 540000,  joined: "Dec 2024", status: "active" },
-  { id: 8, name: "Fitri Handayani", email: "fitri@gmail.com", orders: 1, spent: 410000,  joined: "Apr 2025", status: "new"    },
-];
-
 const DAILY_REVENUE = [
   { label: "Sen", val: 420000 },
   { label: "Sel", val: 860000 },
@@ -385,10 +306,16 @@ function Avatar({ name, size = 32 }) {
    SECTION: DASHBOARD
    ═══════════════════════════════════════════════════════════ */
 function Dashboard({ setActive }) {
-  const totalRevenue = MOCK_ORDERS.reduce((s, o) => s + o.total, 0);
-  const totalOrders  = MOCK_ORDERS.length;
-  const totalCustomers = MOCK_CUSTOMERS.length;
-  const monitoringSummary = getMonitoringSummary();
+  const { mockStore } = useMockData();
+  const todayLabel = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
+  const totalRevenue = (mockStore.orders ?? []).reduce((sum, order) => sum + order.total, 0);
+  const totalOrders = mockStore.orders.length;
+  const totalCustomers = mockStore.users.filter((user) => user.role === "customer").length;
+  const monitoringSummary = getMonitoringSummary(mockStore);
 
   const stats = [
     { label: "Total Revenue",   value: fmt(totalRevenue), sub: "+18% bulan ini",  icon: <IcRevenue />,   color: "rose"   },
@@ -397,9 +324,9 @@ function Dashboard({ setActive }) {
     { label: "Total Customers", value: totalCustomers,     sub: "+2 minggu ini",   icon: <IcCustomers />, color: "green"  },
   ];
 
-  const recentOrders = MOCK_ORDERS.slice(0, 5);
+  const recentOrders = mockStore.orders.slice(0, 5);
   const topProducts  = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 4);
-  const pendingCount = MOCK_ORDERS.filter(o => o.status === "pending").length;
+  const pendingCount = mockStore.orders.filter((order) => order.status === "pending").length;
 
   return (
     <div className="adm-section">
@@ -408,7 +335,7 @@ function Dashboard({ setActive }) {
           <h2 className="adm-section-title">Dashboard</h2>
           <p className="adm-section-sub">Selamat datang kembali, Admin! Ini ringkasan hari ini.</p>
         </div>
-        <div className="adm-date-badge">15 Apr 2025</div>
+        <div className="adm-date-badge">{todayLabel}</div>
       </div>
 
       {/* Stat cards */}
@@ -482,7 +409,7 @@ function Dashboard({ setActive }) {
             <tbody>
               {recentOrders.map(o => {
                 const st = STATUS_META[o.status];
-                const riskSummary = getCaseRiskSummary("order", o.id);
+                const riskSummary = getCaseRiskSummary(mockStore, "order", o.id);
                 return (
                   <tr key={o.id}>
                     <td><span className="adm-order-id">{o.id}</span></td>
@@ -538,17 +465,10 @@ function Dashboard({ setActive }) {
    SECTION: ORDERS
    ═══════════════════════════════════════════════════════════ */
 function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
-  const { orders: ctxOrders } = useOrders();
+  const { orders: allOrders } = useOrders();
+  const { mockStore } = useMockData();
   const [tab, setTab]     = useState("all");
   const [query, setQuery] = useState("");
-
-  const ctxIds = new Set(ctxOrders.map(o => o.id));
-  const ctxDisplay = ctxOrders.map(o => ({
-    id: o.id, customer: o.customer ?? "Customer", email: "",
-    total: o.total, date: o.date, status: o.status, payment: o.payment,
-    fromCtx: true,
-  }));
-  const allOrders = [...ctxDisplay, ...MOCK_ORDERS.filter(o => !ctxIds.has(o.id))];
 
   const tabs = ["all", "pending", "packing", "shipped", "delivered", "rejected", "cancelled"];
 
@@ -603,7 +523,7 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
               <tr><td colSpan={6} className="adm-empty-row">Tidak ada pesanan ditemukan.</td></tr>
             ) : filtered.map(o => {
               const st = STATUS_META[o.status] ?? { label: o.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
-              const riskSummary = getCaseRiskSummary("order", o.id);
+              const riskSummary = getCaseRiskSummary(mockStore, "order", o.id);
               return (
                 <tr
                   key={o.id}
@@ -879,8 +799,27 @@ function Products() {
    SECTION: CUSTOMERS
    ═══════════════════════════════════════════════════════════ */
 function Customers() {
+  const { mockStore } = useMockData();
   const [query, setQuery] = useState("");
-  const filtered = MOCK_CUSTOMERS.filter(c => {
+  const customers = mockStore.users
+    .filter((user) => user.role === "customer")
+    .map((user) => {
+      const orders = mockStore.orders.filter((order) => order.customerId === user.id);
+      const spent = orders.reduce((sum, order) => sum + order.total, 0);
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orders: orders.length,
+        spent,
+        joined: new Intl.DateTimeFormat("id-ID", {
+          month: "short",
+          year: "numeric",
+        }).format(new Date(user.createdAt)),
+        status: orders.length === 0 ? "new" : "active",
+      };
+    });
+  const filtered = customers.filter(c => {
     const q = query.toLowerCase();
     return !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
   });
@@ -890,7 +829,7 @@ function Customers() {
       <div className="adm-section-header">
         <div>
           <h2 className="adm-section-title">Data Pelanggan</h2>
-          <p className="adm-section-sub">{MOCK_CUSTOMERS.length} pelanggan terdaftar</p>
+          <p className="adm-section-sub">{customers.length} pelanggan terdaftar</p>
         </div>
       </div>
 
@@ -941,6 +880,7 @@ function Customers() {
    SECTION: SETTINGS
    ═══════════════════════════════════════════════════════════ */
 function Settings() {
+  const { resetAllMockData } = useMockData();
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({
     storeName: "Careofyou",
@@ -956,6 +896,10 @@ function Settings() {
 
   const handleChange = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
   const handleSave = e => { e.preventDefault(); setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  const handleResetMockData = () => {
+    resetAllMockData();
+    setSaved(false);
+  };
 
   return (
     <div className="adm-section">
@@ -1026,6 +970,9 @@ function Settings() {
           <button type="submit" className={`adm-primary-btn${saved ? " adm-primary-btn--saved" : ""}`}>
             {saved ? "✓ Tersimpan!" : "Simpan Perubahan"}
           </button>
+          <button type="button" className="adm-ghost-btn" onClick={handleResetMockData}>
+            Reset Mock Data
+          </button>
         </div>
       </form>
     </div>
@@ -1044,8 +991,13 @@ const NOTIF_TYPE_META = {
 };
 
 function Notifications() {
-  const [notifs, setNotifs] = useState(MOCK_NOTIFICATIONS);
+  const { mockStore } = useMockData();
+  const [notifs, setNotifs] = useState(() => getAdminNotifications(mockStore));
   const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    setNotifs(getAdminNotifications(mockStore));
+  }, [mockStore]);
 
   const unread = notifs.filter(n => !n.read).length;
   const types  = ["all", "order", "payment", "shipped", "return", "review"];
@@ -1137,28 +1089,22 @@ const RETURN_STATUS_META = {
 };
 
 function buildAllReturns(ctxReturns) {
-  const ctxIds = new Set(ctxReturns.map(r => r.id));
-  return [
-    ...ctxReturns.map(r => ({
-      ...r,
-      monitoringFlag: r.monitoringFlag ?? null,
-      conditionNote:  r.conditionNote  ?? r.reason,
-      photos:         r.photos ?? (r.productPhotoB64 ? [r.productPhotoB64] : []),
-      receiptB64:     r.receiptB64     ?? null,
-      qrCode:         r.qrCode         ?? "—",
-      scannedQr:      r.scannedQr      ?? "—",
-      qrStatus:       r.qrStatus       ?? null,
-      fromCtx: true,
-    })),
-    ...MOCK_RETURN_REQUESTS.filter(r => !ctxIds.has(r.id)).map(r => ({
-      ...r, receiptB64: null,
-      photos: r.photos ?? [], fromCtx: false,
-    })),
-  ];
+  return ctxReturns.map(r => ({
+    ...r,
+    monitoringFlag: r.monitoringFlag ?? null,
+    conditionNote:  r.conditionNote  ?? r.reason,
+    photos:         r.photos ?? (r.productPhotoB64 ? [r.productPhotoB64] : []),
+    receiptB64:     r.receiptB64     ?? null,
+    qrCode:         r.qrCode         ?? "—",
+    scannedQr:      r.scannedQr      ?? "—",
+    qrStatus:       r.qrStatus       ?? null,
+    fromCtx: true,
+  }));
 }
 
 function Returns({ goToReturnDetail }) {
   const { returns: ctxReturns } = useOrders();
+  const { mockStore } = useMockData();
   const allReturns = buildAllReturns(ctxReturns);
   const [tab, setTab] = useState("all");
   const tabs = ["all", "pending", "flagged", "processing", "completed", "rejected"];
@@ -1203,7 +1149,7 @@ function Returns({ goToReturnDetail }) {
               <tr><td colSpan={8} className="adm-empty-row">Tidak ada permintaan return di kategori ini.</td></tr>
             ) : filtered.map(r => {
               const st = RETURN_STATUS_META[r.status] ?? { label: r.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
-              const riskSummary = getCaseRiskSummary("return", r.id);
+              const riskSummary = getCaseRiskSummary(mockStore, "return", r.id);
               return (
                 <tr key={r.id} className="adm-table-row--clickable" onClick={() => goToReturnDetail(r.id)}>
                   <td><span className="adm-order-id">{r.id}</span></td>
@@ -1246,6 +1192,7 @@ function Returns({ goToReturnDetail }) {
    ═══════════════════════════════════════════════════════════ */
 function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const { returns: ctxReturns, updateReturn } = useOrders();
+  const { mockStore, session, currentUser, generateOtp, verifyOtp, resolveFlag } = useMockData();
   const allReturns = buildAllReturns(ctxReturns);
   const initialReturnId = selectedReturnId ?? allReturns[0]?.id;
 
@@ -1256,7 +1203,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const [verifyResult,  setVerifyResult]  = useState(null);
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
-  const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary("return", initialReturnId));
+  const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary(mockStore, "return", initialReturnId));
   const [stepUpState,   setStepUpState]   = useState({
     open: false,
     actionKey: "",
@@ -1278,7 +1225,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
   useEffect(() => {
     if (!ret?.id) return;
-    setRiskSummary(getCaseRiskSummary("return", ret.id));
+    setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
     setStepUpState({
       open: false,
       actionKey: "",
@@ -1326,6 +1273,17 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
     const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+
+    if (currentUser?.id) {
+      generateOtp(currentUser.id, {
+        purpose: "step_up",
+        metadata: {
+          entityType: "return",
+          entityId: ret.id,
+          actionKey,
+        },
+      });
+    }
 
     setRiskSummary((prev) => ({
       ...prev,
@@ -1403,6 +1361,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         "Resolving high risk flag memerlukan verifikasi tambahan.",
       ],
       onVerified: () => {
+        resolveFlag(flag.id);
         setRiskSummary((prev) => ({
           ...prev,
           flags: prev.flags.map((item) =>
@@ -1730,6 +1689,12 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         caseId={ret.id}
         reasons={stepUpState.reasons}
         helperText={stepUpState.helperText}
+        verificationHint="Use test OTP 123456."
+        onVerifyCode={(code) =>
+          verifyOtp(session?.userId ?? currentUser?.id, code, {
+            purpose: "step_up",
+          })
+        }
         onClose={closeStepUp}
         onSuccess={handleStepUpSuccess}
       />
@@ -1794,40 +1759,16 @@ const VERIFY_HISTORY_DATA = [
    ═══════════════════════════════════════════════════════════ */
 function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const { orders: ctxOrders, approveOrder, rejectOrder, shipOrder, deliverOrder } = useOrders();
+  const { mockStore, session, currentUser, generateOtp, verifyOtp, resolveFlag } = useMockData();
 
-  // Build merged order list
-  const ctxIds = new Set(ctxOrders.map(o => o.id));
-  const ctxDisplay = ctxOrders.map(o => ({
-    id: o.id, customer: o.customer ?? "Customer", email: o.email ?? "",
-    phone: o.phone ?? "",
+  const allOrders = ctxOrders.map(o => ({
+    ...o,
     items: o.items ?? [],
     products: o.items?.map(i => i.name) ?? [],
-    total: o.total, date: o.date, status: o.status, payment: o.payment,
-    address: o.address ?? "", paymentProof: o.paymentProof ?? null,
-    courier: o.courier ?? null, trackingNumber: o.trackingNumber ?? null,
-    deliveryProof: o.deliveryProof ?? null,
-    rejectionReason: o.rejectionReason ?? null,
-    recipient: o.recipient ?? o.customer ?? "",
     subtotal: o.subtotal ?? o.total,
     deliveryFee: o.deliveryFee ?? 0,
-    delivery: o.delivery ?? null,
-    cancelReason: o.cancelReason ?? null,
-    fraud: { status: "safe" },
     fromCtx: true,
   }));
-  const allOrders = [
-    ...ctxDisplay,
-    ...MOCK_ORDERS.filter(o => !ctxIds.has(o.id)).map(o => ({
-      ...o,
-      items: o.products?.map(name => ({ name, qty: 1, price: Math.round(o.total / (o.products?.length || 1)) })) ?? [],
-      subtotal: o.total, deliveryFee: 0,
-      paymentProof: null, courier: null, trackingNumber: null,
-      deliveryProof: null, rejectionReason: null,
-      recipient: o.customer, phone: "", email: o.email ?? "",
-      fraud: { status: "safe" },
-      fromCtx: false,
-    })),
-  ];
 
   const initialOrderId = selectedOrderId ?? allOrders[0]?.id;
   const [localId, setLocalId] = useState(initialOrderId);
@@ -1853,7 +1794,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const deliverInputRef = useState(() => ({ current: null }))[0];
   const [proofZoom,    setProofZoom]    = useState(false);
   const [deliverProofZoom, setDeliverProofZoom] = useState(false);
-  const [riskSummary, setRiskSummary] = useState(() => getCaseRiskSummary("order", initialOrderId));
+  const [riskSummary, setRiskSummary] = useState(() => getCaseRiskSummary(mockStore, "order", initialOrderId));
   const [stepUpState, setStepUpState] = useState({
     open: false,
     actionKey: "",
@@ -1871,7 +1812,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
   useEffect(() => {
     if (!order?.id) return;
-    setRiskSummary(getCaseRiskSummary("order", order.id));
+    setRiskSummary(getCaseRiskSummary(mockStore, "order", order.id));
     setStepUpState({
       open: false,
       actionKey: "",
@@ -1893,6 +1834,17 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
     const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+
+    if (currentUser?.id) {
+      generateOtp(currentUser.id, {
+        purpose: "step_up",
+        metadata: {
+          entityType: "order",
+          entityId: order.id,
+          actionKey,
+        },
+      });
+    }
 
     setRiskSummary((prev) => ({
       ...prev,
@@ -1970,6 +1922,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         "Resolving high risk flag memerlukan verifikasi tambahan.",
       ],
       onVerified: () => {
+        resolveFlag(flag.id);
         setRiskSummary((prev) => ({
           ...prev,
           flags: prev.flags.map((item) =>
@@ -2325,6 +2278,12 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         caseId={order.id}
         reasons={stepUpState.reasons}
         helperText={stepUpState.helperText}
+        verificationHint="Use test OTP 123456."
+        onVerifyCode={(code) =>
+          verifyOtp(session?.userId ?? currentUser?.id, code, {
+            purpose: "step_up",
+          })
+        }
         onClose={closeStepUp}
         onSuccess={handleStepUpSuccess}
       />
@@ -2863,14 +2822,18 @@ const NAV_ITEMS = [
    ═══════════════════════════════════════════════════════════ */
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { mockStore, session, logoutUser } = useMockData();
+  const adminNotifications = getAdminNotifications(mockStore);
   const [active,            setActive]            = useState("dashboard");
   const [query,             setQuery]             = useState("");
   const [selectedOrderId,   setSelectedOrderId]   = useState(null);
   const [selectedReturnId,  setSelectedReturnId]  = useState(null);
 
-  const pendingOrders  = MOCK_ORDERS.filter(o => o.status === "pending").length;
-  const unreadNotifs   = MOCK_NOTIFICATIONS.filter(n => !n.read).length;
-  const pendingReturns = MOCK_RETURN_REQUESTS.filter(r => r.status === "pending" || r.status === "flagged").length;
+  const pendingOrders = mockStore.orders.filter((order) => order.status === "pending").length;
+  const unreadNotifs = adminNotifications.filter((notif) => !notif.read).length;
+  const pendingReturns = mockStore.returns.filter(
+    (ret) => ret.status === "pending" || ret.status === "flagged"
+  ).length;
 
   const goToOrderDetail  = (id) => { setSelectedOrderId(id);  setActive("payment-approval"); };
   const goToReturnDetail = (id) => { setSelectedReturnId(id); setActive("return-detail"); };
@@ -2936,7 +2899,13 @@ export default function AdminPage() {
             <span className="adm-nav-icon"><IcStore /></span>
             <span className="adm-nav-label">Lihat Toko</span>
           </button>
-          <button className="adm-nav-item adm-nav-item--logout" onClick={() => navigate("/")}>
+          <button
+            className="adm-nav-item adm-nav-item--logout"
+            onClick={() => {
+              logoutUser();
+              navigate("/login", { replace: true });
+            }}
+          >
             <span className="adm-nav-icon"><IcLogOut /></span>
             <span className="adm-nav-label">Keluar</span>
           </button>
@@ -2961,8 +2930,8 @@ export default function AdminPage() {
             {/* Notification bell */}
             <button className="adm-topbar-icon-btn">
               <IcBell />
-              {pendingOrders > 0 && (
-                <span className="adm-notif-dot">{pendingOrders}</span>
+              {unreadNotifs > 0 && (
+                <span className="adm-notif-dot">{unreadNotifs}</span>
               )}
             </button>
 
@@ -2970,8 +2939,8 @@ export default function AdminPage() {
             <div className="adm-topbar-profile">
               <img src="/logo-careofyou.png" alt="Admin" className="adm-topbar-avatar-img" />
               <div className="adm-topbar-info">
-                <span className="adm-topbar-name">Admin</span>
-                <span className="adm-topbar-email">admin@careofyou.id</span>
+                <span className="adm-topbar-name">{session?.name ?? "Admin"}</span>
+                <span className="adm-topbar-email">{session?.email ?? "admin@careofyou.id"}</span>
               </div>
             </div>
           </div>

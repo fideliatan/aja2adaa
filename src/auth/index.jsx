@@ -182,7 +182,9 @@ export default function AuthPage() {
     setOtpDigits(createEmptyOtp());
     setOtpLoading(false);
     setOtpError("");
-    setOtpNotice(email ? getOtpNotice(email) : "");
+    setOtpNotice(
+      email ? `${getOtpNotice(email)} Untuk testing gunakan kode 123456.` : ""
+    );
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
     setOtpLockSeconds(0);
@@ -245,13 +247,22 @@ export default function AuthPage() {
         return;
       }
 
-      setPendingUser(result.user);
+      setPendingUser({
+        ...result.user,
+        deviceStatus: result.deviceStatus,
+        deviceInfo: result.deviceInfo,
+        riskSummary: result.riskSummary,
+      });
 
       if (result.needsOtp) {
-        generateOtp(result.user.id);
+        generateOtp(result.user.id, { purpose: "login" });
         openOtpModal(email);
       } else {
-        setUserSession(result.user);
+        setUserSession(result.user, {
+          deviceStatus: result.deviceStatus,
+          deviceInfo: result.deviceInfo,
+          riskSummary: result.riskSummary,
+        });
         navigate("/");
       }
     }, 900);
@@ -377,11 +388,15 @@ export default function AuthPage() {
     window.setTimeout(() => {
       setOtpLoading(false);
 
-      const result = verifyOtp(pendingUser.id, code);
+      const result = verifyOtp(pendingUser.id, code, { purpose: "login" });
 
       if (result.success) {
         closeOtpModal();
-        setUserSession(pendingUser);
+        setUserSession(pendingUser, {
+          deviceStatus: pendingUser.deviceStatus,
+          deviceInfo: pendingUser.deviceInfo,
+          riskSummary: pendingUser.riskSummary,
+        });
         navigate(pendingUser.role === "admin" ? "/admin" : "/");
         return;
       }
@@ -413,12 +428,12 @@ export default function AuthPage() {
   const handleOtpResend = () => {
     if (otpResendSeconds > 0 || otpLoading || otpLockSeconds > 0 || !pendingUser) return;
 
-    resendOtp(pendingUser.id);
+    resendOtp(pendingUser.id, { purpose: "login" });
     setOtpDigits(createEmptyOtp());
     setOtpError("");
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
-    setOtpNotice("Kode OTP baru sudah dikirim. Silakan cek email kamu.");
+    setOtpNotice("Kode OTP baru sudah dikirim. Untuk testing gunakan kode 123456.");
     window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
   };
 

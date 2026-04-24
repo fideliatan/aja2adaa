@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { PRODUCTS } from "../../data/products.js";
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 /* ─── Helper ───────────────────────────────────────────────── */
 function fmt(n) {
@@ -541,6 +542,7 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { getOrder, cancelOrder, addReturn, returns } = useOrders();
+  const { session } = useMockData();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
   const [previewOpen, setPreviewOpen]     = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -641,8 +643,9 @@ export default function OrderDetailPage() {
     const ret = {
       id: `RET-${Date.now().toString().slice(-6)}`,
       orderId: liveOrder.id,
+      customerId: liveOrder.customerId ?? session?.userId ?? null,
       customer: liveOrder.recipient ?? liveOrder.customer ?? "Customer",
-      email: "",
+      email: liveOrder.email ?? session?.email ?? "",
       date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
       reason: returnReason === "Lainnya" ? returnCustomReason : returnReason,
       status: "pending",
@@ -654,6 +657,12 @@ export default function OrderDetailPage() {
       productPhotoB64: returnPhotoB64,
       qrCode: "—", scannedQr: "—", qrStatus: null,
       total: selectedItems.reduce((s, i) => s + i.price * i.qty, 0),
+      sessionSnapshot: {
+        userId: liveOrder.customerId ?? session?.userId ?? null,
+        loginAt: session?.loginAt ?? null,
+        deviceStatus: session?.deviceStatus ?? liveOrder.sessionSnapshot?.deviceStatus ?? "trusted",
+        deviceInfo: session?.deviceInfo ?? liveOrder.sessionSnapshot?.deviceInfo ?? {},
+      },
     };
     addReturn(ret);
     setReturnStep(4);

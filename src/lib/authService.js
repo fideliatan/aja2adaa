@@ -220,13 +220,16 @@ export function buildLoginAttempt(
  * Generate OTP record baru untuk userId.
  * Admin selalu dapat 123456, customer dapat 111111 (atau sesuai SEED_OTP_CODES).
  */
-export function generateOtpRecord(userId) {
+export function generateOtpRecord(userId, options = {}) {
+  const { purpose = "login", metadata = {} } = options;
   const code = SEED_OTP_CODES[userId] ??
     String(Math.floor(100000 + Math.random() * 900000));
 
   return {
     id: `OTP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     userId,
+    purpose,
+    metadata,
     code,
     requestedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 5 * 60000).toISOString(), // 5 menit
@@ -240,10 +243,16 @@ export function generateOtpRecord(userId) {
  * Verifikasi kode OTP yang diinput user.
  * Return: { success, reason, record, updatedRecord? }
  */
-export function verifyOtpRecord(userId, inputCode, otpRecords) {
+export function verifyOtpRecord(userId, inputCode, otpRecords, options = {}) {
+  const { purpose } = options;
   // Ambil OTP terbaru yang masih pending
   const record = [...otpRecords]
-    .filter((r) => r.userId === userId && r.status === "pending")
+    .filter(
+      (r) =>
+        r.userId === userId &&
+        r.status === "pending" &&
+        (!purpose || r.purpose === purpose)
+    )
     .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt))[0];
 
   if (!record) {
@@ -280,18 +289,21 @@ export function verifyOtpRecord(userId, inputCode, otpRecords) {
  * Tandai OTP terakhir user sebagai "resent" dan buat record baru.
  * Dipakai ketika user minta resend OTP.
  */
-export function resendOtpRecord(userId, otpRecords) {
+export function resendOtpRecord(userId, otpRecords, options = {}) {
+  const { purpose } = options;
   // Expire OTP lama
   const expiredRecords = otpRecords.map((r) =>
-    r.userId === userId && r.status === "pending"
+    r.userId === userId &&
+    r.status === "pending" &&
+    (!purpose || r.purpose === purpose)
       ? { ...r, status: "expired" }
       : r
   );
 
-  const newRecord = generateOtpRecord(userId);
+  const newRecord = generateOtpRecord(userId, options);
   // Track berapa kali sudah resend
   const prevResends = otpRecords
-    .filter((r) => r.userId === userId)
+    .filter((r) => r.userId === userId && (!purpose || r.purpose === purpose))
     .reduce((max, r) => Math.max(max, r.resendCount ?? 0), 0);
   newRecord.resendCount = prevResends + 1;
 

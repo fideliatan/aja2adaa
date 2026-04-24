@@ -578,6 +578,8 @@ export function StepUpVerificationModal({
   caseId,
   reasons,
   helperText,
+  verificationHint,
+  onVerifyCode,
   onClose,
   onSuccess,
 }) {
@@ -646,7 +648,13 @@ export function StepUpVerificationModal({
     setError("");
 
     window.setTimeout(() => {
-      if (code === STEP_UP_OTP_CODE) {
+      const result = onVerifyCode
+        ? onVerifyCode(code)
+        : {
+            success: code === STEP_UP_OTP_CODE,
+          };
+
+      if (result?.success) {
         setStatus("success");
         window.setTimeout(() => {
           onSuccess?.();
@@ -656,7 +664,11 @@ export function StepUpVerificationModal({
 
       setStatus("form");
       setDigits(createOtpDigits());
-      setError("Kode verifikasi tidak valid. Silakan coba lagi.");
+      setError(
+        result?.reason === "otp_expired"
+          ? "OTP sudah kedaluwarsa. Minta kode baru lalu coba lagi."
+          : "Kode verifikasi tidak valid. Silakan coba lagi."
+      );
       window.requestAnimationFrame(() => inputsRef.current[0]?.focus());
     }, 850);
   };
@@ -695,6 +707,11 @@ export function StepUpVerificationModal({
               </div>
 
               <p className="adm-stepup-helper">{helperText}</p>
+              {verificationHint && (
+                <p className="adm-stepup-helper" style={{ marginTop: 8 }}>
+                  {verificationHint}
+                </p>
+              )}
 
               <form className="adm-stepup-form" onSubmit={handleSubmit}>
                 <div className="adm-stepup-otp-row">
