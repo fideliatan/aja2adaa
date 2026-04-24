@@ -1,8 +1,5 @@
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
 import { ShoppingBag } from "lucide-react";
-=======
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import { useCart } from "../context/CartContext";
 import "../home/index.css";
 
@@ -28,11 +25,7 @@ export default function CartSidebar() {
 
         {cart.length === 0 ? (
           <div className="cart-empty">
-<<<<<<< HEAD
             <span className="cart-empty-icon"><ShoppingBag size={40} /></span>
-=======
-            <span className="cart-empty-icon">🛍️</span>
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
             <p>Keranjang kamu kosong</p>
             <button className="cart-shop-btn" onClick={() => setCartOpen(false)}>
               Mulai Belanja

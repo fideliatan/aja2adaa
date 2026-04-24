@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-<<<<<<< HEAD
 import { CreditCard, Paperclip, Loader2, PartyPopper, Package, AlertTriangle, Clock } from "lucide-react";
-=======
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
 import { useOrders } from "../context/OrderContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
@@ -461,22 +458,14 @@ export default function CheckoutPage() {
               {/* Header */}
               <div className="co-proof-header">
                 <div className="co-proof-header-left">
-<<<<<<< HEAD
                   <span className="co-proof-icon-wrap"><CreditCard size={24} /></span>
-=======
-                  <span className="co-proof-icon-wrap">💳</span>
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                   <div>
                     <h3 className="co-proof-title">Upload Bukti Pembayaran</h3>
                     <p className="co-proof-subtitle">Order #{newOrderId}</p>
                   </div>
                 </div>
                 <div className={`co-proof-timer${timerExpired ? " co-proof-timer--expired" : timerLeft <= 30 ? " co-proof-timer--warn" : ""}`}>
-<<<<<<< HEAD
                   {timerExpired ? <><AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Waktu habis</> : <><Clock size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {fmtTimer(timerLeft)}</>}
-=======
-                  {timerExpired ? "⚠️ Waktu habis" : `⏱ ${fmtTimer(timerLeft)}`}
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                 </div>
               </div>
 
@@ -522,11 +511,7 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                   <div className="co-proof-dropzone-inner">
-<<<<<<< HEAD
                     <span className="co-proof-upload-icon"><Paperclip size={28} /></span>
-=======
-                    <span className="co-proof-upload-icon">📎</span>
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                     <p className="co-proof-drop-text">Drag & drop foto bukti transfer</p>
                     <p className="co-proof-drop-sub">atau klik untuk pilih gambar</p>
                   </div>
@@ -541,11 +526,7 @@ export default function CheckoutPage() {
                 {!proofFile
                   ? "Pilih foto terlebih dahulu"
                   : !proofPreview
-<<<<<<< HEAD
                     ? <><Loader2 size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Memproses foto...</>
-=======
-                    ? "⏳ Memproses foto..."
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                     : "Kirim Bukti Pembayaran →"}
               </button>
 
@@ -554,22 +535,14 @@ export default function CheckoutPage() {
           ) : (
             /* Success state */
             <div className="co-proof-success">
-<<<<<<< HEAD
               <div className="co-proof-success-anim"><PartyPopper size={40} /></div>
-=======
-              <div className="co-proof-success-anim">🎉</div>
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
               <h3 className="co-proof-success-title">Bukti Pembayaran Terkirim!</h3>
               <p className="co-proof-success-sub">
                 Pesanan <strong>#{newOrderId}</strong> sedang menunggu konfirmasi admin.<br />
                 Kami akan memproses pesananmu secepatnya.
               </p>
               <div className="co-proof-success-info">
-<<<<<<< HEAD
                 <span className="co-proof-success-icon-small"><Clock size={14} /></span>
-=======
-                <span className="co-proof-success-icon-small">⏱</span>
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                 Estimasi konfirmasi: 1×24 jam
               </div>
               <div className="co-proof-success-actions">
@@ -577,11 +550,7 @@ export default function CheckoutPage() {
                   className="co-proof-success-primary"
                   onClick={() => { setProofModal(false); navigate("/myprofile", { state: { tab: "orderstatus" } }); }}
                 >
-<<<<<<< HEAD
                   <Package size={16} style={{ display: "inline", verticalAlign: "middle" }} /> Lihat Status Orderan
-=======
-                  📦 Lihat Status Orderan
->>>>>>> fb31355c86f196a0069095e4e53d6c65f8614301
                 </button>
                 <button
                   className="co-proof-success-ghost"
