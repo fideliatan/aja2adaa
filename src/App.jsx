@@ -1,0 +1,165 @@
+import './App.css'
+import { useEffect, useRef } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import AuthPage from './auth/index.jsx'
+import MyProfilePage from './customer/myprofile/index.jsx'
+import HomePage from './customer/home/index.jsx'
+import ProductPage from './customer/product/index.jsx'
+import WishlistPage from './customer/wishlist/wishlist.jsx'
+import ContactPage from './customer/contact/index.jsx'
+import CheckoutPage from './customer/checkout/index.jsx'
+import ForgotPasswordPage from './forgotpass/index.jsx'
+import AdminPage from './admin/index.jsx'
+import OrderDetailPage from './customer/orderdetail/index.jsx'
+import { CartProvider } from './customer/context/CartContext.jsx'
+import { WishlistProvider } from './customer/context/WishlistContext.jsx'
+import { SearchProvider } from './customer/context/SearchContext.jsx'
+import { OrderProvider } from './customer/context/OrderContext.jsx'
+import { MockDataProvider, useMockData } from './context/MockDataContext.jsx'
+import CartSidebar from './customer/components/CartSidebar.jsx'
+
+// Redirect ke /login kalau belum ada session
+function ProtectedRoute({ children }) {
+  const { session } = useMockData()
+  if (!session) return <Navigate to="/login" replace />
+  return children
+}
+
+// Redirect ke /login kalau bukan admin
+function AdminRoute({ children }) {
+  const { session } = useMockData()
+  if (!session) return <Navigate to="/login" replace />
+  if (session.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}
+
+function ParticleCanvas() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    let animId;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+
+    const spawn = (x, y) => {
+      for (let i = 0; i < 5; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 2.5 + 0.5;
+        const hue = Math.random() < 0.5
+          ? Math.random() * 20 + 340
+          : Math.random() * 20 + 10;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1,
+          size: Math.random() * 5 + 2,
+          alpha: Math.random() * 0.55 + 0.35,
+          hue,
+        });
+      }
+    };
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles = particles.filter(p => p.alpha > 0.01 && p.size > 0.3);
+      for (const p of particles) {
+        ctx.beginPath();
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        g.addColorStop(0, `hsla(${p.hue}, 80%, 75%, ${p.alpha})`);
+        g.addColorStop(1, `hsla(${p.hue}, 80%, 75%, 0)`);
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.06;
+        p.alpha *= 0.92;
+        p.size *= 0.97;
+      }
+      animId = requestAnimationFrame(animate);
+    };
+
+    const onMove = (e) => {
+      const x = e.clientX ?? e.touches?.[0]?.clientX;
+      const y = e.clientY ?? e.touches?.[0]?.clientY;
+      if (x == null) return;
+      spawn(x, y);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("resize", resize);
+    animate();
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animId);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 9999,
+      }}
+    />
+  );
+}
+
+function App() {
+  return (
+    <>
+    <ParticleCanvas />
+    <MockDataProvider>
+    <OrderProvider>
+    <CartProvider>
+      <WishlistProvider>
+        <SearchProvider>
+          <Router>
+            <Routes>
+              {/* ── Public routes ── */}
+              <Route path="/"              element={<HomePage />} />
+              <Route path="/products"      element={<ProductPage />} />
+              <Route path="/contact"       element={<ContactPage />} />
+              <Route path="/login"         element={<AuthPage />} />
+              <Route path="/register"      element={<AuthPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+              {/* ── Protected: harus login ── */}
+              <Route path="/myprofile"   element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
+              <Route path="/checkout"    element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+              <Route path="/orderdetail" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+              <Route path="/wishlist"    element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+
+              {/* ── Admin only ── */}
+              <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+
+              {/* ── Fallback ── */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <CartSidebar />
+          </Router>
+        </SearchProvider>
+      </WishlistProvider>
+    </CartProvider>
+    </OrderProvider>
+    </MockDataProvider>
+    </>
+  )
+}
+
+export default App
