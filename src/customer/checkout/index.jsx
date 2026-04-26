@@ -32,8 +32,8 @@ const IconStore = () => (
 
 /* ─── Static data ────────────────────────────────────────── */
 const SAVED_ADDRESSES = [
-  { id: 1, label: "Home", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "123 Main Street, New York, NY 10001, USA", isMain: true },
-  { id: 2, label: "Office", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "456 Business Ave, Manhattan, NY 10002, USA", isMain: false },
+  { id: 1, label: "Rumah", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "123 Main Street, New York, NY 10001, USA", isMain: true },
+  { id: 2, label: "Kantor", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "456 Business Ave, Manhattan, NY 10002, USA", isMain: false },
 ];
 
 const ORDER_ITEMS = [
@@ -42,10 +42,10 @@ const ORDER_ITEMS = [
 ];
 
 const DELIVERY_OPTIONS = [
-  { id: "instant",  label: "Instant",  desc: "Arrives in 2–4 hours",  fee: 35000 },
-  { id: "sameday",  label: "Same Day", desc: "Arrives today by 9 PM", fee: 25000 },
-  { id: "regular",  label: "Regular",  desc: "2–3 working days",       fee: 15000 },
-  { id: "economy",  label: "Economy",  desc: "4–7 working days",       fee: 8000  },
+  { id: "instant",  label: "Instan",   desc: "Tiba dalam 2–4 jam",          fee: 35000 },
+  { id: "sameday",  label: "Hari Ini", desc: "Tiba hari ini sebelum jam 21:00", fee: 25000 },
+  { id: "regular",  label: "Reguler",  desc: "2–3 hari kerja",               fee: 15000 },
+  { id: "economy",  label: "Ekonomi",  desc: "4–7 hari kerja",               fee: 8000  },
 ];
 
 const PAYMENT_METHODS = [
@@ -124,7 +124,7 @@ export default function CheckoutPage() {
   const handleAddAddress = (e) => {
     e.preventDefault();
     if (!newAddr.label || !newAddr.name || !newAddr.phone || !newAddr.address) {
-      setAddrError("Please fill in all fields.");
+      setAddrError("Harap isi semua kolom.");
       return;
     }
     const added = { id: Date.now(), ...newAddr, isMain: false };
@@ -140,7 +140,7 @@ export default function CheckoutPage() {
   const total       = subtotal + deliveryFee;
 
   const handleCheckout = () => {
-    if (!payment) { alert("Please select a payment method."); return; }
+    if (!payment) { alert("Silakan pilih metode pembayaran."); return; }
     const ordId = "ORD-" + Date.now().toString().slice(-6);
     setNewOrderId(ordId);
     setTimerLeft(120);
@@ -232,7 +232,7 @@ export default function CheckoutPage() {
       {/* ── MAIN ── */}
       <main className="co-main">
         <div className="co-container">
-          <h1 className="co-page-title">Checkout</h1>
+          <h1 className="co-page-title">Pembayaran</h1>
 
           <div className="co-layout">
 
@@ -243,7 +243,7 @@ export default function CheckoutPage() {
               <section className="co-card">
                 <div className="co-card-heading">
                   <span className="co-card-icon"><IconMapPin /></span>
-                  <h2 className="co-card-title">Shipping Address</h2>
+                  <h2 className="co-card-title">Alamat Pengiriman</h2>
                 </div>
 
                 <div className="co-addr-list">
@@ -259,7 +259,7 @@ export default function CheckoutPage() {
                       <div className="co-addr-body">
                         <div className="co-addr-top">
                           <span className="co-addr-label">{addr.label}</span>
-                          {addr.isMain && <span className="co-addr-badge">Main</span>}
+                          {addr.isMain && <span className="co-addr-badge">Utama</span>}
                         </div>
                         <p className="co-addr-name">{addr.name} · {addr.phone}</p>
                         <p className="co-addr-text">{addr.address}</p>
@@ -272,7 +272,7 @@ export default function CheckoutPage() {
                   className="co-add-addr-btn"
                   onClick={() => { setShowAddrForm(v => !v); setAddrError(""); }}
                 >
-                  {showAddrForm ? "Cancel" : "+ Use a different address"}
+                  {showAddrForm ? "Batal" : "+ Gunakan alamat lain"}
                 </button>
 
                 {showAddrForm && (
@@ -280,23 +280,23 @@ export default function CheckoutPage() {
                     <div className="co-form-row">
                       <div className="co-form-group">
                         <label className="co-form-label">Label</label>
-                        <input className="co-input" name="label" placeholder="e.g. Home" value={newAddr.label} onChange={e => setNewAddr({...newAddr, label: e.target.value})} />
+                        <input className="co-input" name="label" placeholder="mis. Rumah" value={newAddr.label} onChange={e => setNewAddr({...newAddr, label: e.target.value})} />
                       </div>
                       <div className="co-form-group">
-                        <label className="co-form-label">Recipient Name</label>
-                        <input className="co-input" name="name" placeholder="Full name" value={newAddr.name} onChange={e => setNewAddr({...newAddr, name: e.target.value})} />
+                        <label className="co-form-label">Nama Penerima</label>
+                        <input className="co-input" name="name" placeholder="Nama lengkap" value={newAddr.name} onChange={e => setNewAddr({...newAddr, name: e.target.value})} />
                       </div>
                     </div>
                     <div className="co-form-group">
-                      <label className="co-form-label">Phone Number</label>
+                      <label className="co-form-label">Nomor Telepon</label>
                       <input className="co-input" name="phone" placeholder="+62 812 3456 7890" value={newAddr.phone} onChange={e => setNewAddr({...newAddr, phone: e.target.value})} />
                     </div>
                     <div className="co-form-group">
-                      <label className="co-form-label">Full Address</label>
-                      <textarea className="co-input co-textarea" placeholder="Street, City, ZIP, Country" value={newAddr.address} onChange={e => setNewAddr({...newAddr, address: e.target.value})} rows={3}/>
+                      <label className="co-form-label">Alamat Lengkap</label>
+                      <textarea className="co-input co-textarea" placeholder="Jalan, Kota, Kode Pos, Negara" value={newAddr.address} onChange={e => setNewAddr({...newAddr, address: e.target.value})} rows={3}/>
                     </div>
                     {addrError && <p className="co-error">{addrError}</p>}
-                    <button type="submit" className="co-save-addr-btn">Save & Use This Address</button>
+                    <button type="submit" className="co-save-addr-btn">Simpan & Gunakan Alamat Ini</button>
                   </form>
                 )}
               </section>
@@ -305,7 +305,7 @@ export default function CheckoutPage() {
               <section className="co-card">
                 <div className="co-card-heading">
                   <span className="co-card-icon"><IconStore /></span>
-                  <h2 className="co-card-title">Order Details</h2>
+                  <h2 className="co-card-title">Detail Pesanan</h2>
                 </div>
                 <div className="co-store-name">Careofyou Official Store</div>
                 <div className="co-item-list">
@@ -315,11 +315,11 @@ export default function CheckoutPage() {
                       <div className="co-item-info">
                         <p className="co-item-brand">{item.brand ?? item.category}</p>
                         <p className="co-item-name">{item.name}</p>
-                        {item.size && <p className="co-item-size">Size: {item.size}</p>}
+                        {item.size && <p className="co-item-size">Ukuran: {item.size}</p>}
                       </div>
                       <div className="co-item-right">
                         <p className="co-item-price">{fmt(item.price)}</p>
-                        <p className="co-item-qty">Qty: {item.qty}</p>
+                        <p className="co-item-qty">Jml: {item.qty}</p>
                       </div>
                     </div>
                   ))}
@@ -328,7 +328,7 @@ export default function CheckoutPage() {
 
               {/* 3 · DELIVERY */}
               <section className="co-card">
-                <h2 className="co-card-title" style={{ marginBottom: 16 }}>Delivery Option</h2>
+                <h2 className="co-card-title" style={{ marginBottom: 16 }}>Pilihan Pengiriman</h2>
                 <div className="co-delivery-list">
                   {DELIVERY_OPTIONS.map(opt => (
                     <label key={opt.id} className={`co-delivery-option${delivery === opt.id ? " co-delivery-option--active" : ""}`}>
@@ -351,9 +351,9 @@ export default function CheckoutPage() {
 
               {/* 4 · PAYMENT METHOD */}
               <section className="co-card">
-                <h2 className="co-card-title" style={{ marginBottom: 16 }}>Payment Method</h2>
+                <h2 className="co-card-title" style={{ marginBottom: 16 }}>Metode Pembayaran</h2>
 
-                <p className="co-payment-group-label">Bank Transfer</p>
+                <p className="co-payment-group-label">Transfer Bank</p>
                 <div className="co-payment-grid">
                   {PAYMENT_METHODS.filter(p => p.type === "bank").map(p => (
                     <label key={p.id} className={`co-payment-option${payment === p.id ? " co-payment-option--active" : ""}`}>
@@ -363,7 +363,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                <p className="co-payment-group-label" style={{ marginTop: 16 }}>E-Wallet</p>
+                <p className="co-payment-group-label" style={{ marginTop: 16 }}>Dompet Digital</p>
                 <div className="co-payment-grid">
                   {PAYMENT_METHODS.filter(p => p.type === "ewallet").map(p => (
                     <label key={p.id} className={`co-payment-option${payment === p.id ? " co-payment-option--active" : ""}`}>
@@ -375,7 +375,7 @@ export default function CheckoutPage() {
 
                 {selectedPayment && (
                   <div className="co-payment-detail">
-                    <p className="co-payment-detail-title">Transfer to:</p>
+                    <p className="co-payment-detail-title">Transfer ke:</p>
                     <p className="co-payment-detail-bank">{selectedPayment.label}</p>
                     <p className="co-payment-detail-account">{selectedPayment.account}</p>
                     <p className="co-payment-detail-holder">a.n. {selectedPayment.holder}</p>
@@ -388,7 +388,7 @@ export default function CheckoutPage() {
             {/* ════ RIGHT COLUMN — SUMMARY ════ */}
             <div className="co-right">
               <div className="co-summary">
-                <h2 className="co-summary-title">Order Summary</h2>
+                <h2 className="co-summary-title">Ringkasan Pesanan</h2>
 
                 <div className="co-summary-items">
                   {cartItems.map(item => (
@@ -406,7 +406,7 @@ export default function CheckoutPage() {
                   <span>{fmt(subtotal)}</span>
                 </div>
                 <div className="co-summary-row">
-                  <span>Delivery ({DELIVERY_OPTIONS.find(d => d.id === delivery)?.label})</span>
+                  <span>Pengiriman ({DELIVERY_OPTIONS.find(d => d.id === delivery)?.label})</span>
                   <span>{fmt(deliveryFee)}</span>
                 </div>
                 <div className="co-summary-divider"/>
@@ -418,7 +418,7 @@ export default function CheckoutPage() {
 
                 {selectedAddress && (
                   <div className="co-summary-addr">
-                    <p className="co-summary-addr-label">Ship to</p>
+                    <p className="co-summary-addr-label">Dikirim ke</p>
                     <p className="co-summary-addr-name">{selectedAddress.name}</p>
                     <p className="co-summary-addr-text">{selectedAddress.address}</p>
                   </div>
@@ -429,11 +429,11 @@ export default function CheckoutPage() {
                   onClick={handleCheckout}
                   disabled={!payment}
                 >
-                  {payment ? "Place Order" : "Select Payment Method"}
+                  {payment ? "Buat Pesanan" : "Pilih Metode Pembayaran"}
                 </button>
 
                 <p className="co-checkout-note">
-                  By placing your order you agree to our terms and conditions.
+                  Dengan membuat pesanan, kamu menyetujui syarat dan ketentuan kami.
                 </p>
               </div>
             </div>
@@ -506,7 +506,7 @@ export default function CheckoutPage() {
                     <img src={proofPreview} alt="preview" className="co-proof-preview-img" />
                     <div className="co-proof-preview-info">
                       <span className="co-proof-preview-name">✓ {proofFile?.name}</span>
-                      <span className="co-proof-preview-change">Tap to change</span>
+                      <span className="co-proof-preview-change">Ketuk untuk ganti</span>
                     </div>
                   </div>
                 ) : (

@@ -82,14 +82,14 @@ export default function Navbar({
 
         {/* Center links */}
         <nav className="navbar-links">
-          <span className={activePage === "home" ? "navbar-link--active" : ""} onClick={handleHome}>Home</span>
-          <span className={activePage === "products" ? "navbar-link--active" : ""} onClick={handleProducts}>Products</span>
-          <span className={activePage === "contact" ? "navbar-link--active" : ""} onClick={() => navigate("/contact")}>Contact Us</span>
+          <span className={activePage === "home" ? "navbar-link--active" : ""} onClick={handleHome}>Beranda</span>
+          <span className={activePage === "products" ? "navbar-link--active" : ""} onClick={handleProducts}>Produk</span>
+          <span className={activePage === "contact" ? "navbar-link--active" : ""} onClick={() => navigate("/contact")}>Hubungi Kami</span>
         </nav>
 
         {/* Right icons */}
         <div className="navbar-icons">
-          <button className="navbar-icon-btn" title="Search" onClick={handleSearchClick}>
+          <button className="navbar-icon-btn" title="Cari" onClick={handleSearchClick}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -97,7 +97,7 @@ export default function Navbar({
 
           <button
             className={`navbar-icon-btn${activePage === "wishlist" ? " navbar-icon-active" : ""}`}
-            title="Wishlist"
+            title="Wishlist Saya"
             onClick={() => navigate("/wishlist")}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill={activePage === "wishlist" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -107,7 +107,7 @@ export default function Navbar({
 
           <button
             className={`navbar-icon-btn navbar-cart-btn${activePage === "checkout" ? " navbar-icon-active" : ""}${cartBumping ? " navbar-cart-bump" : ""}`}
-            title="Cart"
+            title="Keranjang"
             onClick={() => setCartOpen(true)}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -118,7 +118,7 @@ export default function Navbar({
 
           <button
             className={`navbar-icon-btn${activePage === "myprofile" ? " navbar-icon-active" : ""}`}
-            title="Profile"
+            title="Profil"
             onClick={() => navigate("/myprofile")}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

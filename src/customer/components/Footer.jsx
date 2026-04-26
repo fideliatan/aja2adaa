@@ -36,24 +36,24 @@ export default function Footer() {
 
       <div className="footer-links-row">
         <div className="footer-col">
-          <p className="footer-col-title">Shop</p>
+          <p className="footer-col-title">Belanja</p>
           <span onClick={() => navigate("/products")}>Skincare</span>
           <span onClick={() => navigate("/products")}>Makeup</span>
           <span onClick={() => navigate("/products")}>Haircare</span>
           <span onClick={() => navigate("/products")}>Body Care</span>
         </div>
         <div className="footer-col">
-          <p className="footer-col-title">Help</p>
-          <span onClick={() => navigate("/contact")}>Return Policy</span>
-          <span onClick={() => navigate("/contact")}>Contact Us</span>
+          <p className="footer-col-title">Bantuan</p>
+          <span onClick={() => navigate("/contact")}>Kebijakan Pengembalian</span>
+          <span onClick={() => navigate("/contact")}>Hubungi Kami</span>
         </div>
       </div>
 
       <div className="footer-bottom">
-        <p>© 2025 Careofyou. All rights reserved.</p>
+        <p>© 2025 Careofyou. Semua hak dilindungi.</p>
         <div className="footer-legal">
-          <span>Privacy Policy</span>
-          <span>Terms of Service</span>
+          <span>Kebijakan Privasi</span>
+          <span>Syarat Layanan</span>
         </div>
       </div>
     </footer>
