@@ -6,19 +6,19 @@ const createOtpDigits = () => Array(OTP_LENGTH).fill("");
 
 const RISK_LEVEL_META = {
   low: {
-    label: "Low Risk",
+    label: "Risiko Rendah",
     color: "#15803d",
     bg: "rgba(34,197,94,0.1)",
     stroke: "#22c55e",
   },
   medium: {
-    label: "Medium Risk",
+    label: "Risiko Sedang",
     color: "#b45309",
     bg: "rgba(245,158,11,0.12)",
     stroke: "#f59e0b",
   },
   high: {
-    label: "High Risk",
+    label: "Risiko Tinggi",
     color: "#b91c1c",
     bg: "rgba(239,68,68,0.12)",
     stroke: "#ef4444",
@@ -33,45 +33,45 @@ const SESSION_ACCESS_META = {
 };
 
 const DEVICE_TRUST_META = {
-  trusted: { label: "Trusted Device", className: "adm-device-badge--trusted" },
-  "semi-trusted": { label: "Known, Unusual Network", className: "adm-device-badge--semi" },
-  new: { label: "Unrecognized Device", className: "adm-device-badge--new" },
+  trusted: { label: "Perangkat Terpercaya", className: "adm-device-badge--trusted" },
+  "semi-trusted": { label: "Dikenal, Jaringan Tidak Biasa", className: "adm-device-badge--semi" },
+  new: { label: "Perangkat Tidak Dikenal", className: "adm-device-badge--new" },
 };
 
 const FLAG_SEVERITY_META = {
-  low: { label: "Low", className: "adm-risk-badge--low" },
-  medium: { label: "Medium", className: "adm-risk-badge--medium" },
-  high: { label: "High", className: "adm-risk-badge--high" },
+  low: { label: "Rendah", className: "adm-risk-badge--low" },
+  medium: { label: "Sedang", className: "adm-risk-badge--medium" },
+  high: { label: "Tinggi", className: "adm-risk-badge--high" },
 };
 
 const FLAG_STATUS_META = {
-  open: { label: "Open", className: "adm-risk-badge--open" },
-  reviewed: { label: "Reviewed", className: "adm-risk-badge--reviewed" },
-  resolved: { label: "Resolved", className: "adm-risk-badge--resolved" },
+  open: { label: "Terbuka", className: "adm-risk-badge--open" },
+  reviewed: { label: "Ditinjau", className: "adm-risk-badge--reviewed" },
+  resolved: { label: "Diselesaikan", className: "adm-risk-badge--resolved" },
 };
 
 const summaryCardCopy = [
   {
     key: "totalFlaggedCases",
-    label: "Total Flagged Cases",
+    label: "Total Kasus Ditandai",
     sub: "case dengan signal fraud aktif",
     icon: "flag",
   },
   {
     key: "highRiskCases",
-    label: "High Risk Cases",
+    label: "Kasus Risiko Tinggi",
     sub: "perlu review manual sebelum approve",
     icon: "shield",
   },
   {
     key: "pendingReview",
-    label: "Pending Review",
+    label: "Menunggu Tinjauan",
     sub: "masih punya open flags",
     icon: "clock",
   },
   {
     key: "resolvedFlags",
-    label: "Resolved Flags",
+    label: "Flag Diselesaikan",
     sub: "flag yang sudah ditutup admin",
     icon: "check",
   },
@@ -303,11 +303,11 @@ export function TrustedDeviceCard({ device, compact = false }) {
       </div>
 
       <div className="adm-device-detail-row">
-        <span>Last seen</span>
+        <span>Terakhir aktif</span>
         <strong>{device.lastSeen}</strong>
       </div>
       <div className="adm-device-detail-row">
-        <span>Verification</span>
+        <span>Verifikasi</span>
         <strong>{device.verificationStatus}</strong>
       </div>
 
@@ -315,7 +315,7 @@ export function TrustedDeviceCard({ device, compact = false }) {
         <div className="adm-device-metrics">
           <div className="adm-device-metric">
             <span>Token match</span>
-            <strong>{device.trustedDeviceTokenMatch ? "Yes" : "No"}</strong>
+            <strong>{device.trustedDeviceTokenMatch ? "Ya" : "Tidak"}</strong>
           </div>
           <div className="adm-device-metric">
             <span>Fingerprint</span>
@@ -323,7 +323,7 @@ export function TrustedDeviceCard({ device, compact = false }) {
           </div>
           <div className="adm-device-metric">
             <span>User agent</span>
-            <strong>{device.userAgentMatch ? "Match" : "Mismatch"}</strong>
+            <strong>{device.userAgentMatch ? "Cocok" : "Tidak Cocok"}</strong>
           </div>
           <div className="adm-device-metric">
             <span>Subnet</span>
@@ -378,7 +378,7 @@ export function RiskScoreCard({ summary, compact = false }) {
           <span className={`adm-risk-level-badge adm-risk-level-badge--${summary.riskLevel}`}>
             {level.label}
           </span>
-          <p className="adm-risk-score-title">Risk / Fraud Score</p>
+          <p className="adm-risk-score-title">Skor Risiko / Fraud</p>
         </div>
         <p className="adm-risk-score-sub">
           {summary.recommendedAction}
@@ -400,8 +400,8 @@ export function RiskFlagList({ flags, onResolveFlag }) {
   return (
     <div className="adm-card adm-risk-card">
       <div className="adm-card-header">
-        <h3 className="adm-card-title">Warning Flags</h3>
-        <span className="adm-card-tag">{flags.length} items</span>
+        <h3 className="adm-card-title">Flag Peringatan</h3>
+        <span className="adm-card-tag">{flags.length} item</span>
       </div>
 
       {flags.length === 0 ? (
@@ -436,7 +436,7 @@ export function RiskFlagList({ flags, onResolveFlag }) {
                       className="adm-risk-flag-action"
                       onClick={() => onResolveFlag(flag)}
                     >
-                      Resolve Flag
+                      Selesaikan Flag
                     </button>
                   )}
                 </div>
@@ -453,8 +453,8 @@ export function RiskBreakdownCard({ summary }) {
   return (
     <div className="adm-card adm-risk-card">
       <div className="adm-card-header">
-        <h3 className="adm-card-title">Why This Case Is Flagged</h3>
-        <span className="adm-card-tag">{summary.breakdown.length} factors</span>
+        <h3 className="adm-card-title">Mengapa Case Ini Ditandai</h3>
+        <span className="adm-card-tag">{summary.breakdown.length} faktor</span>
       </div>
 
       <div className="adm-risk-breakdown-list">
@@ -473,8 +473,8 @@ export function SecurityTimeline({ timeline }) {
   return (
     <div className="adm-card adm-risk-card">
       <div className="adm-card-header">
-        <h3 className="adm-card-title">Security Activity Timeline</h3>
-        <span className="adm-card-tag">{timeline.length} events</span>
+        <h3 className="adm-card-title">Riwayat Aktivitas Keamanan</h3>
+        <span className="adm-card-tag">{timeline.length} event</span>
       </div>
 
       <div className="adm-risk-timeline">
@@ -517,7 +517,7 @@ export function CaseRiskPanel({ summary, entityLabel, onResolveFlag }) {
     <div className="adm-section">
       <div className="adm-section-header">
         <div>
-          <h2 className="adm-section-title">Risk Monitoring</h2>
+          <h2 className="adm-section-title">Pemantauan Risiko</h2>
           <p className="adm-section-sub">
             Decision support untuk {entityLabel}. Gunakan insight ini sebelum approve atau reject case.
           </p>
@@ -527,7 +527,7 @@ export function CaseRiskPanel({ summary, entityLabel, onResolveFlag }) {
       <div className="adm-risk-panel-grid">
         <div className="adm-card adm-risk-card adm-risk-card--hero">
           <div className="adm-card-header">
-            <h3 className="adm-card-title">Decision Summary</h3>
+            <h3 className="adm-card-title">Ringkasan Keputusan</h3>
             <span className="adm-card-tag">{summary.entityType}</span>
           </div>
           <RiskScoreCard summary={summary} />
@@ -535,11 +535,11 @@ export function CaseRiskPanel({ summary, entityLabel, onResolveFlag }) {
 
         <div className="adm-card adm-risk-card adm-risk-card--recommend">
           <div className="adm-card-header">
-            <h3 className="adm-card-title">Recommended Action</h3>
+            <h3 className="adm-card-title">Aksi yang Direkomendasikan</h3>
           </div>
           <div className="adm-risk-recommend-box">
             <span className={`adm-risk-level-badge adm-risk-level-badge--${summary.riskLevel}`}>
-              {RISK_LEVEL_META[summary.riskLevel]?.label ?? "Risk"}
+              {RISK_LEVEL_META[summary.riskLevel]?.label ?? "Risiko"}
             </span>
             <p className="adm-risk-recommend-copy">{summary.recommendedAction}</p>
           </div>
@@ -549,14 +549,14 @@ export function CaseRiskPanel({ summary, entityLabel, onResolveFlag }) {
       <div className="adm-security-grid">
         <div className="adm-card adm-risk-card">
           <div className="adm-card-header">
-            <h3 className="adm-card-title">Session Risk Summary</h3>
+            <h3 className="adm-card-title">Ringkasan Risiko Sesi</h3>
           </div>
           <SessionRiskSummary state={summary.sessionRiskState} />
         </div>
 
         <div className="adm-card adm-risk-card">
           <div className="adm-card-header">
-            <h3 className="adm-card-title">Trusted Device Status</h3>
+            <h3 className="adm-card-title">Status Perangkat Terpercaya</h3>
           </div>
           <TrustedDeviceCard device={summary.trustedDeviceStatus} />
         </div>
@@ -681,7 +681,7 @@ export function StepUpVerificationModal({
         {status === "form" && (
           <>
             <div className="adm-modal-header">
-              <h3>Step-Up Verification</h3>
+              <h3>Verifikasi Step-Up</h3>
               <button className="adm-modal-close" onClick={onClose}>✕</button>
             </div>
             <div className="adm-modal-body">
@@ -692,7 +692,7 @@ export function StepUpVerificationModal({
                 <div>
                   <p className="adm-stepup-banner-title">{actionLabel}</p>
                   <p className="adm-stepup-banner-sub">
-                    {caseId ? `Case ${caseId}` : "Sensitive action"} memerlukan verifikasi tambahan sebelum diproses.
+                    {caseId ? `Case ${caseId}` : "Aksi sensitif"} memerlukan verifikasi tambahan sebelum diproses.
                   </p>
                 </div>
               </div>
@@ -729,7 +729,7 @@ export function StepUpVerificationModal({
                       onChange={(event) => handleDigitChange(event.target.value, index)}
                       onKeyDown={(event) => handleKeyDown(event, index)}
                       onPaste={(event) => handleOtpPaste(event, setDigits, focusInput)}
-                      aria-label={`Verification digit ${index + 1}`}
+                      aria-label={`Digit verifikasi ${index + 1}`}
                     />
                   ))}
                 </div>
@@ -738,10 +738,10 @@ export function StepUpVerificationModal({
 
                 <div className="adm-modal-footer">
                   <button type="submit" className="adm-pa-approve-btn">
-                    <IconShield /> Verify Action
+                    <IconShield /> Verifikasi Aksi
                   </button>
                   <button type="button" className="adm-ghost-btn" onClick={onClose}>
-                    Cancel
+                    Batal
                   </button>
                 </div>
               </form>
@@ -760,7 +760,7 @@ export function StepUpVerificationModal({
         {status === "success" && (
           <div className="adm-modal-center">
             <div className="adm-modal-success-icon"><IconCheck /></div>
-            <h3 className="adm-modal-success-title">Verification Passed</h3>
+            <h3 className="adm-modal-success-title">Verifikasi Berhasil</h3>
             <p className="adm-modal-success-sub">Aksi sensitif sudah diverifikasi dan siap dijalankan.</p>
           </div>
         )}

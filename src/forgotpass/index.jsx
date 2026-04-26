@@ -81,7 +81,7 @@ function StrengthBar({ password }) {
     /[^A-Za-z0-9]/.test(password),
   ].filter(Boolean).length;
 
-  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  const labels = ["", "Lemah", "Sedang", "Bagus", "Kuat"];
   const colors = ["", "#e07a73", "#e8a85a", "#6cbf8a", "#44b07a"];
 
   if (!password) return null;
@@ -105,9 +105,9 @@ function StrengthBar({ password }) {
 
 /* ── Panel copy per step ─────────────────────────────────── */
 const PANEL = {
-  1: { heading: "Let's get you back.",      sub: "Enter the email linked to your account — we'll send a verification code." },
-  2: { heading: "Check your inbox.",        sub: "We've sent a 4-digit OTP to your email. Enter it below to continue." },
-  3: { heading: "Almost there.",            sub: "Create a strong new password for your careofyou account." },
+  1: { heading: "Ayo bantu kamu masuk lagi.",   sub: "Masukkan email yang terhubung ke akunmu — kami akan kirim kode verifikasi." },
+  2: { heading: "Cek inboxmu.",                 sub: "Kami sudah kirim OTP 4 digit ke emailmu. Masukkan di bawah untuk melanjutkan." },
+  3: { heading: "Hampir selesai.",              sub: "Buat password baru yang kuat untuk akun careofyou-mu." },
 };
 
 export default function ForgotPasswordPage() {
@@ -150,7 +150,7 @@ export default function ForgotPasswordPage() {
   const handleEmailSubmit = (e) => {
     e.preventDefault();
     setEmailError("");
-    if (!email.trim()) { setEmailError("Please enter your email address."); return; }
+    if (!email.trim()) { setEmailError("Masukkan alamat email kamu."); return; }
     setEmailLoading(true);
     setTimeout(() => { setEmailLoading(false); goToStep(2); setSeconds(45); }, 1200);
   };
@@ -171,7 +171,7 @@ export default function ForgotPasswordPage() {
   const handleOtpSubmit = (e) => {
     e.preventDefault();
     setOtpError("");
-    if (otp.join("").length < 4) { setOtpError("Please enter all 4 digits."); return; }
+    if (otp.join("").length < 4) { setOtpError("Masukkan semua 4 digit OTP."); return; }
     setOtpLoading(true);
     setTimeout(() => { setOtpLoading(false); goToStep(3); }, 1200);
   };
@@ -186,8 +186,8 @@ export default function ForgotPasswordPage() {
   const handlePassSubmit = (e) => {
     e.preventDefault();
     setPassError("");
-    if (newPass.length < 6)          { setPassError("Password must be at least 6 characters."); return; }
-    if (newPass !== confirmPass)      { setPassError("Passwords do not match."); return; }
+    if (newPass.length < 6)          { setPassError("Password minimal 6 karakter."); return; }
+    if (newPass !== confirmPass)      { setPassError("Password tidak cocok."); return; }
     setPassLoading(true);
     setTimeout(() => { setPassLoading(false); navigate("/login"); }, 1400);
   };
@@ -200,7 +200,7 @@ export default function ForgotPasswordPage() {
 
       <a href="/login" className="fp-back-link">
         <IconArrowLeft />
-        Back to Sign In
+        Kembali ke Masuk
       </a>
 
       <div className="fp-container">
@@ -221,17 +221,17 @@ export default function ForgotPasswordPage() {
             <div className="fp-steps">
               <div className={`fp-step${step >= 1 ? " fp-step-active" : ""}${step > 1 ? " fp-step-done" : ""}`}>
                 <span className="fp-step-num">{step > 1 ? <IconCheck /> : "1"}</span>
-                <span className="fp-step-text">Enter Email</span>
+                <span className="fp-step-text">Masukkan Email</span>
               </div>
               <div className="fp-step-line" />
               <div className={`fp-step${step >= 2 ? " fp-step-active" : ""}${step > 2 ? " fp-step-done" : ""}`}>
                 <span className="fp-step-num">{step > 2 ? <IconCheck /> : "2"}</span>
-                <span className="fp-step-text">Verify Code</span>
+                <span className="fp-step-text">Verifikasi Kode</span>
               </div>
               <div className="fp-step-line" />
               <div className={`fp-step${step >= 3 ? " fp-step-active" : ""}`}>
                 <span className="fp-step-num">3</span>
-                <span className="fp-step-text">New Password</span>
+                <span className="fp-step-text">Password Baru</span>
               </div>
             </div>
           </div>
@@ -246,32 +246,32 @@ export default function ForgotPasswordPage() {
               <div className="fp-icon-ring"><IconMail /></div>
             </div>
             <div className="fp-card-top">
-              <h2 className="fp-title">Forgot Password?</h2>
-              <p className="fp-subtitle">No worries — it happens to the best of us. We'll help you get back in.</p>
+              <h2 className="fp-title">Lupa Password?</h2>
+              <p className="fp-subtitle">Tenang saja — ini bisa terjadi pada siapapun. Kami akan bantu kamu masuk lagi.</p>
             </div>
             <form className="fp-form" onSubmit={handleEmailSubmit}>
               <div className="fp-field-group">
-                <label className="fp-field-label">Email Address</label>
+                <label className="fp-field-label">Alamat Email</label>
                 <div className="fp-input-wrap">
                   <span className="fp-input-icon"><IconMail /></span>
                   <input
                     className="fp-field-input"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="kamu@contoh.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                   />
                 </div>
-                <p className="fp-field-hint">We'll send a 4-digit OTP to this email.</p>
+                <p className="fp-field-hint">Kami akan kirim OTP 4 digit ke email ini.</p>
               </div>
               {emailError && <div className="fp-error">{emailError}</div>}
               <button type="submit" className="fp-btn" disabled={emailLoading}>
-                {emailLoading ? <span className="fp-spinner" /> : <><span>Continue</span><IconArrowRight /></>}
+                {emailLoading ? <span className="fp-spinner" /> : <><span>Lanjutkan</span><IconArrowRight /></>}
               </button>
             </form>
             <p className="fp-login-link">
-              Remember your password? <a href="/login">Sign in</a>
+              Ingat passwordmu? <a href="/login">Masuk</a>
             </p>
           </div>
 
@@ -281,10 +281,10 @@ export default function ForgotPasswordPage() {
               <div className="fp-icon-ring fp-icon-ring--shield"><IconShield /></div>
             </div>
             <div className="fp-card-top">
-              <h2 className="fp-title">Verify Your Email</h2>
+              <h2 className="fp-title">Verifikasi Email</h2>
               <p className="fp-subtitle">
-                Enter the 4-digit code sent to{" "}
-                <span className="fp-email-highlight">{email || "your email"}</span>
+                Masukkan kode 4 digit yang dikirim ke{" "}
+                <span className="fp-email-highlight">{email || "emailmu"}</span>
               </p>
             </div>
             <form className="fp-form" onSubmit={handleOtpSubmit}>
@@ -304,17 +304,17 @@ export default function ForgotPasswordPage() {
                 ))}
               </div>
               <div className="fp-otp-meta">
-                <span>{seconds > 0 ? `00:${seconds.toString().padStart(2, "0")}` : "Code expired"}</span>
-                <button type="button" className="fp-resend-btn" onClick={handleResend}>Resend Code</button>
+                <span>{seconds > 0 ? `00:${seconds.toString().padStart(2, "0")}` : "Kode kedaluwarsa"}</span>
+                <button type="button" className="fp-resend-btn" onClick={handleResend}>Kirim Ulang Kode</button>
               </div>
               {otpError && <div className="fp-error">{otpError}</div>}
               <button type="submit" className="fp-btn" disabled={otpLoading}>
-                {otpLoading ? <span className="fp-spinner" /> : <><span>Verify</span><IconArrowRight /></>}
+                {otpLoading ? <span className="fp-spinner" /> : <><span>Verifikasi</span><IconArrowRight /></>}
               </button>
             </form>
             <p className="fp-login-link">
-              Wrong email?{" "}
-              <span className="fp-link-btn" onClick={() => { setStep(1); setPanelCopy(PANEL[1]); }}>Go back</span>
+              Email salah?{" "}
+              <span className="fp-link-btn" onClick={() => { setStep(1); setPanelCopy(PANEL[1]); }}>Kembali</span>
             </p>
           </div>
 
@@ -324,31 +324,31 @@ export default function ForgotPasswordPage() {
               <div className="fp-icon-ring fp-icon-ring--lock"><IconLock /></div>
             </div>
             <div className="fp-card-top">
-              <h2 className="fp-title">Set New Password</h2>
-              <p className="fp-subtitle">Choose a strong password to secure your account.</p>
+              <h2 className="fp-title">Atur Password Baru</h2>
+              <p className="fp-subtitle">Pilih password yang kuat untuk mengamankan akunmu.</p>
             </div>
             <form className="fp-form" onSubmit={handlePassSubmit}>
               <PwField
-                label="New Password"
-                placeholder="Min. 6 characters"
+                label="Password Baru"
+                placeholder="Min. 6 karakter"
                 value={newPass}
                 onChange={e => setNewPass(e.target.value)}
               />
               <StrengthBar password={newPass} />
               <PwField
-                label="Confirm Password"
-                placeholder="Repeat your password"
+                label="Konfirmasi Password"
+                placeholder="Ulangi password kamu"
                 value={confirmPass}
                 onChange={e => setConfirmPass(e.target.value)}
               />
               {passError && <div className="fp-error">{passError}</div>}
               <button type="submit" className="fp-btn" disabled={passLoading}>
-                {passLoading ? <span className="fp-spinner" /> : <><span>Reset Password</span><IconArrowRight /></>}
+                {passLoading ? <span className="fp-spinner" /> : <><span>Atur Ulang Password</span><IconArrowRight /></>}
               </button>
             </form>
             <p className="fp-login-link">
-              Remembered it?{" "}
-              <a href="/login">Sign in instead</a>
+              Ingat passwordmu?{" "}
+              <a href="/login">Masuk sekarang</a>
             </p>
           </div>
 
