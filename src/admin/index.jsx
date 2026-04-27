@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2 } from "lucide-react";
 import { PRODUCTS } from "../data/products.js";
 import "./index.css";
+import jsQR from "jsqr";
 import { useOrders } from "../customer/context/OrderContext";
 import { useMockData } from "../context/MockDataContext.jsx";
 import {
@@ -1103,6 +1104,102 @@ function buildAllReturns(ctxReturns) {
   }));
 }
 
+/* ═══════════════════════════════════════════════════════════
+   CAMERA QR SCANNER
+   ═══════════════════════════════════════════════════════════ */
+function CameraScanner({ onScan, onClose }) {
+  const videoRef  = useRef(null);
+  const canvasRef = useRef(null);
+  const rafRef    = useRef(null);
+  const streamRef = useRef(null);
+  const [camErr,   setCamErr]   = useState(null);
+  const [active,   setActive_]  = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          setActive_(true);
+        }
+      })
+      .catch(err => {
+        if (!alive) return;
+        setCamErr("Tidak dapat mengakses kamera: " + (err.message || err));
+      });
+    return () => {
+      alive = false;
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    const tick = () => {
+      const video  = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || video.readyState < 2) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      const ctx = canvas.getContext("2d");
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
+      if (code) {
+        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+        cancelAnimationFrame(rafRef.current);
+        setActive_(false);
+        onScan(code.data);
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [active, onScan]);
+
+  return (
+    <div className="adm-cam-overlay" onClick={onClose}>
+      <div className="adm-cam-modal" onClick={e => e.stopPropagation()}>
+        <div className="adm-cam-header">
+          <span className="adm-cam-title">Scan QR Produk</span>
+          <button className="adm-cam-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="adm-cam-body">
+          {camErr ? (
+            <div className="adm-cam-error">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p className="adm-cam-error-msg">{camErr}</p>
+              <button className="adm-cam-err-btn" onClick={onClose}>Tutup</button>
+            </div>
+          ) : (
+            <div className="adm-cam-viewfinder">
+              <video ref={videoRef} className="adm-cam-video" muted playsInline />
+              <canvas ref={canvasRef} className="adm-cam-canvas" />
+              <div className="adm-cam-frame">
+                <span className="adm-cam-corner adm-cam-corner--tl" />
+                <span className="adm-cam-corner adm-cam-corner--tr" />
+                <span className="adm-cam-corner adm-cam-corner--bl" />
+                <span className="adm-cam-corner adm-cam-corner--br" />
+                <div className="adm-cam-scanline" />
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="adm-cam-hint">Arahkan kamera ke QR code produk untuk scan otomatis</p>
+      </div>
+    </div>
+  );
+}
+
 function Returns({ goToReturnDetail }) {
   const { returns: ctxReturns } = useOrders();
   const { mockStore } = useMockData();
@@ -1213,6 +1310,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     helperText: "",
   });
   const stepUpActionRef = useRef(null);
+  const [showScanner,   setShowScanner]  = useState(false);
 
   const currentId  = localId ?? allReturns[0]?.id;
   const ret        = allReturns.find(r => r.id === currentId) ?? allReturns[0];
@@ -1243,30 +1341,33 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     if (patch.qrStatus) setLocalQr(p => ({ ...p, [id]: patch.qrStatus }));
   };
 
+  const handleScanResult = (scannedValue) => {
+    setShowScanner(false);
+    if (!ret) return;
+    const matched = scannedValue === ret.qrCode;
+    const result  = matched ? "valid" : "invalid";
+    setVerifyResult(result);
+    setLocalQr(p => ({ ...p, [ret.id]: result }));
+    setRiskSummary((prev) => ({
+      ...prev,
+      timeline: [
+        ...prev.timeline,
+        createSecurityTimelineEvent(
+          ret.id.toLowerCase(),
+          "qr",
+          matched ? "Verifikasi QR berhasil" : "Verifikasi QR gagal",
+          matched ? "success" : "danger"
+        ),
+      ],
+    }));
+    if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
+    else patchReturn(ret.id, { qrStatus: result });
+  };
+
   const doScanQR = () => {
     if (!ret || scanning) return;
-    setScanning(true); setVerifyResult(null);
-    setTimeout(() => {
-      setScanning(false);
-      const matched = ret.scannedQr === ret.qrCode;
-      const result  = matched ? "valid" : "invalid";
-      setVerifyResult(result);
-      setLocalQr(p => ({ ...p, [ret.id]: result }));
-      setRiskSummary((prev) => ({
-        ...prev,
-        timeline: [
-          ...prev.timeline,
-          createSecurityTimelineEvent(
-            ret.id.toLowerCase(),
-            "qr",
-            matched ? "Verifikasi QR berhasil" : "Verifikasi QR gagal",
-            matched ? "success" : "danger"
-          ),
-        ],
-      }));
-      if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
-      else patchReturn(ret.id, { qrStatus: result });
-    }, 1400);
+    setVerifyResult(null);
+    setShowScanner(true);
   };
 
   const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setVerifyResult(null); setScanning(false); };
@@ -1712,6 +1813,13 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           <img src={photos[photoZoom]} alt={`Foto ${photoZoom + 1}`} className="adm-proof-zoom-img" />
           <button className="adm-proof-zoom-close" onClick={() => setPhotoZoom(null)}>✕</button>
         </div>
+      )}
+
+      {showScanner && (
+        <CameraScanner
+          onScan={handleScanResult}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </div>
   );

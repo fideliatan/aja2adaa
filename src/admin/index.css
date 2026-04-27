@@ -3961,3 +3961,160 @@
     font-size: 16px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CAMERA QR SCANNER MODAL
+   ═══════════════════════════════════════════════════════════ */
+.adm-cam-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.adm-cam-modal {
+  background: var(--adm-surface, #fff);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  width: min(520px, 94vw);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--adm-border, #e5e7eb);
+}
+
+.adm-cam-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--adm-text, #111827);
+  letter-spacing: -0.01em;
+}
+
+.adm-cam-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--adm-surface2, #f3f4f6);
+  color: var(--adm-text, #374151);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+.adm-cam-close:hover {
+  background: var(--adm-border, #e5e7eb);
+  transform: scale(1.1);
+}
+
+.adm-cam-body {
+  padding: 20px;
+}
+
+.adm-cam-viewfinder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 420px;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.adm-cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.adm-cam-canvas {
+  display: none;
+}
+
+.adm-cam-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.adm-cam-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #fff;
+  border-style: solid;
+  border-radius: 3px;
+}
+.adm-cam-corner--tl { top: 18px;    left: 18px;   border-width: 3px 0 0 3px; }
+.adm-cam-corner--tr { top: 18px;    right: 18px;  border-width: 3px 3px 0 0; }
+.adm-cam-corner--bl { bottom: 18px; left: 18px;   border-width: 0 0 3px 3px; }
+.adm-cam-corner--br { bottom: 18px; right: 18px;  border-width: 0 3px 3px 0; }
+
+@keyframes adm-cam-scan {
+  0%   { top: 10%; }
+  50%  { top: 86%; }
+  100% { top: 10%; }
+}
+
+.adm-cam-scanline {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(74,159,212,0.9), transparent);
+  box-shadow: 0 0 8px rgba(74,159,212,0.8);
+  animation: adm-cam-scan 2.2s ease-in-out infinite;
+}
+
+.adm-cam-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--adm-text-muted, #6b7280);
+  padding: 14px 20px 18px;
+  margin: 0;
+}
+
+.adm-cam-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px 20px;
+  text-align: center;
+}
+
+.adm-cam-error-msg {
+  font-size: 13.5px;
+  color: var(--adm-text, #374151);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.adm-cam-err-btn {
+  padding: 9px 28px;
+  border-radius: 10px;
+  border: none;
+  background: var(--adm-primary, #4a9fd4);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.adm-cam-err-btn:hover {
+  background: #3a8fc4;
+}
