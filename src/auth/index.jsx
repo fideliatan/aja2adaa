@@ -183,7 +183,7 @@ export default function AuthPage() {
     setOtpLoading(false);
     setOtpError("");
     setOtpNotice(
-      email ? `${getOtpNotice(email)} Untuk testing gunakan kode 123456.` : ""
+      email ? getOtpNotice(email) : ""
     );
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
