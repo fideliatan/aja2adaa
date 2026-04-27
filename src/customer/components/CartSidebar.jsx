@@ -19,7 +19,7 @@ export default function CartSidebar() {
 
       <div className={`cart-sidebar${cartOpen ? " cart-sidebar-open" : ""}`}>
         <div className="cart-header">
-          <h2 className="cart-title">Shopping Cart</h2>
+          <h2 className="cart-title">Keranjang Belanja</h2>
           <button className="cart-close" onClick={() => setCartOpen(false)}>✕</button>
         </div>
 
@@ -53,7 +53,7 @@ export default function CartSidebar() {
 
             <div className="cart-footer">
               <div className="cart-total-row">
-                <span>Total</span>
+                <span>Total Belanja</span>
                 <span className="cart-total-val">{formatRupiah(cartTotal)}</span>
               </div>
               <button
@@ -63,7 +63,7 @@ export default function CartSidebar() {
                   navigate("/checkout", { state: { cartItems: cart } });
                 }}
               >
-                Checkout
+                Bayar Sekarang
               </button>
             </div>
           </>

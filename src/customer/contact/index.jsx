@@ -102,32 +102,32 @@ export default function ContactPage() {
         <div className="ct-hero-left">
           <span className="ct-eyebrow">
             <span className="ct-eyebrow-dot" />
-            Contact Us
+            Hubungi Kami
           </span>
           <h1 className="ct-hero-title">
-            Let's<br />
-            <span className="ct-hero-grad">Talk</span>
-            <br />Together
+            Ayo<br />
+            <span className="ct-hero-grad">Bicara</span>
+            <br />Bersama
           </h1>
           <p className="ct-hero-desc">
-            Have a question, a special order, or just want to say hi?
-            The Careofyou team is here to help you anytime <Mail size={16} style={{ display: "inline", verticalAlign: "middle" }} />
+            Punya pertanyaan, pesanan khusus, atau sekadar ingin menyapa?
+            Tim Careofyou siap membantu kamu kapan saja <Mail size={16} style={{ display: "inline", verticalAlign: "middle" }} />
           </p>
 
           <div className="ct-hero-stats">
             <div className="ct-stat">
-              <span className="ct-stat-val">~30 Min</span>
-              <span className="ct-stat-label">Avg Response</span>
+              <span className="ct-stat-val">~30 Menit</span>
+              <span className="ct-stat-label">Rata-rata Respon</span>
             </div>
             <div className="ct-stat-divider" />
             <div className="ct-stat">
               <span className="ct-stat-val">4.9★</span>
-              <span className="ct-stat-label">Rating</span>
+              <span className="ct-stat-label">Penilaian</span>
             </div>
             <div className="ct-stat-divider" />
             <div className="ct-stat">
               <span className="ct-stat-val">2017</span>
-              <span className="ct-stat-label">Trusted Since</span>
+              <span className="ct-stat-label">Dipercaya Sejak</span>
             </div>
           </div>
 
@@ -158,21 +158,21 @@ export default function ContactPage() {
           <div className="ct-float-card ct-fc-1">
             <span className="ct-fc-icon"><Zap size={20} /></span>
             <div className="ct-fc-info">
-              <span className="ct-fc-val">Fast Reply</span>
-              <span className="ct-fc-sub">Avg 30 min</span>
+              <span className="ct-fc-val">Balas Cepat</span>
+              <span className="ct-fc-sub">Rata-rata 30 menit</span>
             </div>
           </div>
           <div className="ct-float-card ct-fc-2">
             <span className="ct-fc-icon"><Shield size={20} /></span>
             <div className="ct-fc-info">
-              <span className="ct-fc-val">100% Safe</span>
-              <span className="ct-fc-sub">Guaranteed</span>
+              <span className="ct-fc-val">100% Aman</span>
+              <span className="ct-fc-sub">Terjamin</span>
             </div>
           </div>
           <div className="ct-float-card ct-fc-3">
             <span className="ct-fc-icon"><Truck size={20} /></span>
             <div className="ct-fc-info">
-              <span className="ct-fc-val">Free Shipping</span>
+              <span className="ct-fc-val">Gratis Ongkir</span>
               <span className="ct-fc-sub">Min. Rp 150K</span>
             </div>
           </div>
@@ -187,23 +187,23 @@ export default function ContactPage() {
               icon: <PhoneIcon />,
               color: "green",
               label: "WhatsApp",
-              desc: "Chat directly for the fastest & friendliest response!",
+              desc: "Chat langsung untuk respon tercepat & teramah!",
               value: "+62 812-3456-7890",
               href: "https://wa.me/6281234567890",
             },
             {
               icon: <LocationIcon />,
               color: "rose",
-              label: "Location",
-              desc: "Serving Manado, Tondano, Tomohon & surrounding areas.",
-              value: "Manado, North Sulawesi",
+              label: "Lokasi",
+              desc: "Melayani Manado, Tondano, Tomohon & sekitarnya.",
+              value: "Manado, Sulawesi Utara",
               href: null,
             },
             {
               icon: <ClockIcon />,
               color: "amber",
-              label: "Business Hours",
-              desc: "We're always ready to help you every day.",
+              label: "Jam Operasional",
+              desc: "Kami selalu siap membantu kamu setiap hari.",
               value: "08:00 – 21:00 WITA",
               href: null,
             },
@@ -232,9 +232,9 @@ export default function ContactPage() {
       <section className="ct-main">
         <div className="ct-form-card">
           <div className="ct-form-header">
-            <span className="ct-form-label-tag">Send a Message</span>
-            <h2 className="ct-form-title">We'd love to<br/>hear from you <Sparkles size={18} style={{ display: "inline", verticalAlign: "middle" }} /></h2>
-            <p className="ct-form-sub">Fill out the form below and we'll get back to you as soon as possible.</p>
+            <span className="ct-form-label-tag">Kirim Pesan</span>
+            <h2 className="ct-form-title">Kami ingin mendengar<br/>dari kamu <Sparkles size={18} style={{ display: "inline", verticalAlign: "middle" }} /></h2>
+            <p className="ct-form-sub">Isi formulir di bawah dan kami akan segera membalas.</p>
           </div>
 
           {submitted && (
@@ -247,25 +247,25 @@ export default function ContactPage() {
           <form className="ct-form-body" onSubmit={handleSubmit}>
             <div className="ct-row-2">
               <div className="ct-field">
-                <label className="ct-label">Name <span className="ct-req">*</span></label>
-                <input className="ct-input" placeholder="Your name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                <label className="ct-label">Nama <span className="ct-req">*</span></label>
+                <input className="ct-input" placeholder="Nama kamu" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
               </div>
               <div className="ct-field">
                 <label className="ct-label">Email <span className="ct-req">*</span></label>
-                <input className="ct-input" type="email" placeholder="your@email.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                <input className="ct-input" type="email" placeholder="email@kamu.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               </div>
             </div>
             <div className="ct-field">
-              <label className="ct-label">Subject</label>
-              <input className="ct-input" placeholder="What's this about?" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} />
+              <label className="ct-label">Subjek</label>
+              <input className="ct-input" placeholder="Tentang apa ini?" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} />
             </div>
             <div className="ct-field">
-              <label className="ct-label">Message <span className="ct-req">*</span></label>
-              <textarea className="ct-input ct-textarea" placeholder="Tell us anything..." value={form.message} onChange={e => setForm({...form, message: e.target.value})} rows={5} />
+              <label className="ct-label">Pesan <span className="ct-req">*</span></label>
+              <textarea className="ct-input ct-textarea" placeholder="Ceritakan apa saja..." value={form.message} onChange={e => setForm({...form, message: e.target.value})} rows={5} />
             </div>
             <button type="submit" className="ct-submit">
               <span className="ct-submit-shine" />
-              Send Message →
+              Kirim Pesan →
             </button>
           </form>
         </div>
@@ -282,28 +282,28 @@ export default function ContactPage() {
             <div className="ct-aside-item">
               <div className="ct-aside-icon ct-aside-icon--loc"><LocationIcon /></div>
               <div>
-                <p className="ct-aside-label">Location</p>
-                <p className="ct-aside-val">Manado, North Sulawesi</p>
+                <p className="ct-aside-label">Lokasi</p>
+                <p className="ct-aside-val">Manado, Sulawesi Utara</p>
               </div>
             </div>
             <div className="ct-aside-item">
               <div className="ct-aside-icon ct-aside-icon--clock"><ClockIcon /></div>
               <div>
-                <p className="ct-aside-label">Business Hours</p>
+                <p className="ct-aside-label">Jam Operasional</p>
                 <p className="ct-aside-val">08:00 – 21:00 WITA</p>
               </div>
             </div>
             <div className="ct-aside-item">
               <div className="ct-aside-icon ct-aside-icon--email"><EmailIcon /></div>
               <div>
-                <p className="ct-aside-label">Email</p>
+                <p className="ct-aside-label">Surel</p>
                 <a href="mailto:hello@careofyou.id" className="ct-aside-val ct-aside-val--link">hello@careofyou.id</a>
               </div>
             </div>
           </div>
 
           <div className="ct-social-card">
-            <h3 className="ct-social-title">Follow & Shop</h3>
+            <h3 className="ct-social-title">Ikuti & Belanja</h3>
             <div className="ct-social-list">
               <a href="https://instagram.com/careofyou.id" target="_blank" rel="noreferrer" className="ct-social-item ct-social-item--ig">
                 <span className="ct-social-ico"><InstagramIcon /></span>
@@ -317,7 +317,7 @@ export default function ContactPage() {
                 <span className="ct-social-ico"><WhatsAppIcon /></span>
                 <div className="ct-social-info">
                   <span className="ct-social-name">WhatsApp</span>
-                  <span className="ct-social-handle">Chat now</span>
+                  <span className="ct-social-handle">Chat sekarang</span>
                 </div>
                 <span className="ct-social-arrow"><ArrowIcon /></span>
               </a>
@@ -334,8 +334,8 @@ export default function ContactPage() {
           <div className="ct-map-header">
             <LocationIcon />
             <div>
-              <h3 className="ct-map-title">Our Location</h3>
-              <p className="ct-map-sub">Manado, North Sulawesi</p>
+              <h3 className="ct-map-title">Lokasi Kami</h3>
+              <p className="ct-map-sub">Manado, Sulawesi Utara</p>
             </div>
           </div>
           <div className="ct-map-wrap">
@@ -363,15 +363,15 @@ export default function ContactPage() {
       {/* CART SIDEBAR */}
       <div className={`cart-sidebar ${cartOpen ? "cart-sidebar-open" : ""}`}>
         <div className="cart-header">
-          <h2 className="cart-title">Shopping Cart</h2>
+          <h2 className="cart-title">Keranjang Belanja</h2>
           <button className="cart-close" onClick={() => setCartOpen(false)}>✕</button>
         </div>
         {cart.length === 0 ? (
           <div className="cart-empty">
             <span className="cart-empty-icon"><ShoppingBag size={40} /></span>
-            <p>Your cart is empty</p>
+            <p>Keranjang kamu kosong</p>
             <button className="cart-shop-btn" onClick={() => { setCartOpen(false); navigate("/"); }}>
-              Start Shopping
+              Mulai Belanja
             </button>
           </div>
         ) : (
@@ -395,14 +395,14 @@ export default function ContactPage() {
             </div>
             <div className="cart-footer">
               <div className="cart-total-row">
-                <span>Total</span>
+                <span>Total Belanja</span>
                 <span className="cart-total-val">{formatRupiah(cartTotal)}</span>
               </div>
               <button
                 className="checkout-btn"
                 onClick={() => { setCartOpen(false); navigate("/checkout", { state: { cartItems: cart } }); }}
               >
-                Checkout
+                Bayar Sekarang
               </button>
             </div>
           </>

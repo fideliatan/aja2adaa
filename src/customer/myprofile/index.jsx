@@ -106,11 +106,11 @@ const IconLogOut = () => (
 
 /* ── Nav config ─────────────────────────────────────────── */
 const navItems = [
-  { id: "userinfo",     label: "User info",       icon: <IconUser /> },
-  { id: "myaddress",    label: "My Address",       icon: <IconMapPin /> },
-  { id: "orderstatus",  label: "Status Orderan",   icon: <IconWallet /> },
-  { id: "setting",      label: "Settings",          icon: <IconSettings /> },
-  { id: "notifications",label: "Notifications",    icon: <IconBell /> },
+  { id: "userinfo",     label: "Info Pengguna",  icon: <IconUser /> },
+  { id: "myaddress",    label: "Alamat Saya",    icon: <IconMapPin /> },
+  { id: "orderstatus",  label: "Status Orderan", icon: <IconWallet /> },
+  { id: "setting",      label: "Pengaturan",     icon: <IconSettings /> },
+  { id: "notifications",label: "Notifikasi",     icon: <IconBell /> },
 ];
 
 /* ── Sections ───────────────────────────────────────────── */
@@ -155,37 +155,37 @@ function UserInfoSection() {
       <form className="pr-form" onSubmit={handleSubmit}>
         <div className="pr-form-row">
           <div className="pr-form-group">
-            <label className="pr-form-label">Name</label>
+            <label className="pr-form-label">Nama Depan</label>
             <input className="pr-input" name="firstName" value={form.firstName} onChange={handleChange} />
           </div>
           <div className="pr-form-group">
-            <label className="pr-form-label">Full Name</label>
+            <label className="pr-form-label">Nama Lengkap</label>
             <input className="pr-input" name="lastName" value={form.lastName} onChange={handleChange} />
           </div>
         </div>
         <div className="pr-form-row">
           <div className="pr-form-group">
-            <label className="pr-form-label">Email Address</label>
+            <label className="pr-form-label">Alamat Email</label>
             <input className="pr-input" name="email" type="email" value={form.email} onChange={handleChange} />
           </div>
           <div className="pr-form-group">
-            <label className="pr-form-label">Phone Number</label>
+            <label className="pr-form-label">Nomor Telepon</label>
             <input className="pr-input" name="phone" value={form.phone} onChange={handleChange} />
           </div>
         </div>
         <div className="pr-form-row">
           <div className="pr-form-group">
-            <label className="pr-form-label">Location</label>
+            <label className="pr-form-label">Lokasi</label>
             <input className="pr-input" name="location" value={form.location} onChange={handleChange} />
           </div>
           <div className="pr-form-group">
-            <label className="pr-form-label">Postal Code</label>
+            <label className="pr-form-label">Kode Pos</label>
             <input className="pr-input" name="postalCode" value={form.postalCode} onChange={handleChange} />
           </div>
         </div>
         <div className="pr-save-wrapper">
           <button type="submit" className={`pr-save-btn${saved ? " pr-save-btn--saved" : ""}`}>
-            {saved ? "Saved!" : "Save Changes"}
+            {saved ? "Tersimpan!" : "Simpan Perubahan"}
           </button>
         </div>
       </form>
@@ -210,7 +210,7 @@ function MyAddressSection() {
   const handleAdd = (e) => {
     e.preventDefault();
     if (!form.label || !form.name || !form.phone || !form.address) {
-      setError("Please fill in all fields.");
+      setError("Harap isi semua kolom.");
       return;
     }
     const newAddr = {
@@ -240,11 +240,11 @@ function MyAddressSection() {
     <div className="pr-addr-section">
       <div className="pr-addr-header">
         <div>
-          <h2 className="pr-section-title">My Address</h2>
-          <p className="pr-section-sub">{addresses.length} saved address{addresses.length !== 1 ? "es" : ""}</p>
+          <h2 className="pr-section-title">Alamat Saya</h2>
+          <p className="pr-section-sub">{addresses.length} alamat tersimpan</p>
         </div>
         <button className="pr-addr-add-btn" onClick={() => { setShowForm((v) => !v); setError(""); }}>
-          {showForm ? "Cancel" : "+ Add Address"}
+          {showForm ? "Batal" : "+ Tambah Alamat"}
         </button>
       </div>
 
@@ -253,25 +253,25 @@ function MyAddressSection() {
         <form className="pr-addr-form" onSubmit={handleAdd}>
           <div className="pr-form-row">
             <div className="pr-form-group">
-              <label className="pr-form-label">Label (e.g. Home, Office)</label>
-              <input className="pr-input" name="label" placeholder="Home" value={form.label} onChange={handleChange} />
+              <label className="pr-form-label">Label (mis. Rumah, Kantor)</label>
+              <input className="pr-input" name="label" placeholder="Rumah" value={form.label} onChange={handleChange} />
             </div>
             <div className="pr-form-group">
-              <label className="pr-form-label">Recipient Name</label>
-              <input className="pr-input" name="name" placeholder="Full name" value={form.name} onChange={handleChange} />
+              <label className="pr-form-label">Nama Penerima</label>
+              <input className="pr-input" name="name" placeholder="Nama lengkap" value={form.name} onChange={handleChange} />
             </div>
           </div>
           <div className="pr-form-group">
-            <label className="pr-form-label">Phone Number</label>
-            <input className="pr-input" name="phone" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange} />
+            <label className="pr-form-label">Nomor Telepon</label>
+            <input className="pr-input" name="phone" placeholder="+62 812 3456 7890" value={form.phone} onChange={handleChange} />
           </div>
           <div className="pr-form-group">
-            <label className="pr-form-label">Full Address</label>
-            <textarea className="pr-input pr-textarea" name="address" placeholder="Street, City, ZIP, Country" value={form.address} onChange={handleChange} rows={3} />
+            <label className="pr-form-label">Alamat Lengkap</label>
+            <textarea className="pr-input pr-textarea" name="address" placeholder="Jalan, Kota, Kode Pos, Negara" value={form.address} onChange={handleChange} rows={3} />
           </div>
           {error && <p className="pr-addr-error">{error}</p>}
           <div className="pr-save-wrapper" style={{ justifyContent: "flex-start" }}>
-            <button type="submit" className="pr-save-btn">Save Address</button>
+            <button type="submit" className="pr-save-btn">Simpan Alamat</button>
           </div>
         </form>
       )}
@@ -283,9 +283,9 @@ function MyAddressSection() {
             <div className="pr-addr-card-top">
               <div className="pr-addr-label-row">
                 <span className="pr-addr-label">{addr.label}</span>
-                {addr.isMain && <span className="pr-addr-badge">Main</span>}
+                {addr.isMain && <span className="pr-addr-badge">Utama</span>}
               </div>
-              <button className="pr-addr-delete" onClick={() => remove(addr.id)} title="Delete address">
+              <button className="pr-addr-delete" onClick={() => remove(addr.id)} title="Hapus alamat">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
@@ -295,7 +295,7 @@ function MyAddressSection() {
             <p className="pr-addr-text">{addr.address}</p>
             {!addr.isMain && (
               <button className="pr-addr-set-main" onClick={() => setMain(addr.id)}>
-                Set as main address
+                Jadikan alamat utama
               </button>
             )}
           </div>
@@ -304,8 +304,8 @@ function MyAddressSection() {
 
       {addresses.length === 0 && (
         <div className="pr-placeholder">
-          <p className="pr-placeholder-title">No addresses yet</p>
-          <p className="pr-placeholder-sub">Add a shipping address to get started.</p>
+          <p className="pr-placeholder-title">Belum ada alamat</p>
+          <p className="pr-placeholder-sub">Tambahkan alamat pengiriman untuk memulai.</p>
         </div>
       )}
     </div>
@@ -443,10 +443,10 @@ const MOCK_ORDERS = {
 };
 
 const STATUS_LABEL = {
-  adminapproval: { text: "Admin Approval", color: "#e07a73", bg: "#fff5f5" },
-  packing:   { text: "Being Packed",     color: "#e09a3a", bg: "#fffaf0" },
-  shipped:   { text: "On Delivery",      color: "#4a9fd4", bg: "#f0f8ff" },
-  rateorder: { text: "Delivered",        color: "#5aab6d", bg: "#f0faf3" },
+  adminapproval: { text: "Persetujuan Admin", color: "#e07a73", bg: "#fff5f5" },
+  packing:   { text: "Sedang Dikemas",    color: "#e09a3a", bg: "#fffaf0" },
+  shipped:   { text: "Dalam Pengiriman",  color: "#4a9fd4", bg: "#f0f8ff" },
+  rateorder: { text: "Terkirim",          color: "#5aab6d", bg: "#f0faf3" },
 };
 
 const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
@@ -472,7 +472,7 @@ function OrderSection({ sectionKey, title }) {
       <div className="pr-order-header">
         <div>
           <h2 className="pr-section-title">{title}</h2>
-          <p className="pr-section-sub">{orders.length} order{orders.length !== 1 ? "s" : ""}</p>
+          <p className="pr-section-sub">{orders.length} pesanan</p>
         </div>
       </div>
 
@@ -481,7 +481,7 @@ function OrderSection({ sectionKey, title }) {
         <input
           className="pr-search-input"
           type="text"
-          placeholder="Search by order ID or product…"
+          placeholder="Cari berdasarkan ID order atau produk…"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -490,8 +490,8 @@ function OrderSection({ sectionKey, title }) {
 
       {filtered.length === 0 ? (
         <div className="pr-placeholder">
-          <p className="pr-placeholder-title">No orders found</p>
-          <p className="pr-placeholder-sub">Try a different keyword.</p>
+          <p className="pr-placeholder-title">Pesanan tidak ditemukan</p>
+          <p className="pr-placeholder-sub">Coba kata kunci lain.</p>
         </div>
       ) : (
         <div className="pr-order-list">
@@ -523,34 +523,34 @@ function OrderSection({ sectionKey, title }) {
                 <p className="pr-order-summary">
                   {order.products[0].name}
                   {order.products.length > 1 && (
-                    <span className="pr-order-summary-more"> &amp; {order.products.length - 1} more item{order.products.length > 2 ? "s" : ""}</span>
+                    <span className="pr-order-summary-more"> &amp; {order.products.length - 1} produk lainnya</span>
                   )}
                 </p>
 
                 {sectionKey === "adminapproval" && (
                   <div className="pr-order-info-row">
-                    <span className="pr-order-info-label">Payment</span>
+                    <span className="pr-order-info-label">Pembayaran</span>
                     <span className="pr-order-info-value">{order.payment.method} · {order.payment.account}</span>
                   </div>
                 )}
                 {sectionKey === "packing" && (
                   <div className="pr-order-info-row">
-                    <span className="pr-order-info-label">Est. ship date</span>
+                    <span className="pr-order-info-label">Est. tanggal kirim</span>
                     <span className="pr-order-info-value">{order.estimatedShip}</span>
                   </div>
                 )}
                 {sectionKey === "shipped" && (
                   <>
                     <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">Courier</span>
+                      <span className="pr-order-info-label">Kurir</span>
                       <span className="pr-order-info-value">{order.courier}</span>
                     </div>
                     <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">Tracking</span>
+                      <span className="pr-order-info-label">No. Resi</span>
                       <span className="pr-order-info-value pr-order-tracking">{order.tracking}</span>
                     </div>
                     <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">Est. arrival</span>
+                      <span className="pr-order-info-label">Est. tiba</span>
                       <span className="pr-order-info-value" style={{ color: "#5aab6d", fontWeight: 600 }}>{order.estimatedArrival}</span>
                     </div>
                   </>
@@ -562,7 +562,7 @@ function OrderSection({ sectionKey, title }) {
                     <span className="pr-order-meta">· {itemCount} item{itemCount !== 1 ? "s" : ""}</span>
                   </div>
                   <div className="pr-order-bottom-right">
-                    <span className="pr-order-unrated">Tap for detail ›</span>
+                    <span className="pr-order-unrated">Ketuk untuk detail ›</span>
                     <span className="pr-order-total">{fmt(total)}</span>
                   </div>
                 </div>
@@ -581,7 +581,7 @@ function OrderSection({ sectionKey, title }) {
             <div className="pr-modal-header">
               <div>
                 <p className="pr-modal-order-id">{selected.id} · {selected.date}</p>
-                <h3 className="pr-modal-title">Order Details</h3>
+                <h3 className="pr-modal-title">Detail Pesanan</h3>
               </div>
               <div className="pr-modal-header-right">
                 <span className="pr-modal-status-badge" style={{ color: status.color, background: status.bg }}>
@@ -598,14 +598,14 @@ function OrderSection({ sectionKey, title }) {
             <div className="pr-modal-body">
               {/* Products */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Ordered Products</p>
+                <p className="pr-modal-section-title">Produk Dipesan</p>
                 <div className="pr-modal-products">
                   {selected.products.map((p, i) => (
                     <div key={i} className="pr-modal-product">
                       <img src={p.image} alt={p.name} className="pr-modal-product-img" />
                       <div className="pr-modal-product-info">
                         <p className="pr-modal-product-name">{p.name}</p>
-                        <p className="pr-modal-product-meta">{p.size} · Qty {p.qty}</p>
+                        <p className="pr-modal-product-meta">{p.size} · Jml {p.qty}</p>
                       </div>
                       <span className="pr-modal-product-price">{fmt(p.price * p.qty)}</span>
                     </div>
@@ -613,7 +613,7 @@ function OrderSection({ sectionKey, title }) {
                 </div>
                 <div className="pr-modal-cost-rows">
                   <div className="pr-modal-cost-row">
-                    <span>Delivery fee</span><span>{fmt(selected.deliveryFee)}</span>
+                    <span>Biaya pengiriman</span><span>{fmt(selected.deliveryFee)}</span>
                   </div>
                   <div className="pr-modal-cost-row pr-modal-cost-row--total">
                     <span>Total</span><span>{fmt(orderTotal(selected))}</span>
@@ -624,11 +624,11 @@ function OrderSection({ sectionKey, title }) {
               {/* Status-specific info */}
               {sectionKey === "adminapproval" && (
                 <div className="pr-modal-section">
-                  <p className="pr-modal-section-title">Order Status</p>
+                  <p className="pr-modal-section-title">Status Pesanan</p>
                   <div className="pr-modal-info-grid">
                     <div className="pr-modal-info-item pr-modal-info-item--full">
-                      <span className="pr-modal-info-label">Next update</span>
-                      <span className="pr-modal-info-value">Your payment is being verified by our admin. Please wait up to 1x24 hours.</span>
+                      <span className="pr-modal-info-label">Update selanjutnya</span>
+                      <span className="pr-modal-info-value">Pembayaran kamu sedang diverifikasi admin kami. Mohon tunggu hingga 1×24 jam.</span>
                     </div>
                   </div>
                 </div>
@@ -636,14 +636,14 @@ function OrderSection({ sectionKey, title }) {
 
               {sectionKey === "packing" && (
                 <div className="pr-modal-section">
-                  <p className="pr-modal-section-title">Packing Information</p>
+                  <p className="pr-modal-section-title">Informasi Pengemasan</p>
                   <div className="pr-modal-info-grid">
                     <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Packed by</span>
+                      <span className="pr-modal-info-label">Dikemas oleh</span>
                       <span className="pr-modal-info-value">{selected.packedBy}</span>
                     </div>
                     <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Est. ship date</span>
+                      <span className="pr-modal-info-label">Est. tanggal kirim</span>
                       <span className="pr-modal-info-value">{selected.estimatedShip}</span>
                     </div>
                   </div>
@@ -652,18 +652,18 @@ function OrderSection({ sectionKey, title }) {
 
               {sectionKey === "shipped" && (
                 <div className="pr-modal-section">
-                  <p className="pr-modal-section-title">Delivery Information</p>
+                  <p className="pr-modal-section-title">Informasi Pengiriman</p>
                   <div className="pr-modal-info-grid">
                     <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Courier</span>
+                      <span className="pr-modal-info-label">Kurir</span>
                       <span className="pr-modal-info-value">{selected.courier}</span>
                     </div>
                     <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Tracking No.</span>
+                      <span className="pr-modal-info-label">No. Resi</span>
                       <span className="pr-modal-info-value pr-modal-info-track">{selected.tracking}</span>
                     </div>
                     <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Est. arrival</span>
+                      <span className="pr-modal-info-label">Est. tiba</span>
                       <span className="pr-modal-info-value">{selected.estimatedArrival}</span>
                     </div>
                   </div>
@@ -672,13 +672,13 @@ function OrderSection({ sectionKey, title }) {
 
               {/* Payment */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Payment Method</p>
+                <p className="pr-modal-section-title">Metode Pembayaran</p>
                 <div className="pr-modal-payment">
                   <div className="pr-modal-payment-badge">{selected.payment.method}</div>
                   <div>
                     <p className="pr-modal-payment-account">{selected.payment.account}</p>
                     <p className="pr-modal-payment-holder">
-                      {selected.payment.holder ? `a.n. ${selected.payment.holder}` : "Payment account used for this order"}
+                      {selected.payment.holder ? `a.n. ${selected.payment.holder}` : "Akun pembayaran yang digunakan untuk pesanan ini"}
                     </p>
                   </div>
                 </div>
@@ -851,16 +851,16 @@ function OrderStatusSection() {
 
 /* ── Notifications Section ──────────────────────────────── */
 const MOCK_NOTIFICATIONS = [
-  { id: 1,  type: "order",    title: "Order placed",                  body: "ORD-011 confirmed. Rp 362,000 via BCA Transfer.",                   time: "Just now",   read: false },
-  { id: 2,  type: "order",    title: "Order placed",                  body: "ORD-012 confirmed. Rp 205,000 via GoPay.",                          time: "5 min ago",  read: false },
-  { id: 3,  type: "payment",  title: "Payment approved",              body: "Admin has verified your BNI Transfer for ORD-013.",                 time: "30 min ago", read: false },
-  { id: 4,  type: "payment",  title: "Payment approved",              body: "Admin has verified your OVO payment for ORD-014.",                  time: "1 hr ago",   read: false },
-  { id: 5,  type: "packing",  title: "Your order is being packed",    body: "ORD-013 is now being prepared by our team. Est. ship: 16 Apr.",     time: "2 hr ago",   read: false },
-  { id: 6,  type: "packing",  title: "Your order is being packed",    body: "ORD-014 is now being packaged. Est. ship: 15 Apr.",                 time: "3 hr ago",   read: true  },
-  { id: 7,  type: "shipped",  title: "Your order is on the way!",     body: "ORD-015 shipped via JNE Regular. Tracking: JNE20250412005123.",     time: "Yesterday",  read: true  },
-  { id: 8,  type: "shipped",  title: "Your order is on the way!",     body: "ORD-016 shipped via SiCepat HALU. Est. arrival: 14 Apr.",           time: "2 days ago", read: true  },
-  { id: 9,  type: "promo",    title: "Special offer just for you",    body: "Get 15% off your next purchase. Use code CARE15 at checkout.",      time: "3 days ago", read: true  },
-  { id: 10, type: "delivered","title": "Order delivered",             body: "ORD-007 has arrived. How was your experience? Leave a review!",     time: "8 days ago", read: true  },
+  { id: 1,  type: "order",    title: "Pesanan dibuat",                   body: "ORD-011 dikonfirmasi. Rp 362.000 via Transfer BCA.",                   time: "Baru saja",     read: false },
+  { id: 2,  type: "order",    title: "Pesanan dibuat",                   body: "ORD-012 dikonfirmasi. Rp 205.000 via GoPay.",                          time: "5 menit lalu",  read: false },
+  { id: 3,  type: "payment",  title: "Pembayaran disetujui",             body: "Admin telah memverifikasi Transfer BNI untuk ORD-013.",                time: "30 menit lalu", read: false },
+  { id: 4,  type: "payment",  title: "Pembayaran disetujui",             body: "Admin telah memverifikasi pembayaran OVO untuk ORD-014.",              time: "1 jam lalu",    read: false },
+  { id: 5,  type: "packing",  title: "Pesanan sedang dikemas",           body: "ORD-013 sedang disiapkan oleh tim kami. Est. kirim: 16 Apr.",          time: "2 jam lalu",    read: false },
+  { id: 6,  type: "packing",  title: "Pesanan sedang dikemas",           body: "ORD-014 sedang dikemas. Est. kirim: 15 Apr.",                          time: "3 jam lalu",    read: true  },
+  { id: 7,  type: "shipped",  title: "Pesanan dalam perjalanan!",        body: "ORD-015 dikirim via JNE Regular. No. Resi: JNE20250412005123.",        time: "Kemarin",       read: true  },
+  { id: 8,  type: "shipped",  title: "Pesanan dalam perjalanan!",        body: "ORD-016 dikirim via SiCepat HALU. Est. tiba: 14 Apr.",                 time: "2 hari lalu",   read: true  },
+  { id: 9,  type: "promo",    title: "Penawaran spesial untukmu",        body: "Dapatkan diskon 15% untuk pembelian berikutnya. Gunakan kode CARE15.", time: "3 hari lalu",   read: true  },
+  { id: 10, type: "delivered", title: "Pesanan terkirim",                body: "ORD-007 telah tiba. Bagaimana pengalamanmu? Berikan ulasan!",          time: "8 hari lalu",   read: true  },
 ];
 
 const NOTIF_META = {
@@ -888,11 +888,11 @@ function NotificationsSection() {
     <div className="pr-order-section">
       <div className="pr-order-header">
         <div>
-          <h2 className="pr-section-title">Notifications</h2>
-          <p className="pr-section-sub">{unread} unread · {notifs.length} total</p>
+          <h2 className="pr-section-title">Notifikasi</h2>
+          <p className="pr-section-sub">{unread} belum dibaca · {notifs.length} total</p>
         </div>
         {unread > 0 && (
-          <button className="pr-notif-markall" onClick={markAllRead}>Mark all as read</button>
+          <button className="pr-notif-markall" onClick={markAllRead}>Tandai semua telah dibaca</button>
         )}
       </div>
 
@@ -904,7 +904,7 @@ function NotificationsSection() {
             className={`pr-notif-pill${filter === f ? " pr-notif-pill--active" : ""}`}
             onClick={() => setFilter(f)}
           >
-            {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === "all" ? "Semua" : f === "order" ? "Pesanan" : f === "payment" ? "Pembayaran" : f === "packing" ? "Pengemasan" : f === "shipped" ? "Dikirim" : "Promo"}
             <span className="pr-notif-pill-count">
               {f === "all" ? notifs.length : notifs.filter(n => n.type === f).length}
             </span>
@@ -916,8 +916,8 @@ function NotificationsSection() {
       <div className="pr-notif-list">
         {filtered.length === 0 ? (
           <div className="pr-placeholder">
-            <p className="pr-placeholder-title">No notifications</p>
-            <p className="pr-placeholder-sub">Nothing in this category yet.</p>
+            <p className="pr-placeholder-title">Tidak ada notifikasi</p>
+            <p className="pr-placeholder-sub">Belum ada di kategori ini.</p>
           </div>
         ) : filtered.map(n => {
           const meta = NOTIF_META[n.type] ?? NOTIF_META.order;
@@ -1028,7 +1028,7 @@ function RateOrderSection() {
 
   const submitReturn = () => {
     const names = returnItems.map(i => selected.products[i].name).join(", ");
-    setReturnMsg(`Return request submitted for: ${names}. Our team will contact you within 24 hours.`);
+    setReturnMsg(`Permintaan pengembalian diajukan untuk: ${names}. Tim kami akan menghubungi kamu dalam 24 jam.`);
     setReturnStep("done");
     setReturnItems([]);
     setReturnReason("");
@@ -1049,14 +1049,14 @@ function RateOrderSection() {
       {/* Header */}
       <div className="pr-order-header">
         <div>
-          <h2 className="pr-section-title">Order History</h2>
-          <p className="pr-section-sub">{orders.length} completed order{orders.length !== 1 ? "s" : ""}</p>
+          <h2 className="pr-section-title">Riwayat Pesanan</h2>
+          <p className="pr-section-sub">{orders.length} pesanan selesai</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="pr-rate-tabs">
-        {[["all", "All"], ["unrated", "Not Rated"], ["rated", "Rated"]].map(([key, label]) => (
+        {[["all", "Semua"], ["unrated", "Belum Dinilai"], ["rated", "Sudah Dinilai"]].map(([key, label]) => (
           <button
             key={key}
             className={`pr-rate-tab${activeTab === key ? " pr-rate-tab--active" : ""}`}
@@ -1078,7 +1078,7 @@ function RateOrderSection() {
         <input
           className="pr-search-input"
           type="text"
-          placeholder="Search by order ID or product…"
+          placeholder="Cari berdasarkan ID order atau produk…"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -1088,8 +1088,8 @@ function RateOrderSection() {
       {/* List */}
       {filtered.length === 0 ? (
         <div className="pr-placeholder">
-          <p className="pr-placeholder-title">No orders found</p>
-          <p className="pr-placeholder-sub">Try a different keyword.</p>
+          <p className="pr-placeholder-title">Pesanan tidak ditemukan</p>
+          <p className="pr-placeholder-sub">Coba kata kunci lain.</p>
         </div>
       ) : (
         <div className="pr-order-list">
@@ -1105,7 +1105,7 @@ function RateOrderSection() {
                 {/* top: status */}
                 <div className="pr-order-top">
                   <span className="pr-order-status" style={{ color: "#5aab6d", background: "#f0faf3" }}>
-                    ✓ Completed
+                    ✓ Selesai
                   </span>
                 </div>
 
@@ -1123,7 +1123,7 @@ function RateOrderSection() {
                 <p className="pr-order-summary">
                   {order.products[0].name}
                   {order.products.length > 1 && (
-                    <span className="pr-order-summary-more"> &amp; {order.products.length - 1} more item{order.products.length > 2 ? "s" : ""}</span>
+                    <span className="pr-order-summary-more"> &amp; {order.products.length - 1} produk lainnya</span>
                   )}
                 </p>
 
@@ -1131,13 +1131,13 @@ function RateOrderSection() {
                 <div className="pr-order-bottom">
                   <div className="pr-order-bottom-left">
                     <span className="pr-order-id">{order.id}</span>
-                    <span className="pr-order-meta">· {itemCount} item{itemCount !== 1 ? "s" : ""} · Delivered {order.deliveredDate}</span>
+                    <span className="pr-order-meta">· {itemCount} item · Terkirim {order.deliveredDate}</span>
                   </div>
                   <div className="pr-order-bottom-right">
                     {order.rating ? (
                       <span className="pr-order-rated">{"★".repeat(order.rating)}{"☆".repeat(5 - order.rating)}</span>
                     ) : (
-                      <span className="pr-order-unrated">Tap to rate ›</span>
+                      <span className="pr-order-unrated">Ketuk untuk nilai ›</span>
                     )}
                     <span className="pr-order-total">{fmt(total)}</span>
                   </div>
@@ -1157,7 +1157,7 @@ function RateOrderSection() {
             <div className="pr-modal-header">
               <div>
                 <p className="pr-modal-order-id">{selected.id} · {selected.date}</p>
-                <h3 className="pr-modal-title">Order Details</h3>
+                <h3 className="pr-modal-title">Detail Pesanan</h3>
               </div>
               <div className="pr-modal-header-right">
                 <span className="pr-modal-status-badge">✓ Completed</span>
@@ -1173,7 +1173,7 @@ function RateOrderSection() {
 
               {/* Products */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Ordered Products</p>
+                <p className="pr-modal-section-title">Produk Dipesan</p>
                 <div className="pr-modal-products">
                   {selected.products.map((p, i) => (
                     <div key={i} className="pr-modal-product">
@@ -1181,7 +1181,7 @@ function RateOrderSection() {
                       <div className="pr-modal-product-info">
                         <span className="pr-modal-product-brand">{p.brand}</span>
                         <p className="pr-modal-product-name">{p.name}</p>
-                        <p className="pr-modal-product-meta">{p.size} · Qty {p.qty}</p>
+                        <p className="pr-modal-product-meta">{p.size} · Jml {p.qty}</p>
                       </div>
                       <span className="pr-modal-product-price">{fmt(p.price * p.qty)}</span>
                     </div>
@@ -1189,7 +1189,7 @@ function RateOrderSection() {
                 </div>
                 <div className="pr-modal-cost-rows">
                   <div className="pr-modal-cost-row">
-                    <span>Delivery fee</span><span>{fmt(selected.deliveryFee)}</span>
+                    <span>Biaya pengiriman</span><span>{fmt(selected.deliveryFee)}</span>
                   </div>
                   <div className="pr-modal-cost-row pr-modal-cost-row--total">
                     <span>Total</span><span>{fmt(orderTotal(selected))}</span>
@@ -1199,26 +1199,26 @@ function RateOrderSection() {
 
               {/* Delivery */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Delivery Information</p>
+                <p className="pr-modal-section-title">Informasi Pengiriman</p>
                 <div className="pr-modal-info-grid">
                   <div className="pr-modal-info-item">
-                    <span className="pr-modal-info-label">Courier</span>
+                    <span className="pr-modal-info-label">Kurir</span>
                     <span className="pr-modal-info-value">{selected.delivery.courier}</span>
                   </div>
                   <div className="pr-modal-info-item">
-                    <span className="pr-modal-info-label">Tracking No.</span>
+                    <span className="pr-modal-info-label">No. Resi</span>
                     <span className="pr-modal-info-value pr-modal-info-track">{selected.delivery.tracking}</span>
                   </div>
                   <div className="pr-modal-info-item">
-                    <span className="pr-modal-info-label">Delivered On</span>
+                    <span className="pr-modal-info-label">Tanggal Terima</span>
                     <span className="pr-modal-info-value">{selected.deliveredDate}</span>
                   </div>
                   <div className="pr-modal-info-item">
-                    <span className="pr-modal-info-label">Recipient</span>
+                    <span className="pr-modal-info-label">Penerima</span>
                     <span className="pr-modal-info-value">{selected.delivery.recipient} · {selected.delivery.phone}</span>
                   </div>
                   <div className="pr-modal-info-item pr-modal-info-item--full">
-                    <span className="pr-modal-info-label">Address</span>
+                    <span className="pr-modal-info-label">Alamat</span>
                     <span className="pr-modal-info-value">{selected.delivery.address}</span>
                   </div>
                 </div>
@@ -1226,7 +1226,7 @@ function RateOrderSection() {
 
               {/* Payment */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Payment Method</p>
+                <p className="pr-modal-section-title">Metode Pembayaran</p>
                 <div className="pr-modal-payment">
                   <div className="pr-modal-payment-badge">{selected.payment.method}</div>
                   <div>
@@ -1238,7 +1238,7 @@ function RateOrderSection() {
 
               {/* Star rating */}
               <div className="pr-modal-section">
-                <p className="pr-modal-section-title">Rate This Order</p>
+                <p className="pr-modal-section-title">Nilai Pesanan Ini</p>
                 <div className="pr-stars">
                   {[1,2,3,4,5].map(n => (
                     <button
@@ -1251,14 +1251,14 @@ function RateOrderSection() {
                   ))}
                 </div>
                 {selected.rating && (
-                  <p className="pr-rating-label">You rated {selected.rating}/5 — Thank you!</p>
+                  <p className="pr-rating-label">Kamu memberi nilai {selected.rating}/5 — Terima kasih!</p>
                 )}
               </div>
 
               {/* ── Return flow ── */}
               {returnStep === "picking" && (
                 <div className="pr-modal-section pr-return-picker">
-                  <p className="pr-modal-section-title">Select Items to Return</p>
+                  <p className="pr-modal-section-title">Pilih Produk untuk Dikembalikan</p>
                   {selected.products.map((p, i) => (
                     <label key={i} className={`pr-return-item-row${returnItems.includes(i) ? " pr-return-item-row--checked" : ""}`}>
                       <input
@@ -1279,20 +1279,20 @@ function RateOrderSection() {
                     value={returnReason}
                     onChange={e => setReturnReason(e.target.value)}
                   >
-                    <option value="">Select a reason…</option>
-                    <option value="damaged">Item arrived damaged</option>
-                    <option value="wrong">Wrong item received</option>
-                    <option value="not_as_described">Not as described</option>
-                    <option value="changed_mind">Changed my mind</option>
-                    <option value="other">Other</option>
+                    <option value="">Pilih alasan…</option>
+                    <option value="damaged">Produk tiba dalam kondisi rusak</option>
+                    <option value="wrong">Produk yang diterima salah</option>
+                    <option value="not_as_described">Tidak sesuai deskripsi</option>
+                    <option value="changed_mind">Berubah pikiran</option>
+                    <option value="other">Lainnya</option>
                   </select>
                   <div className="pr-modal-actions">
-                    <button className="pr-modal-btn pr-modal-btn--return" onClick={() => setReturnStep(null)}>Cancel</button>
+                    <button className="pr-modal-btn pr-modal-btn--return" onClick={() => setReturnStep(null)}>Batal</button>
                     <button
                       className="pr-modal-btn pr-modal-btn--download"
                       disabled={returnItems.length === 0 || !returnReason}
                       onClick={submitReturn}
-                    >Submit Return</button>
+                    >Ajukan Pengembalian</button>
                   </div>
                 </div>
               )}
@@ -1307,7 +1307,7 @@ function RateOrderSection() {
                   disabled={returnStep === "done"}
                   onClick={() => setReturnStep("picking")}
                 >
-                  Return Item
+                  Kembalikan Produk
                 </button>
                 <button
                   className="pr-modal-btn pr-modal-btn--download"
@@ -1318,7 +1318,7 @@ function RateOrderSection() {
                     <polyline points="7 10 12 15 17 10"/>
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
-                  Download Bill
+                  Unduh Tagihan
                 </button>
               </div>
               )}
@@ -1355,13 +1355,13 @@ function SettingSection() {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
-      setPwError("Please fill in all fields."); return;
+      setPwError("Harap isi semua kolom."); return;
     }
     if (pwForm.next.length < 8) {
-      setPwError("New password must be at least 8 characters."); return;
+      setPwError("Kata sandi baru minimal 8 karakter."); return;
     }
     if (pwForm.next !== pwForm.confirm) {
-      setPwError("New passwords do not match."); return;
+      setPwError("Kata sandi baru tidak cocok."); return;
     }
     setPwError("");
     setPwSaved(true);
@@ -1384,62 +1384,62 @@ function SettingSection() {
     <div className="pr-setting-section">
 
       <div className="pr-setting-header">
-        <h2 className="pr-section-title">Settings</h2>
-        <p className="pr-section-sub">Manage your account preferences</p>
+        <h2 className="pr-section-title">Pengaturan</h2>
+        <p className="pr-section-sub">Kelola preferensi akun kamu</p>
       </div>
 
       {pwSaved && (
-        <div className="pr-setting-toast">✓ Password updated successfully.</div>
+        <div className="pr-setting-toast">✓ Kata sandi berhasil diperbarui.</div>
       )}
 
       {/* ── Account & Security ── */}
       <div className="pr-setting-group">
-        <p className="pr-setting-group-label">Account &amp; Security</p>
+        <p className="pr-setting-group-label">Akun &amp; Keamanan</p>
 
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Password</span>
-            <span className="pr-setting-row-sub">Last changed 3 months ago</span>
+            <span className="pr-setting-row-title">Kata Sandi</span>
+            <span className="pr-setting-row-sub">Terakhir diubah 3 bulan lalu</span>
           </div>
           <button
             className="pr-setting-action-btn"
             onClick={() => { setShowPw(v => !v); setPwError(""); }}
           >
-            {showPw ? "Cancel" : "Change"}
+            {showPw ? "Batal" : "Ubah"}
           </button>
         </div>
 
         {showPw && (
           <form className="pr-setting-subform" onSubmit={handlePasswordSubmit}>
             <div className="pr-form-group">
-              <label className="pr-form-label">Current Password</label>
+              <label className="pr-form-label">Kata Sandi Saat Ini</label>
               <input className="pr-input" type="password" placeholder="••••••••"
                 value={pwForm.current} onChange={e => setPwForm({ ...pwForm, current: e.target.value })} />
             </div>
             <div className="pr-form-row">
               <div className="pr-form-group">
-                <label className="pr-form-label">New Password</label>
-                <input className="pr-input" type="password" placeholder="Min. 8 characters"
+                <label className="pr-form-label">Kata Sandi Baru</label>
+                <input className="pr-input" type="password" placeholder="Min. 8 karakter"
                   value={pwForm.next} onChange={e => setPwForm({ ...pwForm, next: e.target.value })} />
               </div>
               <div className="pr-form-group">
-                <label className="pr-form-label">Confirm Password</label>
-                <input className="pr-input" type="password" placeholder="Repeat new password"
+                <label className="pr-form-label">Konfirmasi Kata Sandi</label>
+                <input className="pr-input" type="password" placeholder="Ulangi kata sandi baru"
                   value={pwForm.confirm} onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} />
               </div>
             </div>
             {pwError && <p className="pr-addr-error">{pwError}</p>}
             <button type="submit" className="pr-save-btn" style={{ padding: "11px 32px", marginTop: 2 }}>
-              Update Password
+              Perbarui Kata Sandi
             </button>
           </form>
         )}
 
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Two-Factor Authentication</span>
+            <span className="pr-setting-row-title">Autentikasi Dua Faktor</span>
             <span className="pr-setting-row-sub">
-              {twoFA ? "Enabled — extra layer of protection active" : "Add an extra layer of login protection"}
+              {twoFA ? "Aktif — perlindungan tambahan sudah aktif" : "Tambahkan lapisan perlindungan login ekstra"}
             </span>
           </div>
           <Toggle checked={twoFA} onChange={setTwoFA} />
@@ -1447,20 +1447,20 @@ function SettingSection() {
 
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Linked Account</span>
+            <span className="pr-setting-row-title">Akun Terhubung</span>
             <span className="pr-setting-row-sub">sara.tancredi@gmail.com</span>
           </div>
-          <span className="pr-setting-chip pr-setting-chip--green">Verified</span>
+          <span className="pr-setting-chip pr-setting-chip--green">Terverifikasi</span>
         </div>
       </div>
 
       {/* ── Notifications ── */}
       <div className="pr-setting-group">
-        <p className="pr-setting-group-label">Notifications</p>
+        <p className="pr-setting-group-label">Notifikasi</p>
         {[
-          { key: "orderUpdates", title: "Order Updates",     sub: "Shipping, delivery & status changes" },
-          { key: "promotions",   title: "Promotions & Deals", sub: "Discounts, vouchers & special offers" },
-          { key: "newArrivals",  title: "New Arrivals",       sub: "Be first to know about new products" },
+          { key: "orderUpdates", title: "Update Pesanan",     sub: "Pengiriman, pengantaran & perubahan status" },
+          { key: "promotions",   title: "Promosi & Penawaran", sub: "Diskon, voucher & penawaran spesial" },
+          { key: "newArrivals",  title: "Produk Baru",         sub: "Jadilah yang pertama tahu tentang produk baru" },
         ].map(item => (
           <div key={item.key} className="pr-setting-row">
             <div className="pr-setting-row-info">
@@ -1474,11 +1474,11 @@ function SettingSection() {
 
       {/* ── Language & Region ── */}
       <div className="pr-setting-group">
-        <p className="pr-setting-group-label">Language &amp; Region</p>
+        <p className="pr-setting-group-label">Bahasa &amp; Wilayah</p>
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Language</span>
-            <span className="pr-setting-row-sub">Choose your preferred display language</span>
+            <span className="pr-setting-row-title">Bahasa</span>
+            <span className="pr-setting-row-sub">Pilih bahasa tampilan yang kamu inginkan</span>
           </div>
           <select
             className="pr-setting-select"
@@ -1491,15 +1491,15 @@ function SettingSection() {
         </div>
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Currency</span>
-            <span className="pr-setting-row-sub">Used for all price displays</span>
+            <span className="pr-setting-row-title">Mata Uang</span>
+            <span className="pr-setting-row-sub">Digunakan untuk semua tampilan harga</span>
           </div>
           <span className="pr-setting-chip">IDR — Rp</span>
         </div>
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Time Zone</span>
-            <span className="pr-setting-row-sub">All times shown in your local zone</span>
+            <span className="pr-setting-row-title">Zona Waktu</span>
+            <span className="pr-setting-row-sub">Semua waktu ditampilkan dalam zona lokal kamu</span>
           </div>
           <span className="pr-setting-chip">WITA (UTC+8)</span>
         </div>
@@ -1507,13 +1507,13 @@ function SettingSection() {
 
       {/* ── Danger Zone ── */}
       <div className="pr-setting-group pr-setting-group--danger">
-        <p className="pr-setting-group-label pr-setting-group-label--danger">Danger Zone</p>
+        <p className="pr-setting-group-label pr-setting-group-label--danger">Zona Bahaya</p>
         <div className="pr-setting-row pr-setting-row--last">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Delete Account</span>
-            <span className="pr-setting-row-sub">Permanently remove your account and all data. This cannot be undone.</span>
+            <span className="pr-setting-row-title">Hapus Akun</span>
+            <span className="pr-setting-row-sub">Hapus akun dan semua data secara permanen. Tindakan ini tidak dapat dibatalkan.</span>
           </div>
-          <button className="pr-setting-danger-btn" onClick={() => navigate("/")}>Delete</button>
+          <button className="pr-setting-danger-btn" onClick={() => navigate("/")}>Hapus</button>
         </div>
       </div>
 
@@ -1605,7 +1605,7 @@ export default function MyProfile() {
 
         {/* Sidebar */}
         <aside className="pr-sidebar">
-          <h2 className="pr-sidebar-title">User Profile</h2>
+          <h2 className="pr-sidebar-title">Profil Pengguna</h2>
           <nav className="pr-sidebar-nav">
             {navItems.map((item) => (
               <div
@@ -1620,7 +1620,7 @@ export default function MyProfile() {
           </nav>
           <div className="pr-sidebar-logout" onClick={() => setShowLogoutConfirm(true)}>
             <span className="pr-nav-icon"><IconLogOut /></span>
-            <span>Log out</span>
+            <span>Keluar</span>
           </div>
         </aside>
 

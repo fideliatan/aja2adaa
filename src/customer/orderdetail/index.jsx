@@ -775,7 +775,7 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="od-item-info">
                       <p className="od-item-name">{item.name}</p>
-                      <p className="od-item-qty">Qty: {item.qty}</p>
+                      <p className="od-item-qty">Jml: {item.qty}</p>
                     </div>
                     <div className="od-item-right">
                       <p className="od-item-unit">{fmt(item.price)} / pcs</p>
@@ -1443,7 +1443,7 @@ export default function OrderDetailPage() {
       {cartOpen && <div className="cart-overlay" onClick={() => setCartOpen(false)} />}
       <div className={`cart-sidebar ${cartOpen ? "cart-sidebar-open" : ""}`}>
         <div className="cart-header">
-          <h2 className="cart-title">Shopping Cart</h2>
+          <h2 className="cart-title">Keranjang Belanja</h2>
           <button className="cart-close" onClick={() => setCartOpen(false)}>✕</button>
         </div>
         {cart.length === 0 ? (
@@ -1475,14 +1475,14 @@ export default function OrderDetailPage() {
             </div>
             <div className="cart-footer">
               <div className="cart-total-row">
-                <span>Total</span>
+                <span>Total Belanja</span>
                 <span className="cart-total-val">{fmt(cartTotal)}</span>
               </div>
               <button
                 className="checkout-btn"
                 onClick={() => { setCartOpen(false); navigate("/checkout", { state: { cartItems: cart } }); }}
               >
-                Checkout
+                Bayar Sekarang
               </button>
             </div>
           </>

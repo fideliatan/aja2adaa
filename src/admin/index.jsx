@@ -95,12 +95,12 @@ function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
 }
 
 const STATUS_META = {
-  pending:   { label: "Awaiting Approval", color: "#e09a3a", bg: "rgba(224,154,58,0.1)"  },
-  packing:   { label: "Being Packed",      color: "#4a9fd4", bg: "rgba(74,159,212,0.1)"  },
-  shipped:   { label: "Shipped",           color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
-  delivered: { label: "Delivered",         color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
-  cancelled: { label: "Cancelled",         color: "#ef4444", bg: "rgba(239,68,68,0.1)"   },
-  rejected:  { label: "Rejected",          color: "#dc2626", bg: "rgba(220,38,38,0.1)"   },
+  pending:   { label: "Menunggu Persetujuan", color: "#e09a3a", bg: "rgba(224,154,58,0.1)"  },
+  packing:   { label: "Sedang Dikemas",       color: "#4a9fd4", bg: "rgba(74,159,212,0.1)"  },
+  shipped:   { label: "Dikirim",              color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
+  delivered: { label: "Terkirim",             color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
+  cancelled: { label: "Dibatalkan",           color: "#ef4444", bg: "rgba(239,68,68,0.1)"   },
+  rejected:  { label: "Ditolak",              color: "#dc2626", bg: "rgba(220,38,38,0.1)"   },
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -176,13 +176,13 @@ function RevenueChart() {
   const fmtTick = v =>
     v >= 1_000_000 ? (v / 1_000_000).toFixed(1) + "M" : (v / 1_000).toFixed(0) + "K";
 
-  const periodLabel = period === "daily" ? "Minggu Ini" : period === "monthly" ? "2025" : "All Time";
+  const periodLabel = period === "daily" ? "Minggu Ini" : period === "monthly" ? "2025" : "Sepanjang Waktu";
 
   return (
     <div className="adm-card adm-chart-card">
       <div className="adm-card-header">
         <div>
-          <h3 className="adm-card-title">Revenue</h3>
+          <h3 className="adm-card-title">Pendapatan</h3>
           <span className="adm-card-tag">{periodLabel}</span>
         </div>
         <div className="adm-chart-period-btns">
@@ -319,10 +319,10 @@ function Dashboard({ setActive }) {
   const monitoringSummary = getMonitoringSummary(mockStore);
 
   const stats = [
-    { label: "Total Revenue",   value: fmt(totalRevenue), sub: "+18% bulan ini",  icon: <IcRevenue />,   color: "rose"   },
-    { label: "Total Orders",    value: totalOrders,        sub: "+4 hari ini",     icon: <IcOrders />,    color: "violet" },
-    { label: "Total Products",  value: PRODUCTS.length,    sub: "20 aktif",        icon: <IcProducts />,  color: "blue"   },
-    { label: "Total Customers", value: totalCustomers,     sub: "+2 minggu ini",   icon: <IcCustomers />, color: "green"  },
+    { label: "Total Pendapatan",  value: fmt(totalRevenue), sub: "+18% bulan ini",  icon: <IcRevenue />,   color: "rose"   },
+    { label: "Total Pesanan",    value: totalOrders,        sub: "+4 hari ini",     icon: <IcOrders />,    color: "violet" },
+    { label: "Total Produk",     value: PRODUCTS.length,    sub: "20 aktif",        icon: <IcProducts />,  color: "blue"   },
+    { label: "Total Pelanggan",  value: totalCustomers,     sub: "+2 minggu ini",   icon: <IcCustomers />, color: "green"  },
   ];
 
   const recentOrders = mockStore.orders.slice(0, 5);
@@ -333,7 +333,7 @@ function Dashboard({ setActive }) {
     <div className="adm-section">
       <div className="adm-section-header">
         <div>
-          <h2 className="adm-section-title">Dashboard</h2>
+          <h2 className="adm-section-title">Dasbor</h2>
           <p className="adm-section-sub">Selamat datang kembali, Admin! Ini ringkasan hari ini.</p>
         </div>
         <div className="adm-date-badge">{todayLabel}</div>
@@ -367,16 +367,16 @@ function Dashboard({ setActive }) {
             <div className="adm-alert-item adm-alert-item--warn">
               <span className="adm-alert-dot" />
               <div>
-                <p className="adm-alert-title">{pendingCount} Orders Awaiting Approval</p>
-                <p className="adm-alert-sub">Payment confirmation pending</p>
+                <p className="adm-alert-title">{pendingCount} Pesanan Menunggu Persetujuan</p>
+                <p className="adm-alert-sub">Konfirmasi pembayaran menunggu</p>
               </div>
-              <button className="adm-alert-btn" onClick={() => setActive("orders")}>View</button>
+              <button className="adm-alert-btn" onClick={() => setActive("orders")}>Lihat</button>
             </div>
             <div className="adm-alert-item adm-alert-item--warn">
               <span className="adm-alert-dot" />
               <div>
-                <p className="adm-alert-title">{monitoringSummary.highRiskCases} High Risk Cases</p>
-                <p className="adm-alert-sub">Manual review recommended before approval</p>
+                <p className="adm-alert-title">{monitoringSummary.highRiskCases} Kasus Risiko Tinggi</p>
+                <p className="adm-alert-sub">Disarankan review manual sebelum persetujuan</p>
               </div>
             </div>
             <div className="adm-alert-item adm-alert-item--green">
@@ -401,9 +401,9 @@ function Dashboard({ setActive }) {
             <thead>
               <tr>
                 <th>Order ID</th>
-                <th>Customer</th>
+                <th>Pelanggan</th>
                 <th>Total</th>
-                <th>Risk</th>
+                <th>Risiko</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -451,7 +451,7 @@ function Dashboard({ setActive }) {
                 </div>
                 <div className="adm-top-product-right">
                   <span className="adm-top-product-rating"><IcStar /> {p.rating}</span>
-                  <span className="adm-top-product-reviews">{p.reviews} reviews</span>
+                  <span className="adm-top-product-reviews">{p.reviews} ulasan</span>
                 </div>
               </div>
             ))}
@@ -512,10 +512,10 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
           <thead>
             <tr>
               <th>Order ID</th>
-              <th>Customer</th>
+              <th>Pelanggan</th>
               <th>Total</th>
               <th>Tanggal</th>
-              <th>Risk</th>
+              <th>Risiko</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -730,7 +730,7 @@ function Products() {
                 <th>Kategori</th>
                 <th>Harga</th>
                 <th>Rating</th>
-                <th>Reviews</th>
+                <th>Ulasan</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -751,7 +751,7 @@ function Products() {
                   <td className="adm-date-cell">{p.reviews}</td>
                   <td>
                     <div className="adm-action-btns">
-                      <button className="adm-act-btn adm-act-btn--qr" title="View QR" onClick={() => setQrView(p)}><IcQr /></button>
+                      <button className="adm-act-btn adm-act-btn--qr" title="Lihat QR" onClick={() => setQrView(p)}><IcQr /></button>
                       <button className="adm-act-btn adm-act-btn--edit" title="Edit"><IcEdit /></button>
                       <button className="adm-act-btn adm-act-btn--danger" title="Hapus" onClick={() => remove(p.id)}><IcTrash /></button>
                     </div>
@@ -770,7 +770,7 @@ function Products() {
             <div className="adm-modal-header">
               <div className="adm-modal-header-info">
                 <div className="adm-modal-header-row">
-                  <h3 className="adm-modal-title">Product QR Code</h3>
+                  <h3 className="adm-modal-title">Kode QR Produk</h3>
                   <span className="adm-cat-badge">{qrView.category}</span>
                 </div>
                 <p className="adm-modal-sub">{qrView.name}</p>
@@ -785,7 +785,7 @@ function Products() {
                 <p className="adm-pqr-label">QR Code</p>
                 <code className="adm-qr-code-chip adm-qr-code-chip--neutral">{qrView.qrCode || "–"}</code>
                 <p className="adm-pqr-desc">
-                  Auto-generated when this product was added. Print and attach to product packaging to enable return verification.
+                  Dibuat otomatis saat produk ini ditambahkan. Cetak dan tempel di kemasan produk untuk mengaktifkan verifikasi pengembalian.
                 </p>
               </div>
             </div>
@@ -972,7 +972,7 @@ function Settings() {
             {saved ? "✓ Tersimpan!" : "Simpan Perubahan"}
           </button>
           <button type="button" className="adm-ghost-btn" onClick={handleResetMockData}>
-            Reset Mock Data
+            Reset Data Mock
           </button>
         </div>
       </form>
@@ -984,11 +984,11 @@ function Settings() {
    SECTION: NOTIFICATIONS
    ═══════════════════════════════════════════════════════════ */
 const NOTIF_TYPE_META = {
-  order:   { label: "Order",    color: "#e09a3a", bg: "rgba(224,154,58,0.08)",   icon: <ShoppingBag size={16} /> },
-  payment: { label: "Payment",  color: "#22c55e", bg: "rgba(34,197,94,0.08)",    icon: <CreditCard size={16} /> },
-  shipped: { label: "Shipping", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",  icon: <Truck size={16} /> },
-  return:  { label: "Return",   color: "#ef4444", bg: "rgba(239,68,68,0.08)",    icon: <RotateCcw size={16} /> },
-  review:  { label: "Review",   color: "#4a9fd4", bg: "rgba(74,159,212,0.08)",  icon: <Star size={16} /> },
+  order:   { label: "Pesanan",       color: "#e09a3a", bg: "rgba(224,154,58,0.08)",   icon: <ShoppingBag size={16} /> },
+  payment: { label: "Pembayaran",    color: "#22c55e", bg: "rgba(34,197,94,0.08)",    icon: <CreditCard size={16} /> },
+  shipped: { label: "Pengiriman",    color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",  icon: <Truck size={16} /> },
+  return:  { label: "Pengembalian",  color: "#ef4444", bg: "rgba(239,68,68,0.08)",    icon: <RotateCcw size={16} /> },
+  review:  { label: "Ulasan",        color: "#4a9fd4", bg: "rgba(74,159,212,0.08)",  icon: <Star size={16} /> },
 };
 
 function Notifications() {
@@ -1013,11 +1013,11 @@ function Notifications() {
     <div className="adm-section">
       <div className="adm-section-header">
         <div>
-          <h2 className="adm-section-title">Notifications</h2>
-          <p className="adm-section-sub">{unread} unread · {notifs.length} total</p>
+          <h2 className="adm-section-title">Notifikasi</h2>
+          <p className="adm-section-sub">{unread} belum dibaca · {notifs.length} total</p>
         </div>
         {unread > 0 && (
-          <button className="adm-ghost-btn" onClick={markAllRead}>Mark all as read</button>
+          <button className="adm-ghost-btn" onClick={markAllRead}>Tandai semua telah dibaca</button>
         )}
       </div>
 
@@ -1029,7 +1029,7 @@ function Notifications() {
             className={`adm-cat-pill${filter === t ? " adm-cat-pill--active" : ""}`}
             onClick={() => setFilter(t)}
           >
-            {t === "all" ? "All" : NOTIF_TYPE_META[t].label}
+            {t === "all" ? "Semua" : NOTIF_TYPE_META[t].label}
             {t === "all"
               ? <span className="adm-tab-count">{notifs.length}</span>
               : <span className="adm-tab-count">{notifs.filter(n => n.type === t).length}</span>
@@ -1042,7 +1042,7 @@ function Notifications() {
       <div className="adm-notif-list">
         {filtered.length === 0 ? (
           <div className="adm-card adm-notif-empty">
-            <p>No notifications in this category.</p>
+            <p>Tidak ada notifikasi di kategori ini.</p>
           </div>
         ) : filtered.map(n => {
           const meta = NOTIF_TYPE_META[n.type];
@@ -1066,7 +1066,7 @@ function Notifications() {
                 {!n.read && <span className="adm-notif-dot" />}
                 <button
                   className="adm-notif-dismiss"
-                  title="Dismiss"
+                  title="Tutup"
                   onClick={e => { e.stopPropagation(); dismiss(n.id); }}
                 >✕</button>
               </div>
@@ -1136,12 +1136,12 @@ function Returns({ goToReturnDetail }) {
           <thead>
             <tr>
               <th>Return ID</th>
-              <th>Customer</th>
+              <th>Pelanggan</th>
               <th>Order</th>
               <th>Produk</th>
               <th>Total Refund</th>
               <th>Tanggal</th>
-              <th>Risk</th>
+              <th>Risiko</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -1259,7 +1259,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           createSecurityTimelineEvent(
             ret.id.toLowerCase(),
             "qr",
-            matched ? "QR verification passed" : "QR verification failed",
+            matched ? "Verifikasi QR berhasil" : "Verifikasi QR gagal",
             matched ? "success" : "danger"
           ),
         ],
@@ -1273,7 +1273,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
-    const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+    const finalReasons = reasons ?? config?.reasons ?? ["Aksi sensitif memerlukan konfirmasi."];
 
     if (currentUser?.id) {
       generateOtp(currentUser.id, {
@@ -1293,7 +1293,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         createSecurityTimelineEvent(
           ret.id.toLowerCase(),
           "step-up",
-          `Step-up verification triggered for ${actionLabel}`,
+          `Verifikasi step-up dipicu untuk ${actionLabel}`,
           "warning"
         ),
       ],
@@ -1336,14 +1336,14 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
       trustedDeviceStatus: {
         ...prev.trustedDeviceStatus,
         verificationRequired: false,
-        verificationStatus: "Step-up verified for current session",
+        verificationStatus: "Step-up terverifikasi untuk sesi ini",
       },
       timeline: [
         ...prev.timeline,
         createSecurityTimelineEvent(
           ret.id.toLowerCase(),
           "otp",
-          `OTP verified for ${stepUpState.actionLabel}`,
+          `OTP terverifikasi untuk ${stepUpState.actionLabel}`,
           "success"
         ),
       ],
@@ -1430,7 +1430,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           <div className="adm-pa-body-left">
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Informasi Customer</p>
+              <p className="adm-pa-block-label">Informasi Pelanggan</p>
               <div className="adm-pa-customer">
                 <Avatar name={ret.customer} size={48} />
                 <div>
@@ -1520,17 +1520,17 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           <div className="adm-pa-body-right">
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Session Risk</p>
+              <p className="adm-pa-block-label">Risiko Sesi</p>
               <SessionRiskSummary state={riskSummary.sessionRiskState} compact />
             </div>
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Trusted Device</p>
+              <p className="adm-pa-block-label">Perangkat Terpercaya</p>
               <TrustedDeviceCard device={riskSummary.trustedDeviceStatus} compact />
             </div>
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Risk Monitoring</p>
+              <p className="adm-pa-block-label">Pemantauan Risiko</p>
               <RiskScoreCard summary={riskSummary} compact />
             </div>
 
@@ -1600,7 +1600,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
                       actionKey: "rejectReturn",
-                      actionLabel: "Reject Return",
+                      actionLabel: "Tolak Pengembalian",
                       onVerified: () => {
                         setRiskSummary((prev) => ({
                           ...prev,
@@ -1609,7 +1609,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             createSecurityTimelineEvent(
                               ret.id.toLowerCase(),
                               "action",
-                              "Sensitive action confirmed: Reject Return",
+                              "Aksi sensitif dikonfirmasi: Tolak Pengembalian",
                               "success"
                             ),
                           ],
@@ -1630,7 +1630,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     className="adm-pa-approve-btn"
                     onClick={() => requestStepUp({
                       actionKey: "approveReturn",
-                      actionLabel: "Approve Return",
+                      actionLabel: "Setujui Pengembalian",
                       onVerified: () => {
                         setRiskSummary((prev) => ({
                           ...prev,
@@ -1639,7 +1639,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             createSecurityTimelineEvent(
                               ret.id.toLowerCase(),
                               "action",
-                              "Sensitive action confirmed: Approve Return",
+                              "Aksi sensitif dikonfirmasi: Setujui Pengembalian",
                               "success"
                             ),
                           ],
@@ -1654,7 +1654,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
                       actionKey: "rejectReturn",
-                      actionLabel: "Reject Return",
+                      actionLabel: "Tolak Pengembalian",
                       onVerified: () => {
                         setRiskSummary((prev) => ({
                           ...prev,
@@ -1663,7 +1663,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             createSecurityTimelineEvent(
                               ret.id.toLowerCase(),
                               "action",
-                              "Sensitive action confirmed: Reject Return",
+                              "Aksi sensitif dikonfirmasi: Tolak Pengembalian",
                               "success"
                             ),
                           ],
@@ -1834,7 +1834,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
-    const finalReasons = reasons ?? config?.reasons ?? ["Sensitive action requires confirmation."];
+    const finalReasons = reasons ?? config?.reasons ?? ["Aksi sensitif memerlukan konfirmasi."];
 
     if (currentUser?.id) {
       generateOtp(currentUser.id, {
@@ -1854,7 +1854,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         createSecurityTimelineEvent(
           order.id.toLowerCase(),
           "step-up",
-          `Step-up verification triggered for ${actionLabel}`,
+          `Verifikasi step-up dipicu untuk ${actionLabel}`,
           "warning"
         ),
       ],
@@ -1897,14 +1897,14 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
       trustedDeviceStatus: {
         ...prev.trustedDeviceStatus,
         verificationRequired: false,
-        verificationStatus: "Step-up verified for current session",
+        verificationStatus: "Step-up terverifikasi untuk sesi ini",
       },
       timeline: [
         ...prev.timeline,
         createSecurityTimelineEvent(
           order.id.toLowerCase(),
           "otp",
-          `OTP verified for ${stepUpState.actionLabel}`,
+          `OTP terverifikasi untuk ${stepUpState.actionLabel}`,
           "success"
         ),
       ],
@@ -1955,7 +1955,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
           createSecurityTimelineEvent(
             order.id.toLowerCase(),
             "action",
-            "Sensitive action confirmed: Approve Payment",
+            "Aksi sensitif dikonfirmasi: Setujui Pembayaran",
             "success"
           ),
         ],
@@ -1975,7 +1975,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         createSecurityTimelineEvent(
           order.id.toLowerCase(),
           "action",
-          "Sensitive action confirmed: Reject Payment",
+          "Aksi sensitif dikonfirmasi: Tolak Pembayaran",
           "success"
         ),
       ],
@@ -2077,7 +2077,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
           <div className="adm-pa-body-left">
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Informasi Customer</p>
+              <p className="adm-pa-block-label">Informasi Pelanggan</p>
               <div className="adm-pa-customer">
                 <Avatar name={order.customer} size={48} />
                 <div>
@@ -2159,18 +2159,18 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
           <div className="adm-pa-body-right">
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Session Risk</p>
+              <p className="adm-pa-block-label">Risiko Sesi</p>
               <SessionRiskSummary state={riskSummary.sessionRiskState} compact />
             </div>
 
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Trusted Device</p>
+              <p className="adm-pa-block-label">Perangkat Terpercaya</p>
               <TrustedDeviceCard device={riskSummary.trustedDeviceStatus} compact />
             </div>
 
             {/* Payment proof — click to view */}
             <div className="adm-pa-block">
-              <p className="adm-pa-block-label">Risk Monitoring</p>
+              <p className="adm-pa-block-label">Pemantauan Risiko</p>
               <RiskScoreCard summary={riskSummary} compact />
             </div>
 
@@ -2217,20 +2217,20 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                     className="adm-pa-approve-btn"
                     onClick={() => requestStepUp({
                       actionKey: "approvePayment",
-                      actionLabel: "Approve Payment",
+                      actionLabel: "Setujui Pembayaran",
                       onVerified: () => {
                         setApproveModal(true);
                         setApproveStep("confirm");
                       },
                     })}
                   >
-                    <IcCheck /> Approve Pembayaran
+                    <IcCheck /> Setujui Pembayaran
                   </button>
                   <button
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
                       actionKey: "rejectPayment",
-                      actionLabel: "Reject Payment",
+                      actionLabel: "Tolak Pembayaran",
                       onVerified: () => {
                         setRejectModal(true);
                         setRejectReason("");
@@ -2597,12 +2597,12 @@ function ReceiptVerify() {
                 <div className="adm-card adm-rv-detail-card">
                   <h3 className="adm-card-title" style={{marginBottom:16}}>Informasi Terverifikasi</h3>
                   {[
-                    ["Order ID",           VALID_RECEIPT_DATA.orderId],
-                    ["Nama Customer",      VALID_RECEIPT_DATA.customer],
-                    ["Total Pembayaran",   fmt(VALID_RECEIPT_DATA.total)],
-                    ["Tanggal Transaksi",  VALID_RECEIPT_DATA.date],
-                    ["Diverifikasi pada",  VALID_RECEIPT_DATA.verifiedAt],
-                    ["Status Signature",   VALID_RECEIPT_DATA.signatureStatus],
+                    ["Order ID",              VALID_RECEIPT_DATA.orderId],
+                    ["Nama Pelanggan",         VALID_RECEIPT_DATA.customer],
+                    ["Total Pembayaran",       fmt(VALID_RECEIPT_DATA.total)],
+                    ["Tanggal Transaksi",      VALID_RECEIPT_DATA.date],
+                    ["Diverifikasi pada",      VALID_RECEIPT_DATA.verifiedAt],
+                    ["Status Tanda Tangan",    VALID_RECEIPT_DATA.signatureStatus],
                   ].map(([label, val]) => (
                     <div key={label} className="adm-rv-detail-row">
                       <span className="adm-rv-detail-label">{label}</span>
@@ -2807,14 +2807,14 @@ function VerifyHistory() {
    SIDEBAR NAV CONFIG
    ═══════════════════════════════════════════════════════════ */
 const NAV_ITEMS = [
-  { id: "dashboard",       label: "Dashboard",        icon: <IcGrid />       },
+  { id: "dashboard",       label: "Dasbor",           icon: <IcGrid />       },
   { id: "orders",          label: "Pesanan",           icon: <IcOrders />     },
   { id: "products",        label: "Produk",            icon: <IcProducts />   },
   { id: "customers",       label: "Pelanggan",         icon: <IcCustomers />  },
   { id: "returns",         label: "Return Paket",      icon: <IcReturn />     },
   { id: "receipt-verify",  label: "Verifikasi Receipt",icon: <IcShield />     },
   { id: "verify-history",  label: "Riwayat Verifikasi",icon: <IcHistory />    },
-  { id: "notifications",   label: "Notifications",     icon: <IcNotif />      },
+  { id: "notifications",   label: "Notifikasi",        icon: <IcNotif />      },
   { id: "settings",        label: "Pengaturan",        icon: <IcSettings />   },
 ];
 
@@ -2866,7 +2866,7 @@ export default function AdminPage() {
           <img src="/logo-careofyou.png" alt="Careofyou" className="adm-sidebar-logo-img" />
           <div>
             <span className="adm-sidebar-brand">careofyou</span>
-            <span className="adm-sidebar-role">Admin Panel</span>
+            <span className="adm-sidebar-role">Panel Admin</span>
           </div>
         </div>
 

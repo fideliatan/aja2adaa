@@ -14,7 +14,7 @@ import {
   getMainCategory,
 } from "../../data/catalog.js";
 
-const ALL_CATEGORY = "All";
+const ALL_CATEGORY = "Semua";
 const CATEGORY_TABS = [ALL_CATEGORY, ...MAIN_PRODUCT_CATEGORIES];
 
 const PRODUCT_GROUPS = MAIN_PRODUCT_CATEGORIES.map((category) => ({
@@ -114,7 +114,7 @@ export default function ProductPage() {
             event.target.src = FALLBACK_IMG;
           }}
         />
-        {product.bestseller && <span className="prod-badge">Bestseller</span>}
+        {product.bestseller && <span className="prod-badge">Terlaris</span>}
         <button
           className={`cat-fav-btn${favorites.has(product.id) ? " cat-fav-btn--active" : ""}`}
           onClick={(event) => {
@@ -169,9 +169,9 @@ export default function ProductPage() {
 
       <section className="product-hero">
         <div className="product-hero-copy">
-          <span className="product-kicker">Careofyou Catalog</span>
+          <span className="product-kicker">Katalog Careofyou</span>
           <h1 className="product-title">
-            {searchQuery.trim() ? `Results for "${searchQuery}"` : "Explore Our Products"}
+            {searchQuery.trim() ? `Hasil untuk "${searchQuery}"` : "Jelajahi Produk Kami"}
           </h1>
           <p className="product-desc">
             Semua katalog sekarang ada di page khusus Products biar browsing, filter, dan search terasa lebih fokus.
@@ -179,21 +179,21 @@ export default function ProductPage() {
           <div className="product-stats">
             <div className="product-stat">
               <strong>{searchQuery.trim() ? resultCount : PRODUCT_PAGE_PRODUCTS.length}</strong>
-              <span>{searchQuery.trim() ? "matching items" : "products ready"}</span>
+              <span>{searchQuery.trim() ? "produk ditemukan" : "produk tersedia"}</span>
             </div>
             <div className="product-stat">
               <strong>{MAIN_PRODUCT_CATEGORIES.length}</strong>
-              <span>categories</span>
+              <span>kategori</span>
             </div>
             <div className="product-stat">
               <strong>4.9/5</strong>
-              <span>customer picks</span>
+              <span>pilihan pelanggan</span>
             </div>
           </div>
         </div>
 
         <div className="product-hero-card">
-          <p className="product-hero-card-label">Popular Categories</p>
+          <p className="product-hero-card-label">Kategori Populer</p>
           <div className="product-chip-list">
             {MAIN_PRODUCT_CATEGORIES.map((category) => (
               <span key={category} className="product-chip">{category}</span>
@@ -209,7 +209,7 @@ export default function ProductPage() {
         <div className="home-section-header product-catalog-header">
           <div>
             <h2 className="home-section-title">
-              {searchQuery.trim() ? `Results for "${searchQuery}"` : "All Products"}
+              {searchQuery.trim() ? `Hasil untuk "${searchQuery}"` : "Semua Produk"}
             </h2>
             <p className="product-subline">
               {searchQuery.trim()
@@ -222,10 +222,10 @@ export default function ProductPage() {
 
           {searchQuery.trim() ? (
             <button className="product-clear-btn" onClick={clearSearch}>
-              Show all products
+              Tampilkan semua produk
             </button>
           ) : (
-            <span className="products-count">{resultCount} products</span>
+            <span className="products-count">{resultCount} produk</span>
           )}
         </div>
 
@@ -245,10 +245,10 @@ export default function ProductPage() {
 
         {searchQuery.trim() && filteredProducts.length === 0 ? (
           <div className="empty-search product-empty-search">
-            <p className="empty-search-title">No products found</p>
-            <p className="empty-search-sub">Try searching with a different keyword or show all products again.</p>
+            <p className="empty-search-title">Produk tidak ditemukan</p>
+            <p className="empty-search-sub">Coba cari dengan kata kunci lain atau tampilkan semua produk.</p>
             <button className="product-clear-btn" onClick={clearSearch}>
-              Reset search
+              Reset pencarian
             </button>
           </div>
         ) : searchQuery.trim() ? (
@@ -284,7 +284,7 @@ export default function ProductPage() {
                   }}
                 />
                 <div className="qv-img-gradient" />
-                {quickView.bestseller && <span className="qv-img-badge">Bestseller</span>}
+                {quickView.bestseller && <span className="qv-img-badge">Terlaris</span>}
                 <div className="qv-img-category">{quickView.category}</div>
               </div>
               <div className="qv-info">

@@ -10,12 +10,12 @@ const OTP_LOCK_SECONDS = 20;
 
 const PANEL_COPY = {
   login: {
-    heading: "Welcome back.",
-    sub: "Sign in and continue\nyour skincare journey.",
+    heading: "Selamat datang kembali.",
+    sub: "Masuk dan lanjutkan\nperjalanan skincare-mu.",
   },
   register: {
-    heading: "Join careofyou.",
-    sub: "Create an account and start\nglowing today.",
+    heading: "Bergabung dengan careofyou.",
+    sub: "Buat akun dan mulai\nbersinar hari ini.",
   },
 };
 
@@ -88,7 +88,7 @@ function PwField({ label, name, placeholder, value, onChange }) {
           onChange={onChange}
           required
         />
-        <button type="button" className="pw-toggle" onClick={() => setShow((current) => !current)} aria-label={show ? "Hide password" : "Show password"}>
+        <button type="button" className="pw-toggle" onClick={() => setShow((current) => !current)} aria-label={show ? "Sembunyikan password" : "Tampilkan password"}>
           {show ? <IconEyeOff /> : <IconEye />}
         </button>
       </div>
@@ -272,12 +272,12 @@ export default function AuthPage() {
     event.preventDefault();
 
     if (regForm.password !== regForm.confirm) {
-      setRegError("Passwords do not match.");
+      setRegError("Password tidak cocok.");
       return;
     }
 
     if (regForm.password.length < 6) {
-      setRegError("Password must be at least 6 characters.");
+      setRegError("Password minimal 6 karakter.");
       return;
     }
 
@@ -471,8 +471,8 @@ export default function AuthPage() {
       <div className={`auth-side auth-side-left${isLogin ? " side-visible" : " side-hidden side-hidden-left"}`}>
         <div className="auth-card">
           <div className="auth-card-top">
-            <h2 className="auth-title">Sign in</h2>
-            <p className="auth-subtitle">Good to have you back.</p>
+            <h2 className="auth-title">Masuk</h2>
+            <p className="auth-subtitle">Senang kamu kembali.</p>
           </div>
 
           <form className="auth-form" onSubmit={handleLogin}>
@@ -481,7 +481,7 @@ export default function AuthPage() {
               <input
                 className="field-input"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="kamu@contoh.com"
                 value={loginForm.email}
                 onChange={(event) =>
                   setLoginForm({ ...loginForm, email: event.target.value })
@@ -501,18 +501,18 @@ export default function AuthPage() {
             />
 
             <div className="forgot-row">
-              <a href="/forgot-password" className="forgot-link">Forgot password?</a>
+              <a href="/forgot-password" className="forgot-link">Lupa password?</a>
             </div>
 
             {loginError && <p className="auth-error">{loginError}</p>}
 
             <button type="submit" className="auth-btn" disabled={loginLoading}>
-              {loginLoading ? <span className="auth-spinner" /> : "Sign In"}
+              {loginLoading ? <span className="auth-spinner" /> : "Masuk"}
             </button>
           </form>
           <p className="auth-switch">
-            Don&apos;t have an account?{" "}
-            <span onClick={() => switchMode("register")}>Create one</span>
+            Belum punya akun?{" "}
+            <span onClick={() => switchMode("register")}>Daftar sekarang</span>
           </p>
         </div>
       </div>
@@ -520,13 +520,13 @@ export default function AuthPage() {
       <div className={`auth-side auth-side-right${!isLogin ? " side-visible" : " side-hidden side-hidden-right"}`}>
         <div className="auth-card">
           <div className="auth-card-top">
-            <h2 className="auth-title">Create account</h2>
-            <p className="auth-subtitle">Let&apos;s get you glowing.</p>
+            <h2 className="auth-title">Buat Akun</h2>
+            <p className="auth-subtitle">Ayo mulai bersinar.</p>
           </div>
 
           <form className="auth-form" onSubmit={handleRegister}>
             <div className="field-group">
-              <label className="field-label">Full Name</label>
+              <label className="field-label">Nama Lengkap</label>
               <input
                 className="field-input"
                 type="text"
@@ -556,7 +556,7 @@ export default function AuthPage() {
             <PwField
               label="Password"
               name="password"
-              placeholder="Min. 6 characters"
+              placeholder="Min. 6 karakter"
               value={regForm.password}
               onChange={(event) =>
                 setRegForm({ ...regForm, password: event.target.value })
@@ -564,9 +564,9 @@ export default function AuthPage() {
             />
 
             <PwField
-              label="Confirm Password"
+              label="Konfirmasi Password"
               name="confirm"
-              placeholder="Repeat your password"
+              placeholder="Ulangi password kamu"
               value={regForm.confirm}
               onChange={(event) =>
                 setRegForm({ ...regForm, confirm: event.target.value })
@@ -576,13 +576,13 @@ export default function AuthPage() {
             {regError && <p className="auth-error">{regError}</p>}
 
             <button type="submit" className="auth-btn" disabled={regLoading}>
-              {regLoading ? <span className="auth-spinner" /> : "Create Account"}
+              {regLoading ? <span className="auth-spinner" /> : "Buat Akun"}
             </button>
           </form>
 
           <p className="auth-switch">
-            Already have an account?{" "}
-            <span onClick={() => switchMode("login")}>Sign in</span>
+            Sudah punya akun?{" "}
+            <span onClick={() => switchMode("login")}>Masuk</span>
           </p>
         </div>
       </div>
@@ -592,7 +592,7 @@ export default function AuthPage() {
           <div className="otp-modal-backdrop" onClick={closeOtpModal} />
 
           <div className="otp-dialog" role="dialog" aria-modal="true" aria-labelledby="otp-title">
-            <button type="button" className="otp-close-btn" onClick={closeOtpModal} aria-label="Close OTP popup">
+            <button type="button" className="otp-close-btn" onClick={closeOtpModal} aria-label="Tutup popup OTP">
               <IconClose />
             </button>
 
@@ -602,7 +602,7 @@ export default function AuthPage() {
               </div>
 
               <div className="otp-header-copy">
-                <p className="otp-kicker">Admin verification</p>
+                <p className="otp-kicker">Verifikasi Admin</p>
                 <h3 id="otp-title" className="otp-title">Masukkan OTP 6 digit</h3>
                 <p className="otp-subtitle">
                   Kami sudah mengirim kode verifikasi ke email admin terdaftar sebelum dashboard bisa dibuka.
@@ -656,14 +656,14 @@ export default function AuthPage() {
                   onClick={handleOtpResend}
                   disabled={otpResendSeconds > 0 || otpLoading || otpLockSeconds > 0}
                 >
-                  Resend code
+                  Kirim ulang kode
                 </button>
                 <button
                   type="submit"
                   className="otp-primary-btn"
                   disabled={otpLoading || otpLockSeconds > 0}
                 >
-                  {otpLoading ? <span className="auth-spinner" /> : "Verify & Enter"}
+                  {otpLoading ? <span className="auth-spinner" /> : "Verifikasi & Masuk"}
                 </button>
               </div>
             </form>

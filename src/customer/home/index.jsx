@@ -15,41 +15,41 @@ const TOP3 = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
 
 const TRUST_ITEMS = [
   { icon: "Original", title: "Produk Original", sub: "Pilihan aman untuk beauty routine harian" },
-  { icon: "Trusted", title: "Belanja Terpercaya", sub: "Kurasi yang terasa lebih aman untuk beauty routine" },
-  { icon: "Fresh", title: "Fresh Picks", sub: "Favorit lama dan temuan baru terus masuk" },
-  { icon: "Easy", title: "Checkout Gampang", sub: "Wishlist, add to bag, lalu langsung bayar" },
+  { icon: "Terpercaya", title: "Belanja Terpercaya", sub: "Kurasi yang terasa lebih aman untuk beauty routine" },
+  { icon: "Segar", title: "Pilihan Segar", sub: "Favorit lama dan temuan baru terus masuk" },
+  { icon: "Mudah", title: "Checkout Gampang", sub: "Wishlist, tambah ke tas, lalu langsung bayar" },
 ];
 
 const MARQUEE_ITEMS = [
-  "Cleanser staples",
-  "Daily sunscreen",
-  "Hydrating toner",
-  "Barrier cream",
-  "Night repair",
-  "Makeup basics",
-  "Budget-friendly picks",
-  "Trending formulas",
+  "Produk Pembersih",
+  "Sunscreen Harian",
+  "Toner Pelembap",
+  "Krim Barrier",
+  "Perawatan Malam",
+  "Dasar Makeup",
+  "Pilihan Hemat",
+  "Formula Terkini",
 ];
 
 const STORE_HIGHLIGHTS = [
   {
-    label: "Why It Feels Trusted",
-    title: "Original picks you can count on",
+    label: "Mengapa Terasa Terpercaya",
+    title: "Pilihan original yang bisa diandalkan",
     desc: "Pilihan di toko ini diarahkan ke produk yang terasa aman buat dicari, dicoba, dan dipakai dalam beauty routine sehari-hari.",
   },
   {
-    label: "Worth Coming Back To",
-    title: "Staples with fresh finds",
+    label: "Selalu Mau Balik Lagi",
+    title: "Produk andalan dengan temuan baru",
     desc: "Ada produk yang selalu kepakai, tapi juga ada temuan baru yang tetap terasa relevan buat rutinitas.",
   },
   {
-    label: "Built for Everyday Use",
+    label: "Untuk Penggunaan Sehari-hari",
     title: "Belanja yang terasa aman dan praktis",
     desc: "Fokusnya bukan sekadar pajangan. Toko ini dibentuk buat bantu orang nemu produk beauty yang trusted dan masuk ke rutinitas harian.",
   },
   {
-    label: "Small Store Energy",
-    title: "Warm, practical, and trusted",
+    label: "Nuansa Toko Kecil yang Hangat",
+    title: "Hangat, praktis, dan terpercaya",
     desc: "Tetap terasa personal seperti toko pilihan sendiri, tapi dengan kurasi yang bikin belanja terasa lebih yakin.",
   },
 ];
@@ -108,45 +108,45 @@ export default function HomePage() {
 
       <section className="hero">
         <div className="hero-text">
-          <p className="hero-sub">Trusted beauty essentials</p>
+          <p className="hero-sub">Produk kecantikan terpercaya</p>
           <h1 className="hero-title">
-            Original beauty picks for <span>everyday care</span>
+            Pilihan beauty original untuk <span>perawatan sehari-hari</span>
           </h1>
           <p className="hero-desc">
             Dari skincare basics sampai makeup favorites, website ini dibuat untuk toko beauty yang menekankan produk original, trusted, dan nyaman buat belanja rutin.
           </p>
 
           <div className="hero-chip-row">
-            <span className="hero-chip">Original beauty picks</span>
-            <span className="hero-chip">Trusted for daily beauty needs</span>
-            <span className="hero-chip">Curated for real routines</span>
+            <span className="hero-chip">Pilihan Beauty Original</span>
+            <span className="hero-chip">Terpercaya untuk Kebutuhan Harian</span>
+            <span className="hero-chip">Dikurasi untuk Rutinitas Nyata</span>
           </div>
 
           <div className="hero-actions">
             <button className="hero-cta" onClick={goToProducts}>
-              Explore Products
+              Jelajahi Produk
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
             <div className="hero-rating-badge">
-              <span className="hero-stars">Original and trusted</span>
-              <span className="hero-rating-text">Beauty essentials chosen for everyday confidence</span>
+              <span className="hero-stars">Original dan Terpercaya</span>
+              <span className="hero-rating-text">Produk beauty pilihan untuk percaya diri sehari-hari</span>
             </div>
           </div>
 
           <div className="hero-stat-grid">
             <div className="hero-stat-card">
               <strong>{PRODUCTS.length}+</strong>
-              <span>ready-to-shop picks</span>
+              <span>pilihan siap beli</span>
             </div>
             <div className="hero-stat-card">
               <strong>{categoryCount}</strong>
-              <span>main beauty categories</span>
+              <span>kategori beauty utama</span>
             </div>
             <div className="hero-stat-card">
               <strong>{budgetCount}</strong>
-              <span>picks under Rp 100K</span>
+              <span>pilihan di bawah Rp 100K</span>
             </div>
           </div>
         </div>
@@ -158,22 +158,22 @@ export default function HomePage() {
           <div className="hero-visual-glow" />
           <div className="hero-pill hero-pill--top">
             <span className="hero-pill-tag">Easy</span>
-            <strong>Easy to browse</strong>
+            <strong>Mudah Dijelajahi</strong>
           </div>
           <div className="hero-pill hero-pill--left">
-            <span className="hero-pill-tag">Trust</span>
-            <strong>Original picks</strong>
+            <span className="hero-pill-tag">Kepercayaan</span>
+            <strong>Pilihan Original</strong>
           </div>
           <div className="hero-pill hero-pill--right">
-            <span className="hero-pill-tag">Ready</span>
-            <strong>Daily shelf ready</strong>
+            <span className="hero-pill-tag">Siap</span>
+            <strong>Siap Pakai Harian</strong>
           </div>
           <div className="hero-img-wrap">
             <img src="/logo-careofyou.png" alt="Careofyou store" className="hero-img" />
           </div>
           <div className="hero-visual-caption">
-            <span className="hero-float-icon">Beauty selection</span>
-            <p className="hero-visual-caption-text">Original picks and fresh finds</p>
+            <span className="hero-float-icon">Pilihan Kecantikan</span>
+            <p className="hero-visual-caption-text">Pilihan original dan temuan baru</p>
           </div>
         </div>
       </section>
@@ -238,20 +238,20 @@ export default function HomePage() {
       <section className="home-section home-story">
         <div className="home-story-panel">
           <div className="home-story-copy">
-            <span className="home-story-kicker">Built on trusted picks</span>
+            <span className="home-story-kicker">Dibangun dari Pilihan Terpercaya</span>
             <h2 className="home-section-title home-section-title--plain">
-              A homepage that feels like a well-stocked beauty shelf
+              Halaman yang terasa seperti rak kecantikan pilihan
             </h2>
             <p className="home-story-desc">
               Karena katalog sekarang ada di page Products, home ini fokus jadi landing page yang ngenalin karakter toko: original, trusted, enak dijelajahi, dan terasa curated buat kebutuhan nyata.
             </p>
             <div className="home-story-points">
-              <span className="home-story-point">Original beauty picks</span>
-              <span className="home-story-point">Trusted for repeat orders</span>
-              <span className="home-story-point">Curated for real routines</span>
+              <span className="home-story-point">Pilihan Beauty Original</span>
+              <span className="home-story-point">Terpercaya untuk Pembelian Berulang</span>
+              <span className="home-story-point">Dikurasi untuk Rutinitas Nyata</span>
             </div>
             <button className="home-story-btn" onClick={goToProducts}>
-              See full catalog
+              Lihat Katalog Lengkap
             </button>
           </div>
 
@@ -269,7 +269,7 @@ export default function HomePage() {
 
       <section className="home-section">
         <div className="home-section-header">
-          <h2 className="home-section-title">Shop by category</h2>
+          <h2 className="home-section-title">Belanja berdasarkan kategori</h2>
         </div>
         <div className="category-grid">
           {SHOP_CATEGORIES.map((cat) => (
@@ -277,7 +277,7 @@ export default function HomePage() {
               <div className="cat-card-img-wrap" style={{ backgroundImage: `url(${cat.img})` }}>
                 <div className="cat-card-dim" />
                 <span className="cat-card-label">{cat.label}</span>
-                <div className="cat-card-overlay">Browse now</div>
+                <div className="cat-card-overlay">Lihat Sekarang</div>
               </div>
               <div className="cat-card-footer">
                 <p className="cat-card-name">{cat.name}</p>
@@ -292,14 +292,14 @@ export default function HomePage() {
       <section className="promo-banner-wrap">
         <div className="promo-banner">
           <div className="promo-text">
-            <span className="promo-label">Trusted beauty store</span>
+            <span className="promo-label">Toko Kecantikan Terpercaya</span>
             <h3 className="promo-title">Original picks untuk kebutuhan beauty harian, seru untuk lihat temuan baru</h3>
             <p className="promo-sub">
               Home sekarang lebih fokus jadi halaman yang ngajak orang masuk, lihat suasana toko yang terasa aman dan terpercaya, lalu lanjut belanja ke katalog utama.
             </p>
           </div>
           <button className="promo-btn" onClick={goToProducts}>
-            Go to Products
+            Ke Halaman Produk
           </button>
           <div className="promo-blob promo-blob-1" />
           <div className="promo-blob promo-blob-2" />
@@ -323,7 +323,7 @@ export default function HomePage() {
             const maxReviews = TOP3[0].reviews;
             const medalColor = rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : "#CD7F32";
             const rankMedal = <Trophy size={14} color={medalColor} />;
-            const rankNum = rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd";
+            const rankNum = rank === 1 ? "ke-1" : rank === 2 ? "ke-2" : "ke-3";
             return (
               <div
                 key={product.id}
@@ -348,7 +348,7 @@ export default function HomePage() {
                   <p className="top3-name">{product.name}</p>
                   <div className="top3-meta">
                     <span className="top3-stars">★ {product.rating}</span>
-                    <span className="top3-reviews">{product.reviews.toLocaleString("id-ID")} reviews</span>
+                    <span className="top3-reviews">{product.reviews.toLocaleString("id-ID")} ulasan</span>
                   </div>
                   <div className="top3-reviews-bar">
                     <div className="top3-reviews-fill" style={{ width: `${(product.reviews / maxReviews) * 100}%` }} />
@@ -388,7 +388,7 @@ export default function HomePage() {
               >
                 <div className="hscroll-img-wrap">
                   {product.bestseller && (
-                    <span className="hscroll-bestseller-tag">Best Seller</span>
+                    <span className="hscroll-bestseller-tag">Terlaris</span>
                   )}
                   <img src={product.image} alt={product.name} onError={e => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }} />
                 </div>
@@ -430,7 +430,7 @@ export default function HomePage() {
               <div className="qv-img-wrap">
                 <img src={quickView.image} alt={quickView.name} onError={e => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }} />
                 <div className="qv-img-gradient" />
-                {quickView.bestseller && <span className="qv-img-badge">✦ Bestseller</span>}
+                {quickView.bestseller && <span className="qv-img-badge">✦ Terlaris</span>}
                 <div className="qv-img-category">{quickView.category}</div>
               </div>
 
@@ -509,13 +509,13 @@ export default function HomePage() {
 
       <div className={`cart-sidebar ${cartOpen ? "cart-sidebar-open" : ""}`}>
         <div className="cart-header">
-          <h2 className="cart-title">Shopping Cart</h2>
+          <h2 className="cart-title">Keranjang Belanja</h2>
           <button className="cart-close" onClick={() => setCartOpen(false)}>x</button>
         </div>
 
         {cart.length === 0 ? (
           <div className="cart-empty">
-            <span className="cart-empty-icon">Bag</span>
+            <span className="cart-empty-icon">Tas</span>
             <p>Keranjang kamu kosong</p>
             <button className="cart-shop-btn" onClick={() => setCartOpen(false)}>
               Mulai Belanja
@@ -543,7 +543,7 @@ export default function HomePage() {
 
             <div className="cart-footer">
               <div className="cart-total-row">
-                <span>Total</span>
+                <span>Total Belanja</span>
                 <span className="cart-total-val">{formatRupiah(cartTotal)}</span>
               </div>
               <button
@@ -553,7 +553,7 @@ export default function HomePage() {
                   navigate("/checkout", { state: { cartItems: cart } });
                 }}
               >
-                Checkout
+                Bayar Sekarang
               </button>
             </div>
           </>
