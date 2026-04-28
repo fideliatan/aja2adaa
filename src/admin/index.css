@@ -1806,6 +1806,148 @@
 .adm-qr-result-card--mismatch .adm-qr-result-card-desc { color: #9f1239; }
 .adm-qr-result-card--used     .adm-qr-result-card-desc { color: #6b7280; }
 
+/* ─── IMPROVED QR VERIFY PANEL ───────────────────────────────────────── */
+.adm-qrv-wrap {
+  border: 1.5px solid var(--adm-border, #e5e7eb);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* Camera scan button */
+.adm-qrv-cam-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.25);
+  width: 100%;
+  justify-content: center;
+}
+.adm-qrv-cam-btn:hover:not(:disabled) {
+  background: #6d28d9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+}
+.adm-qrv-cam-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.adm-qrv-cam-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Result card */
+@keyframes adm-qrv-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.adm-qrv-result {
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: adm-qrv-fadein 0.25s ease;
+}
+.adm-qrv-result--match    { background: #f0fdf4; border-color: #86efac; }
+.adm-qrv-result--mismatch { background: #fff1f2; border-color: #fecdd3; }
+
+.adm-qrv-result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adm-qrv-result-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.adm-qrv-result-title--match    { color: #15803d; }
+.adm-qrv-result-title--mismatch { color: #be123c; }
+
+.adm-qrv-result-desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #374151;
+  margin: 0;
+}
+.adm-qrv-result--match    .adm-qrv-result-desc { color: #166534; }
+.adm-qrv-result--mismatch .adm-qrv-result-desc { color: #9f1239; }
+
+/* Code comparison table */
+.adm-qrv-compare {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.adm-qrv-compare-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.adm-qrv-compare-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+}
+.adm-qrv-compare-code {
+  display: block;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: rgba(0,0,0,0.04);
+  border: 1.5px solid rgba(0,0,0,0.08);
+  color: #374151;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.adm-qrv-compare-code--match    { background: rgba(22,163,74,0.1);  border-color: #86efac; color: #15803d; }
+.adm-qrv-compare-code--mismatch { background: rgba(220,38,38,0.08); border-color: #fca5a5; color: #be123c; text-decoration: line-through; text-decoration-color: #fca5a5; }
+
+.adm-qrv-compare-op {
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 20px;
+  line-height: 1;
+}
+.adm-qrv-compare-op--eq  { color: #16a34a; }
+.adm-qrv-compare-op--neq { color: #dc2626; }
+
+/* Footer hints */
+.adm-qrv-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.adm-qrv-hint--ok   { background: rgba(22,163,74,0.1);  color: #15803d; }
+.adm-qrv-hint--warn { background: rgba(220,38,38,0.08); color: #be123c; }
+
+.adm-qrv-mismatch-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* ─── QR PANEL FOOTER (decision) ─────────────────────────────────────── */
 .adm-qr-footer {
   padding: 16px 20px;

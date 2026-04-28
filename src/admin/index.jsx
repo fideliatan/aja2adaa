@@ -1310,7 +1310,8 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     helperText: "",
   });
   const stepUpActionRef = useRef(null);
-  const [showScanner,   setShowScanner]  = useState(false);
+  const [showScanner,      setShowScanner]     = useState(false);
+  const [localScannedVal,  setLocalScannedVal] = useState({});
 
   const currentId  = localId ?? allReturns[0]?.id;
   const ret        = allReturns.find(r => r.id === currentId) ?? allReturns[0];
@@ -1348,6 +1349,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     const result  = matched ? "valid" : "invalid";
     setVerifyResult(result);
     setLocalQr(p => ({ ...p, [ret.id]: result }));
+    setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
     setRiskSummary((prev) => ({
       ...prev,
       timeline: [
@@ -1637,49 +1639,104 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Verifikasi QR Produk</p>
-              <div style={{ border: "1.5px solid var(--adm-border)", borderRadius: 14, padding: 16 }}>
+              <div className="adm-qrv-wrap">
                 <div className="adm-qr-steps">
 
+                  {/* Step 1 — scan */}
                   <div className="adm-qr-step">
-                    <div className="adm-qr-step-num">1</div>
-                    <div className="adm-qr-step-body">
-                      <p className="adm-qr-step-lbl">QR Terdaftar (Sistem)</p>
-                      <code className="adm-qr-code-chip">{ret.qrCode}</code>
+                    <div className={`adm-qr-step-num${curQr === "valid" ? " adm-qr-step-num--match" : curQr === "invalid" ? " adm-qr-step-num--mismatch" : " adm-qr-step-num--done"}`}>
+                      {curQr === "valid" ? "✓" : curQr === "invalid" ? "✗" : "1"}
                     </div>
-                  </div>
-
-                  <div className="adm-qr-step">
-                    <div className={`adm-qr-step-num${curQr ? " adm-qr-step-num--done" : ""}`}>{curQr ? "✓" : "2"}</div>
                     <div className="adm-qr-step-body">
                       <p className="adm-qr-step-lbl">Scan Produk Dikembalikan</p>
                       {!curQr ? (
-                        <button className={`adm-qr-scan-btn${scanning ? " adm-qr-scan-btn--scanning" : ""}`} onClick={doScanQR}
-                          disabled={scanning || curStatus === "completed" || curStatus === "rejected"}>
-                          {scanning ? <><span className="adm-qr-scan-spinner"/> Scanning…</> : <><IcQr /> Scan QR</>}
+                        <button className="adm-qrv-cam-btn" onClick={doScanQR}
+                          disabled={curStatus === "completed" || curStatus === "rejected"}>
+                          <IcQr />
+                          Scan QR Code
                         </button>
                       ) : (
                         <div className="adm-qr-scanned-row">
-                          <code className={`adm-qr-code-chip adm-qr-code-chip--${curQr === "valid" ? "valid" : "invalid"}`}>{ret.scannedQr}</code>
-                          {curQr === "invalid" && (
-                            <button className="adm-qr-rescan-btn" onClick={() => { setVerifyResult(null); setLocalQr(p => ({ ...p, [ret.id]: null })); }}>↺ Re-scan</button>
-                          )}
+                          <code className={`adm-qr-code-chip adm-qr-code-chip--${curQr === "valid" ? "valid" : "invalid"}`}>
+                            {localScannedVal[ret.id] ?? ret.scannedQr ?? "—"}
+                          </code>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {curQr && (
-                    <div className="adm-qr-step adm-qr-step--last">
-                      <div className={`adm-qr-step-num ${curQr === "valid" ? "adm-qr-step-num--match" : "adm-qr-step-num--mismatch"}`}>{curQr === "valid" ? "✓" : "✗"}</div>
-                      <div className="adm-qr-step-body">
-                        <p className="adm-qr-step-lbl">Hasil Verifikasi</p>
-                        <div className={`adm-qr-result-card adm-qr-result-card--${curQr === "valid" ? "match" : "mismatch"}`}>
-                          <p className="adm-qr-result-card-title">{curQr === "valid" ? "QR Cocok — Produk Terverifikasi" : "QR Tidak Cocok — Ditandai Mencurigakan"}</p>
-                          <p className="adm-qr-result-card-desc">{curQr === "valid" ? "Produk yang dikembalikan terverifikasi asli." : "Kode tidak cocok, return ditandai mencurigakan."}</p>
+                  {/* Step 3 — result */}
+                  {curQr && (() => {
+                    const scanned = localScannedVal[ret.id] ?? ret.scannedQr ?? "—";
+                    const isMatch = curQr === "valid";
+                    return (
+                      <div className="adm-qr-step adm-qr-step--last">
+                        <div className={`adm-qr-step-num ${isMatch ? "adm-qr-step-num--match" : "adm-qr-step-num--mismatch"}`}>
+                          {isMatch ? "✓" : "✗"}
+                        </div>
+                        <div className="adm-qr-step-body">
+                          <p className="adm-qr-step-lbl">Hasil Verifikasi</p>
+                          <div className={`adm-qrv-result ${isMatch ? "adm-qrv-result--match" : "adm-qrv-result--mismatch"}`}>
+
+                            {/* Header */}
+                            <div className="adm-qrv-result-head">
+                              {isMatch ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                              ) : (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                              )}
+                              <span className={`adm-qrv-result-title ${isMatch ? "adm-qrv-result-title--match" : "adm-qrv-result-title--mismatch"}`}>
+                                {isMatch ? "Produk Terverifikasi" : "QR Tidak Cocok"}
+                              </span>
+                            </div>
+
+                            {/* Description */}
+                            <p className="adm-qrv-result-desc">
+                              {isMatch
+                                ? "Kode QR cocok. Produk yang dikembalikan adalah produk asli yang terdaftar."
+                                : "Produk yang dikembalikan tidak sesuai dengan sistem. Kemungkinan produk berbeda atau tidak asli."}
+                            </p>
+
+                            {/* Code comparison */}
+                            <div className="adm-qrv-compare">
+                              <div className="adm-qrv-compare-col">
+                                <span className="adm-qrv-compare-lbl">Terdaftar</span>
+                                <code className="adm-qrv-compare-code">{ret.qrCode}</code>
+                              </div>
+                              <div className={`adm-qrv-compare-op ${isMatch ? "adm-qrv-compare-op--eq" : "adm-qrv-compare-op--neq"}`}>
+                                {isMatch ? "=" : "≠"}
+                              </div>
+                              <div className="adm-qrv-compare-col">
+                                <span className="adm-qrv-compare-lbl">Hasil Scan</span>
+                                <code className={`adm-qrv-compare-code ${isMatch ? "adm-qrv-compare-code--match" : "adm-qrv-compare-code--mismatch"}`}>{scanned}</code>
+                              </div>
+                            </div>
+
+                            {/* Footer hint / action */}
+                            {isMatch ? (
+                              <div className="adm-qrv-hint adm-qrv-hint--ok">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Proses refund dapat dilanjutkan
+                              </div>
+                            ) : (
+                              <div className="adm-qrv-mismatch-footer">
+                                <div className="adm-qrv-hint adm-qrv-hint--warn">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                  Return ini otomatis ditandai mencurigakan
+                                </div>
+                                <button className="adm-qr-rescan-btn"
+                                  onClick={() => { setVerifyResult(null); setLocalQr(p => ({ ...p, [ret.id]: null })); setLocalScannedVal(p => ({ ...p, [ret.id]: null })); }}>
+                                  ↺ Scan Ulang
+                                </button>
+                              </div>
+                            )}
+
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
+
                 </div>
               </div>
             </div>
