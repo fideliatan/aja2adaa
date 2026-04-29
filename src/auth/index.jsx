@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./index.css";
 import { useMockData } from "../context/MockDataContext.jsx";
+import api from "../lib/api.js";
 
 const OTP_LENGTH = 6;
 const OTP_MAX_ATTEMPTS = 3;
@@ -229,46 +230,28 @@ export default function AuthPage() {
     account_suspended: "Akun ini telah dinonaktifkan. Hubungi kami untuk bantuan.",
   };
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
     setLoginLoading(true);
     setLoginError("");
 
-    const email    = loginForm.email.trim().toLowerCase();
-    const password = loginForm.password;
-
-    window.setTimeout(() => {
-      setLoginLoading(false);
-
-      const result = loginUser(email, password);
-
-      if (!result.success) {
-        setLoginError(LOGIN_ERROR_MSG[result.reason] ?? "Login gagal. Silakan coba lagi.");
-        return;
-      }
-
-      setPendingUser({
-        ...result.user,
-        deviceStatus: result.deviceStatus,
-        deviceInfo: result.deviceInfo,
-        riskSummary: result.riskSummary,
+    try {
+      const { data } = await api.post("/api/auth/login/", {
+        email: loginForm.email.trim().toLowerCase(),
+        password: loginForm.password,
       });
-
-      if (result.needsOtp) {
-        generateOtp(result.user.id, { purpose: "login" });
-        openOtpModal(email);
-      } else {
-        setUserSession(result.user, {
-          deviceStatus: result.deviceStatus,
-          deviceInfo: result.deviceInfo,
-          riskSummary: result.riskSummary,
-        });
-        navigate("/");
-      }
-    }, 900);
+      const user = data.user;
+      setUserSession(user, {});
+      navigate(user.role === "admin" ? "/admin" : "/");
+    } catch (err) {
+      const msg = err.response?.data?.error ?? "Login gagal. Silakan coba lagi.";
+      setLoginError(msg);
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  const handleRegister = (event) => {
+  const handleRegister = async (event) => {
     event.preventDefault();
 
     if (regForm.password !== regForm.confirm) {
@@ -284,10 +267,22 @@ export default function AuthPage() {
     setRegLoading(true);
     setRegError("");
 
-    window.setTimeout(() => {
-      setRegLoading(false);
+    try {
+      await api.post("/api/auth/register/", {
+        name: regForm.name,
+        email: regForm.email,
+        password: regForm.password,
+      });
       switchMode("login");
-    }, 1000);
+    } catch (err) {
+      const data = err.response?.data ?? {};
+      const firstError = Object.values(data)[0];
+      setRegError(
+        Array.isArray(firstError) ? firstError[0] : (firstError ?? "Registrasi gagal. Silakan coba lagi.")
+      );
+    } finally {
+      setRegLoading(false);
+    }
   };
 
   const handleOtpChange = (value, index) => {
