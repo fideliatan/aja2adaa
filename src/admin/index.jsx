@@ -1750,16 +1750,18 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                 </div>
               ) : curStatus === "processing" ? (
                 <div className="adm-pa-actions">
-                  <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
-                    <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
-                  </div>
                   {curQr === "invalid" ? (
                     <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#ef4444", lineHeight: 1.5, border: "1px solid rgba(239,68,68,0.2)" }}>
                       <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
                       QR tidak cocok — return tidak dapat ditandai selesai sebelum verifikasi produk berhasil.
                     </div>
                   ) : (
-                    <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
+                    <>
+                      <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
+                        <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
+                      </div>
+                      <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
+                    </>
                   )}
                   <button
                     className="adm-pa-reject-btn"
