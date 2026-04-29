@@ -1753,7 +1753,14 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                   <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
                     <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
                   </div>
-                  <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
+                  {curQr === "invalid" ? (
+                    <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#ef4444", lineHeight: 1.5, border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                      QR tidak cocok — return tidak dapat ditandai selesai sebelum verifikasi produk berhasil.
+                    </div>
+                  ) : (
+                    <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
+                  )}
                   <button
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
@@ -1782,32 +1789,39 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
               ) : (
                 <div className="adm-pa-actions">
                   <p style={{ fontSize: 12.5, color: "#888", marginBottom: 10 }}>
-                    {curQr === "valid" ? "✓ QR terverifikasi — siap diputuskan." : "Scan QR dulu untuk verifikasi, atau putuskan langsung."}
+                    {curQr === "valid" ? "✓ QR terverifikasi — siap diputuskan." : curQr === "invalid" ? "" : "Scan QR dulu untuk verifikasi, atau putuskan langsung."}
                   </p>
-                  <button
-                    className="adm-pa-approve-btn"
-                    onClick={() => requestStepUp({
-                      actionKey: "approveReturn",
-                      actionLabel: "Setujui Pengembalian",
-                      onVerified: () => {
-                        setRiskSummary((prev) => ({
-                          ...prev,
-                          timeline: [
-                            ...prev.timeline,
-                            createSecurityTimelineEvent(
-                              ret.id.toLowerCase(),
-                              "action",
-                              "Aksi sensitif dikonfirmasi: Setujui Pengembalian",
-                              "success"
-                            ),
-                          ],
-                        }));
-                        patchReturn(ret.id, { status: "processing" });
-                      },
-                    })}
-                  >
-                    <IcCheck /> Setujui Return
-                  </button>
+                  {curQr === "invalid" ? (
+                    <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#ef4444", lineHeight: 1.5, border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                      QR tidak cocok — return tidak dapat disetujui sebelum verifikasi produk berhasil.
+                    </div>
+                  ) : (
+                    <button
+                      className="adm-pa-approve-btn"
+                      onClick={() => requestStepUp({
+                        actionKey: "approveReturn",
+                        actionLabel: "Setujui Pengembalian",
+                        onVerified: () => {
+                          setRiskSummary((prev) => ({
+                            ...prev,
+                            timeline: [
+                              ...prev.timeline,
+                              createSecurityTimelineEvent(
+                                ret.id.toLowerCase(),
+                                "action",
+                                "Aksi sensitif dikonfirmasi: Setujui Pengembalian",
+                                "success"
+                              ),
+                            ],
+                          }));
+                          patchReturn(ret.id, { status: "processing" });
+                        },
+                      })}
+                    >
+                      <IcCheck /> Setujui Return
+                    </button>
+                  )}
                   <button
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
