@@ -1,4 +1,21 @@
-backend/.env
-frontend/.env
+# Virtual environments
+.venv/
+venv/
+backend/venv/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Environment variables
+.env
+backend/.env
+frontend/.env
+
+# Django stuff
+db.sqlite3
+*.log
+staticfiles/
+
+# VS Code (optional)
+.vscode/
