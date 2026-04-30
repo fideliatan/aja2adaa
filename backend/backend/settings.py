@@ -10,22 +10,65 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _load_env_file(env_path: Path) -> None:
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+
+        if not key:
+            continue
+
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+
+        os.environ.setdefault(key, value)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    value = os.getenv(name)
+    if not value:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+_load_env_file(BASE_DIR / '.env')
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f%-*3b^*m5fjtdqd(+6^0dpc+2po76in=oqbqhjwatlm#x6*a4'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-f%-*3b^*m5fjtdqd(+6^0dpc+2po76in=oqbqhjwatlm#x6*a4',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', ['localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -53,11 +96,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-]
+CORS_ALLOWED_ORIGINS = _env_list(
+    'DJANGO_CORS_ALLOWED_ORIGINS',
+    [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+    ],
+)
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'backend.urls'
@@ -83,14 +129,25 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+db_options = {}
+db_sslmode = os.getenv('DB_SSLMODE', 'prefer')
+db_sslrootcert = os.getenv('DB_SSLROOTCERT')
+
+if db_sslmode:
+    db_options['sslmode'] = db_sslmode
+
+if db_sslrootcert:
+    db_options['sslrootcert'] = db_sslrootcert
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'careofyou',       # nama database kamu di PostgreSQL
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'careofyou'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': db_options,
     }
 }
 
