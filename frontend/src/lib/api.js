@@ -5,4 +5,9 @@ const api = axios.create({
   withCredentials: true,
 });
 
+export const storeApi = {
+  init: () => api.get("/api/store/init/"),
+  sync: (payload) => api.post("/api/store/sync/", payload),
+};
+
 export default api;

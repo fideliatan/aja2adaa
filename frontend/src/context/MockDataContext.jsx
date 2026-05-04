@@ -6,7 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { INITIAL_MOCK_DATA } from "../data/seeds.js";
+import { INITIAL_MOCK_DATA, SEED_USERS } from "../data/seeds.js";
+import { storeApi } from "../lib/api.js";
 import {
   KEYS,
   clearLegacyStorage,
@@ -600,9 +601,43 @@ function buildSessionRecord(user, meta = {}) {
 
 export function MockDataProvider({ children }) {
   const [mockStore, setMockStore] = useState(() =>
-    normalizeMockData(loadMockDatabase(INITIAL_MOCK_DATA))
+    normalizeMockData(clone(INITIAL_MOCK_DATA))
   );
   const storeRef = useRef(mockStore);
+
+  // Load real data from Supabase on mount, merge with seeds (keep passwords for mock auth)
+  useEffect(() => {
+    // Clear stale localStorage so old test data doesn't interfere on future loads
+    try { localStorage.removeItem(KEYS.MOCK_DB); } catch (_) {}
+
+    storeApi.init()
+      .then(({ data }) => {
+        setMockStore((prev) => {
+          // Keep session/otpRecords from local state; replace operational data from DB
+          const merged = {
+            ...prev,
+            orders: data.orders ?? prev.orders,
+            returns: data.returns ?? prev.returns,
+            loginAttempts: data.loginAttempts ?? prev.loginAttempts,
+            trustedDevices: data.trustedDevices ?? prev.trustedDevices,
+            monitoringFlags: data.monitoringFlags ?? prev.monitoringFlags,
+            activityTimeline: data.activityTimeline ?? prev.activityTimeline,
+            approvalStatusChanges: data.approvalStatusChanges ?? prev.approvalStatusChanges,
+            // Merge users: passwords stay from SEED_USERS (mock auth), meta from DB
+            users: SEED_USERS.map((seed) => {
+              const dbUser = (data.users ?? []).find((u) => u.email === seed.email);
+              return dbUser ? { ...seed, ...dbUser, password: seed.password } : seed;
+            }),
+          };
+          const next = normalizeMockData(merged);
+          storeRef.current = next;
+          return next;
+        });
+      })
+      .catch(() => {
+        // Backend unavailable — keep using seed data silently
+      });
+  }, []);
 
   useEffect(() => {
     storeRef.current = mockStore;
@@ -631,13 +666,29 @@ export function MockDataProvider({ children }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // Sync store state to backend (fire-and-forget; omit session/otpRecords for privacy)
+  const syncToBackend = useCallback((store) => {
+    const payload = {
+      users: (store.users ?? []).map(({ password: _pw, ...u }) => u),
+      orders: store.orders ?? [],
+      returns: store.returns ?? [],
+      loginAttempts: store.loginAttempts ?? [],
+      trustedDevices: store.trustedDevices ?? [],
+      monitoringFlags: store.monitoringFlags ?? [],
+      activityTimeline: store.activityTimeline ?? [],
+      approvalStatusChanges: store.approvalStatusChanges ?? [],
+    };
+    storeApi.sync(payload).catch(() => {});
+  }, []);
+
   const commitStore = useCallback((updater) => {
     const workingCopy = clone(storeRef.current);
     const nextStore = normalizeMockData(updater(workingCopy) ?? workingCopy);
     storeRef.current = nextStore;
     setMockStore(nextStore);
+    syncToBackend(nextStore);
     return nextStore;
-  }, []);
+  }, [syncToBackend]);
 
   const loginUser = useCallback(
     (email, password) => {
