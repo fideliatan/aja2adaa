@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Clock, Package, Truck, CheckCircle, XCircle, Ban, ShoppingBag, Tag, PartyPopper } from "lucide-react";
 import "./index.css";
@@ -8,6 +8,13 @@ import { PRODUCTS } from "../../data/products.js";
 import { useOrders } from "../context/OrderContext";
 import { useMockData } from "../../context/MockDataContext.jsx";
 import { SEED_USER_PROFILES } from "../../data/seeds.js";
+import {
+  getAddresses,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  setPrimaryAddress,
+} from "../../lib/addressService.js";
 
 /* ── Icons ─────────────────────────────────────────────── */
 const IconSearch = () => (
@@ -194,47 +201,126 @@ function UserInfoSection() {
 }
 
 /* ── My Address Section ─────────────────────────────────── */
+const EMPTY_FORM = { label: "", name: "", phone: "", address: "" };
+
 function MyAddressSection() {
   const { session } = useMockData();
-  const profile = SEED_USER_PROFILES[session?.userId] ?? {};
-  const [addresses, setAddresses] = useState(profile.addresses ?? []);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ label: "", name: "", phone: "", address: "" });
-  const [error, setError] = useState("");
+  const userId = session?.userId;
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setError("");
-  };
+  const [addresses,   setAddresses]   = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId,   setEditingId]   = useState(null);
+  const [addForm,     setAddForm]     = useState(EMPTY_FORM);
+  const [editForm,    setEditForm]    = useState(EMPTY_FORM);
+  const [addError,    setAddError]    = useState("");
+  const [editError,   setEditError]   = useState("");
 
-  const handleAdd = (e) => {
+  // Load addresses from Supabase whenever the logged-in user changes
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    setLoading(true);
+    getAddresses(userId)
+      .then(setAddresses)
+      .catch(() => setAddresses([]))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  // ── Add ────────────────────────────────────────────────
+  const handleAdd = async (e) => {
     e.preventDefault();
-    if (!form.label || !form.name || !form.phone || !form.address) {
-      setError("Harap isi semua kolom.");
+    if (!addForm.label || !addForm.name || !addForm.phone || !addForm.address) {
+      setAddError("Harap isi semua kolom.");
       return;
     }
-    const newAddr = {
-      id: Date.now(),
-      ...form,
-      isMain: addresses.length === 0,
-    };
-    setAddresses([...addresses, newAddr]);
-    setForm({ label: "", name: "", phone: "", address: "" });
-    setShowForm(false);
-    setError("");
-  };
-
-  const setMain = (id) => {
-    setAddresses(addresses.map((a) => ({ ...a, isMain: a.id === id })));
-  };
-
-  const remove = (id) => {
-    const updated = addresses.filter((a) => a.id !== id);
-    if (updated.length > 0 && !updated.some((a) => a.isMain)) {
-      updated[0].isMain = true;
+    setSaving(true);
+    try {
+      const created = await addAddress(userId, {
+        label:         addForm.label,
+        receiver_name: addForm.name,
+        phone:         addForm.phone,
+        address:       addForm.address,
+      });
+      setAddresses((prev) => [...prev, created]);
+      setAddForm(EMPTY_FORM);
+      setShowAddForm(false);
+      setAddError("");
+    } catch (err) {
+      setAddError(err.message ?? "Gagal menyimpan alamat.");
+    } finally {
+      setSaving(false);
     }
-    setAddresses(updated);
   };
+
+  // ── Edit ───────────────────────────────────────────────
+  const startEdit = (addr) => {
+    setEditingId(addr.id);
+    setEditForm({ label: addr.label, name: addr.name, phone: addr.phone, address: addr.address });
+    setEditError("");
+    setShowAddForm(false);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditError(""); };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.label || !editForm.name || !editForm.phone || !editForm.address) {
+      setEditError("Harap isi semua kolom.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateAddress(userId, editingId, {
+        label:   editForm.label,
+        name:    editForm.name,
+        phone:   editForm.phone,
+        address: editForm.address,
+      });
+      setAddresses((prev) => prev.map((a) => (a.id === editingId ? updated : a)));
+      setEditingId(null);
+      setEditError("");
+    } catch (err) {
+      setEditError(err.message ?? "Gagal memperbarui alamat.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Delete ─────────────────────────────────────────────
+  const handleDelete = async (id) => {
+    setSaving(true);
+    try {
+      await deleteAddress(userId, id);
+      // Re-fetch so auto-promoted primary is reflected accurately
+      const fresh = await getAddresses(userId);
+      setAddresses(fresh);
+      if (editingId === id) setEditingId(null);
+    } catch (err) {
+      alert(err.message ?? "Gagal menghapus alamat.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Set primary ────────────────────────────────────────
+  const handleSetMain = async (id) => {
+    setSaving(true);
+    try {
+      await setPrimaryAddress(userId, id);
+      setAddresses((prev) => prev.map((a) => ({ ...a, isMain: a.id === id })));
+    } catch (err) {
+      alert(err.message ?? "Gagal mengatur alamat utama.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="pr-addr-section">
+      <p style={{ color: "#888", fontSize: 14, padding: "24px 0" }}>Memuat alamat…</p>
+    </div>
+  );
 
   return (
     <div className="pr-addr-section">
@@ -243,66 +329,137 @@ function MyAddressSection() {
           <h2 className="pr-section-title">Alamat Saya</h2>
           <p className="pr-section-sub">{addresses.length} alamat tersimpan</p>
         </div>
-        <button className="pr-addr-add-btn" onClick={() => { setShowForm((v) => !v); setError(""); }}>
-          {showForm ? "Batal" : "+ Tambah Alamat"}
+        <button
+          className="pr-addr-add-btn"
+          disabled={saving}
+          onClick={() => { setShowAddForm((v) => !v); setAddError(""); setEditingId(null); }}
+        >
+          {showAddForm ? "Batal" : "+ Tambah Alamat"}
         </button>
       </div>
 
-      {/* Add form */}
-      {showForm && (
+      {/* ── Add form ── */}
+      {showAddForm && (
         <form className="pr-addr-form" onSubmit={handleAdd}>
           <div className="pr-form-row">
             <div className="pr-form-group">
               <label className="pr-form-label">Label (mis. Rumah, Kantor)</label>
-              <input className="pr-input" name="label" placeholder="Rumah" value={form.label} onChange={handleChange} />
+              <input className="pr-input" name="label" placeholder="Rumah"
+                value={addForm.label} onChange={(e) => setAddForm({ ...addForm, label: e.target.value })} />
             </div>
             <div className="pr-form-group">
               <label className="pr-form-label">Nama Penerima</label>
-              <input className="pr-input" name="name" placeholder="Nama lengkap" value={form.name} onChange={handleChange} />
+              <input className="pr-input" name="name" placeholder="Nama lengkap"
+                value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} />
             </div>
           </div>
           <div className="pr-form-group">
             <label className="pr-form-label">Nomor Telepon</label>
-            <input className="pr-input" name="phone" placeholder="+62 812 3456 7890" value={form.phone} onChange={handleChange} />
+            <input className="pr-input" name="phone" placeholder="+62 812 3456 7890"
+              value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} />
           </div>
           <div className="pr-form-group">
             <label className="pr-form-label">Alamat Lengkap</label>
-            <textarea className="pr-input pr-textarea" name="address" placeholder="Jalan, Kota, Kode Pos, Negara" value={form.address} onChange={handleChange} rows={3} />
+            <textarea className="pr-input pr-textarea" name="address"
+              placeholder="Jalan, Kota, Kode Pos, Negara"
+              value={addForm.address} onChange={(e) => setAddForm({ ...addForm, address: e.target.value })} rows={3} />
           </div>
-          {error && <p className="pr-addr-error">{error}</p>}
+          {addError && <p className="pr-addr-error">{addError}</p>}
           <div className="pr-save-wrapper" style={{ justifyContent: "flex-start" }}>
-            <button type="submit" className="pr-save-btn">Simpan Alamat</button>
+            <button type="submit" className="pr-save-btn" disabled={saving}>
+              {saving ? "Menyimpan…" : "Simpan Alamat"}
+            </button>
           </div>
         </form>
       )}
 
-      {/* Address cards */}
+      {/* ── Address cards ── */}
       <div className="pr-addr-list">
-        {addresses.map((addr) => (
-          <div key={addr.id} className={`pr-addr-card${addr.isMain ? " pr-addr-card--main" : ""}`}>
-            <div className="pr-addr-card-top">
-              <div className="pr-addr-label-row">
-                <span className="pr-addr-label">{addr.label}</span>
-                {addr.isMain && <span className="pr-addr-badge">Utama</span>}
+        {addresses.map((addr) =>
+          editingId === addr.id ? (
+            /* ── Inline edit form ── */
+            <form
+              key={addr.id}
+              className="pr-addr-form"
+              style={{ marginBottom: 12 }}
+              onSubmit={handleSaveEdit}
+            >
+              <div className="pr-form-row">
+                <div className="pr-form-group">
+                  <label className="pr-form-label">Label</label>
+                  <input className="pr-input" value={editForm.label}
+                    onChange={(e) => setEditForm({ ...editForm, label: e.target.value })} />
+                </div>
+                <div className="pr-form-group">
+                  <label className="pr-form-label">Nama Penerima</label>
+                  <input className="pr-input" value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
               </div>
-              <button className="pr-addr-delete" onClick={() => remove(addr.id)} title="Hapus alamat">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-              </button>
+              <div className="pr-form-group">
+                <label className="pr-form-label">Nomor Telepon</label>
+                <input className="pr-input" value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+              <div className="pr-form-group">
+                <label className="pr-form-label">Alamat Lengkap</label>
+                <textarea className="pr-input pr-textarea" rows={3} value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+              </div>
+              {editError && <p className="pr-addr-error">{editError}</p>}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button type="submit" className="pr-save-btn" style={{ padding: "10px 24px" }} disabled={saving}>
+                  {saving ? "Menyimpan…" : "Simpan Perubahan"}
+                </button>
+                <button type="button" className="pr-save-btn"
+                  style={{ padding: "10px 24px", background: "#f0f0f0", color: "#444" }}
+                  disabled={saving}
+                  onClick={cancelEdit}
+                >
+                  Batal
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* ── Address card view ── */
+            <div key={addr.id} className={`pr-addr-card${addr.isMain ? " pr-addr-card--main" : ""}`}>
+              <div className="pr-addr-card-top">
+                <div className="pr-addr-label-row">
+                  <span className="pr-addr-label">{addr.label}</span>
+                  {addr.isMain && <span className="pr-addr-badge">Utama</span>}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {/* Edit button */}
+                  <button className="pr-addr-delete" onClick={() => startEdit(addr)} title="Edit alamat">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  {/* Delete button */}
+                  <button className="pr-addr-delete" onClick={() => handleDelete(addr.id)} title="Hapus alamat">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      <path d="M10 11v6"/><path d="M14 11v6"/>
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <p className="pr-addr-name">{addr.name} · {addr.phone}</p>
+              <p className="pr-addr-text">{addr.address}</p>
+              {!addr.isMain && (
+                <button className="pr-addr-set-main" onClick={() => handleSetMain(addr.id)}>
+                  Jadikan alamat utama
+                </button>
+              )}
             </div>
-            <p className="pr-addr-name">{addr.name} · {addr.phone}</p>
-            <p className="pr-addr-text">{addr.address}</p>
-            {!addr.isMain && (
-              <button className="pr-addr-set-main" onClick={() => setMain(addr.id)}>
-                Jadikan alamat utama
-              </button>
-            )}
-          </div>
-        ))}
+          )
+        )}
       </div>
 
-      {addresses.length === 0 && (
+      {addresses.length === 0 && !showAddForm && (
         <div className="pr-placeholder">
           <p className="pr-placeholder-title">Belum ada alamat</p>
           <p className="pr-placeholder-sub">Tambahkan alamat pengiriman untuk memulai.</p>

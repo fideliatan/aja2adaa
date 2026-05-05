@@ -7,6 +7,12 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { PRODUCTS } from "../../data/products.js";
 import { useMockData } from "../../context/MockDataContext.jsx";
+import {
+  getAddresses,
+  addAddress as addAddressToDb,
+  deleteAddress,
+  setPrimaryAddress,
+} from "../../lib/addressService.js";
 
 /* ─── Icons ──────────────────────────────────────────────── */
 const IconClock = () => (
@@ -31,10 +37,6 @@ const IconStore = () => (
 );
 
 /* ─── Static data ────────────────────────────────────────── */
-const SAVED_ADDRESSES = [
-  { id: 1, label: "Rumah", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "123 Main Street, New York, NY 10001, USA", isMain: true },
-  { id: 2, label: "Kantor", name: "Sara Tancredi", phone: "(+98) 9123728167", address: "456 Business Ave, Manhattan, NY 10002, USA", isMain: false },
-];
 
 const ORDER_ITEMS = [
   { id: 1, brand: "Skintific", name: "5X Ceramide Barrier Repair Moisture Gel", size: "30ml", qty: 1, price: 149000, image: "https://placehold.co/72x72/fce8e6/c4706a?text=Skin" },
@@ -85,11 +87,27 @@ export default function CheckoutPage() {
   const cartItems = location.state?.cartItems ?? ORDER_ITEMS;
 
   // Address
-  const [addresses, setAddresses] = useState(SAVED_ADDRESSES);
-  const [selectedAddr, setSelectedAddr] = useState(SAVED_ADDRESSES.find(a => a.isMain)?.id ?? 1);
+  const [addresses,    setAddresses]    = useState([]);
+  const [addrLoading,  setAddrLoading]  = useState(true);
+  const [addrSaving,   setAddrSaving]   = useState(false);
+  const [selectedAddr, setSelectedAddr] = useState(null);
   const [showAddrForm, setShowAddrForm] = useState(false);
-  const [newAddr, setNewAddr] = useState({ label: "", name: "", phone: "", address: "" });
-  const [addrError, setAddrError] = useState("");
+  const [newAddr,      setNewAddr]      = useState({ label: "", name: "", phone: "", address: "" });
+  const [addrError,    setAddrError]    = useState("");
+
+  // Load addresses from Supabase on mount / session change
+  useEffect(() => {
+    if (!session?.userId) { setAddrLoading(false); return; }
+    setAddrLoading(true);
+    getAddresses(session.userId)
+      .then((rows) => {
+        setAddresses(rows);
+        const primary = rows.find((a) => a.isMain) ?? rows[0];
+        if (primary) setSelectedAddr(primary.id);
+      })
+      .catch(() => {})
+      .finally(() => setAddrLoading(false));
+  }, [session?.userId]);
 
   // Delivery
   const [delivery, setDelivery] = useState("regular");
@@ -121,18 +139,56 @@ export default function CheckoutPage() {
     return () => clearInterval(timerRef.current);
   }, [proofModal, submitted]);
 
-  const handleAddAddress = (e) => {
+  const handleAddAddress = async (e) => {
     e.preventDefault();
     if (!newAddr.label || !newAddr.name || !newAddr.phone || !newAddr.address) {
       setAddrError("Harap isi semua kolom.");
       return;
     }
-    const added = { id: Date.now(), ...newAddr, isMain: false };
-    setAddresses((prev) => [...prev, added]);
-    setSelectedAddr(added.id);
-    setNewAddr({ label: "", name: "", phone: "", address: "" });
-    setShowAddrForm(false);
-    setAddrError("");
+    setAddrSaving(true);
+    try {
+      const added = await addAddressToDb(session?.userId, {
+        label:         newAddr.label,
+        receiver_name: newAddr.name,
+        phone:         newAddr.phone,
+        address:       newAddr.address,
+      });
+      setAddresses((prev) => [...prev, added]);
+      setSelectedAddr(added.id);
+      setNewAddr({ label: "", name: "", phone: "", address: "" });
+      setShowAddrForm(false);
+      setAddrError("");
+    } catch (err) {
+      setAddrError(err.message ?? "Gagal menyimpan alamat. Coba lagi.");
+    } finally {
+      setAddrSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id) => {
+    setAddrSaving(true);
+    try {
+      await deleteAddress(session?.userId, id);
+      const fresh = await getAddresses(session?.userId);
+      setAddresses(fresh);
+      if (selectedAddr === id) setSelectedAddr(fresh[0]?.id ?? null);
+    } catch (err) {
+      alert(err.message ?? "Gagal menghapus alamat.");
+    } finally {
+      setAddrSaving(false);
+    }
+  };
+
+  const handleSetPrimary = async (id) => {
+    setAddrSaving(true);
+    try {
+      await setPrimaryAddress(session?.userId, id);
+      setAddresses((prev) => prev.map((a) => ({ ...a, isMain: a.id === id })));
+    } catch (err) {
+      alert(err.message ?? "Gagal mengatur alamat utama.");
+    } finally {
+      setAddrSaving(false);
+    }
   };
 
   const subtotal    = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -247,25 +303,54 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="co-addr-list">
-                  {addresses.map((addr) => (
-                    <label key={addr.id} className={`co-addr-option${selectedAddr === addr.id ? " co-addr-option--active" : ""}`}>
-                      <input
-                        type="radio"
-                        name="address"
-                        className="co-radio"
-                        checked={selectedAddr === addr.id}
-                        onChange={() => setSelectedAddr(addr.id)}
-                      />
-                      <div className="co-addr-body">
-                        <div className="co-addr-top">
-                          <span className="co-addr-label">{addr.label}</span>
-                          {addr.isMain && <span className="co-addr-badge">Utama</span>}
+                  {addrLoading ? (
+                    <p style={{ color: "#888", fontSize: 14, padding: "8px 0" }}>
+                      <Loader2 size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                      Memuat alamat…
+                    </p>
+                  ) : addresses.length === 0 ? (
+                    <p style={{ color: "#888", fontSize: 14, padding: "8px 0" }}>
+                      Belum ada alamat tersimpan. Tambahkan di bawah.
+                    </p>
+                  ) : (
+                    addresses.map((addr) => (
+                      <label key={addr.id} className={`co-addr-option${selectedAddr === addr.id ? " co-addr-option--active" : ""}`}>
+                        <input
+                          type="radio"
+                          name="address"
+                          className="co-radio"
+                          checked={selectedAddr === addr.id}
+                          onChange={() => setSelectedAddr(addr.id)}
+                        />
+                        <div className="co-addr-body">
+                          <div className="co-addr-top">
+                            <span className="co-addr-label">{addr.label}</span>
+                            {addr.isMain && <span className="co-addr-badge">Utama</span>}
+                          </div>
+                          <p className="co-addr-name">{addr.name} · {addr.phone}</p>
+                          <p className="co-addr-text">{addr.address}</p>
+                          <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                            {!addr.isMain && (
+                              <button
+                                type="button"
+                                style={{ fontSize: 12, color: "#c4706a", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                onClick={(e) => { e.preventDefault(); handleSetPrimary(addr.id); }}
+                              >
+                                Jadikan Utama
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              style={{ fontSize: 12, color: "#999", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                              onClick={(e) => { e.preventDefault(); handleDeleteAddress(addr.id); }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
                         </div>
-                        <p className="co-addr-name">{addr.name} · {addr.phone}</p>
-                        <p className="co-addr-text">{addr.address}</p>
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    ))
+                  )}
                 </div>
 
                 <button
