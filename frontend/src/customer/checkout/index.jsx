@@ -355,6 +355,7 @@ export default function CheckoutPage() {
 
                 <button
                   className="co-add-addr-btn"
+                  disabled={addrSaving}
                   onClick={() => { setShowAddrForm(v => !v); setAddrError(""); }}
                 >
                   {showAddrForm ? "Batal" : "+ Gunakan alamat lain"}
@@ -381,7 +382,9 @@ export default function CheckoutPage() {
                       <textarea className="co-input co-textarea" placeholder="Jalan, Kota, Kode Pos, Negara" value={newAddr.address} onChange={e => setNewAddr({...newAddr, address: e.target.value})} rows={3}/>
                     </div>
                     {addrError && <p className="co-error">{addrError}</p>}
-                    <button type="submit" className="co-save-addr-btn">Simpan & Gunakan Alamat Ini</button>
+                    <button type="submit" className="co-save-addr-btn" disabled={addrSaving}>
+                      {addrSaving ? "Menyimpan…" : "Simpan & Gunakan Alamat Ini"}
+                    </button>
                   </form>
                 )}
               </section>
