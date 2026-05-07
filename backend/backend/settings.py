@@ -194,3 +194,13 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# ── Django REST Framework ──────────────────────────────────────────────────────
+# This is a React SPA API — there are no browser sessions from the frontend.
+# Removing SessionAuthentication prevents DRF from enforcing CSRF on requests
+# that arrive with a leftover Django-admin session cookie (the root cause of
+# "Login gagal. Silakan coba lagi." when the developer has /admin/ open).
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES':     [],
+}

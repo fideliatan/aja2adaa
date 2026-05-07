@@ -244,7 +244,7 @@ export default function AuthPage() {
       setUserSession(user, {});
       navigate(user.role === "admin" ? "/admin" : "/");
     } catch (err) {
-      const msg = err.response?.data?.error ?? "Login gagal. Silakan coba lagi.";
+      const msg = err.response?.data?.error ?? err.response?.data?.detail ?? "Login gagal. Silakan coba lagi.";
       setLoginError(msg);
     } finally {
       setLoginLoading(false);

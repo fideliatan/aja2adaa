@@ -56,6 +56,7 @@ export function createUnitQrRecord({
 
   // token
   qrToken       = null,
+  qrImageUrl    = null,         // base64 data-URL set after backend generation
   generatedAt   = null,
   generatedBy   = null,         // userId of admin who generated it
 
@@ -87,6 +88,7 @@ export function createUnitQrRecord({
 
     // QR payload
     qrToken,
+    qrImageUrl,   // base64 data-URL from backend ("data:image/png;base64,…")
     generatedAt,
     generatedBy,
 
@@ -111,12 +113,13 @@ export function createUnitQrRecord({
  * Attach a generated token to a pending record.
  * Returns a new record (immutable update).
  */
-export function activateQr(record, { qrToken, generatedBy }) {
+export function activateQr(record, { qrToken, qrImageUrl = null, generatedBy, generatedAt }) {
   if (!qrToken) throw new Error("activateQr: qrToken is required");
   return {
     ...record,
     qrToken,
-    generatedAt: new Date().toISOString(),
+    qrImageUrl,
+    generatedAt: generatedAt ?? new Date().toISOString(),
     generatedBy: generatedBy ?? null,
     qrStatus:   QR_STATUS.ACTIVE,
   };

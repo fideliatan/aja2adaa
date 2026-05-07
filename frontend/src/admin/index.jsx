@@ -1338,6 +1338,8 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const stepUpActionRef = useRef(null);
   const [showScanner,      setShowScanner]     = useState(false);
   const [localScannedVal,  setLocalScannedVal] = useState({});
+  const [localVerifyData,  setLocalVerifyData] = useState({});
+  const [scanVerifying,    setScanVerifying]   = useState(false);
 
   const currentId  = localId ?? allReturns[0]?.id;
   const ret        = allReturns.find(r => r.id === currentId) ?? allReturns[0];
@@ -1368,28 +1370,50 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     if (patch.qrStatus) setLocalQr(p => ({ ...p, [id]: patch.qrStatus }));
   };
 
-  const handleScanResult = (scannedValue) => {
+  const handleScanResult = async (scannedValue) => {
     setShowScanner(false);
     if (!ret) return;
-    const matched = scannedValue === ret.qrCode;
-    const result  = matched ? "valid" : "invalid";
-    setVerifyResult(result);
-    setLocalQr(p => ({ ...p, [ret.id]: result }));
-    setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
-    setRiskSummary((prev) => ({
-      ...prev,
-      timeline: [
-        ...prev.timeline,
-        createSecurityTimelineEvent(
-          ret.id.toLowerCase(),
-          "qr",
-          matched ? "Verifikasi QR berhasil" : "Verifikasi QR gagal",
-          matched ? "success" : "danger"
-        ),
-      ],
-    }));
-    if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
-    else patchReturn(ret.id, { qrStatus: result });
+    setScanVerifying(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/verify/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          qr_token:         scannedValue,
+          scanned_by:       currentUser?.id ?? "admin",
+          claimed_order_id: ret.orderId ?? null,
+        }),
+      });
+      const data = await res.json();
+      const matched = data.is_valid === true;
+      const result  = matched ? "valid" : "invalid";
+
+      setLocalVerifyData(p => ({ ...p, [ret.id]: { ...data, scannedToken: scannedValue } }));
+      setVerifyResult(result);
+      setLocalQr(p => ({ ...p, [ret.id]: result }));
+      setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
+      setRiskSummary((prev) => ({
+        ...prev,
+        timeline: [
+          ...prev.timeline,
+          createSecurityTimelineEvent(
+            ret.id.toLowerCase(),
+            "qr",
+            matched ? "Verifikasi QR berhasil" : `Verifikasi QR gagal (${data.result_code ?? "invalid"})`,
+            matched ? "success" : "danger"
+          ),
+        ],
+      }));
+      if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
+      else patchReturn(ret.id, { qrStatus: result });
+    } catch (err) {
+      console.error("QR verify failed:", err);
+      setVerifyResult("invalid");
+      setLocalQr(p => ({ ...p, [ret.id]: "invalid" }));
+      setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
+    } finally {
+      setScanVerifying(false);
+    }
   };
 
   const doScanQR = () => {
@@ -1398,7 +1422,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     setShowScanner(true);
   };
 
-  const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setVerifyResult(null); setScanning(false); };
+  const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setVerifyResult(null); setScanning(false); setScanVerifying(false); };
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
@@ -1675,7 +1699,12 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     </div>
                     <div className="adm-qr-step-body">
                       <p className="adm-qr-step-lbl">Scan Produk Dikembalikan</p>
-                      {!curQr ? (
+                      {scanVerifying ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#888" }}>
+                          <Loader2 size={16} className="adm-spin" />
+                          Memverifikasi QR...
+                        </div>
+                      ) : !curQr ? (
                         <button className="adm-qrv-cam-btn" onClick={doScanQR}
                           disabled={curStatus === "completed" || curStatus === "rejected"}>
                           <IcQr />
@@ -1723,20 +1752,35 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                                 : "Produk yang dikembalikan tidak sesuai dengan sistem. Kemungkinan produk berbeda atau tidak asli."}
                             </p>
 
+                            {/* Backend message */}
+                            {localVerifyData[ret.id]?.message && (
+                              <p style={{ fontSize: 12.5, color: isMatch ? "#16a34a" : "#dc2626", marginBottom: 8, lineHeight: 1.5 }}>
+                                {localVerifyData[ret.id].message}
+                              </p>
+                            )}
+
                             {/* Code comparison */}
                             <div className="adm-qrv-compare">
                               <div className="adm-qrv-compare-col">
-                                <span className="adm-qrv-compare-lbl">Terdaftar</span>
-                                <code className="adm-qrv-compare-code">{ret.qrCode}</code>
+                                <span className="adm-qrv-compare-lbl">Pesanan di QR</span>
+                                <code className="adm-qrv-compare-code">{localVerifyData[ret.id]?.order_id ?? "—"}</code>
                               </div>
                               <div className={`adm-qrv-compare-op ${isMatch ? "adm-qrv-compare-op--eq" : "adm-qrv-compare-op--neq"}`}>
                                 {isMatch ? "=" : "≠"}
                               </div>
                               <div className="adm-qrv-compare-col">
-                                <span className="adm-qrv-compare-lbl">Hasil Scan</span>
-                                <code className={`adm-qrv-compare-code ${isMatch ? "adm-qrv-compare-code--match" : "adm-qrv-compare-code--mismatch"}`}>{scanned}</code>
+                                <span className="adm-qrv-compare-lbl">Pesanan Return</span>
+                                <code className={`adm-qrv-compare-code ${isMatch ? "adm-qrv-compare-code--match" : "adm-qrv-compare-code--mismatch"}`}>{ret.orderId}</code>
                               </div>
                             </div>
+
+                            {/* Fraud flag warning */}
+                            {localVerifyData[ret.id]?.fraud_flag_id && (
+                              <div style={{ marginTop: 8, padding: "7px 10px", background: "rgba(239,68,68,0.08)", borderRadius: 8, fontSize: 12, color: "#dc2626", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", gap: 6 }}>
+                                <AlertTriangle size={13} />
+                                Fraud flag ditandai — aktivitas mencurigakan tercatat
+                              </div>
+                            )}
 
                             {/* Footer hint / action */}
                             {isMatch ? (
@@ -1786,7 +1830,21 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                       <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
                         <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
                       </div>
-                      <button className="adm-pa-approve-btn" onClick={() => patchReturn(ret.id, { status: "completed" })}><IcCheck /> Tandai Return Selesai</button>
+                      <button className="adm-pa-approve-btn" onClick={async () => {
+                        const verifyData = localVerifyData[ret.id];
+                        if (verifyData?.unit_id) {
+                          try {
+                            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/approve/`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ unit_id: verifyData.unit_id, approved_by: currentUser?.id ?? "admin" }),
+                            });
+                          } catch (err) {
+                            console.error("QR approve failed:", err);
+                          }
+                        }
+                        patchReturn(ret.id, { status: "completed" });
+                      }}><IcCheck /> Tandai Return Selesai</button>
                     </>
                   )}
                   <button
@@ -2058,27 +2116,46 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     });
   }, [curStatus, order?.id, order?.items]);
 
-  const generateUnitQr = (unitId) => {
-    setUnitQrs(prev => {
-      const slots = [...(prev[order.id] ?? [])];
-      const idx = slots.findIndex(s => s.unitId === unitId);
-      if (idx < 0 || slots[idx].generatedAt) return prev;
-      const s = slots[idx];
-      const token = genUnitQrToken(order.id, s.productName, s.unitIndex);
-      slots[idx] = activateQr(s, { qrToken: token, generatedBy: currentUser?.id ?? null });
-      return { ...prev, [order.id]: slots };
-    });
+  const generateUnitQr = async (unitId) => {
+    const slot = (unitQrs[order.id] ?? []).find(s => s.unitId === unitId);
+    if (!slot || slot.generatedAt) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/generate/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id:      order.id,
+          order_item_id: slot.unitId,
+          product_id:    slot.productId,
+          product_name:  slot.productName,
+          unit_index:    slot.unitIndex,
+          generated_by:  currentUser?.id ?? "admin",
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      setUnitQrs(prev => {
+        const slots = [...(prev[order.id] ?? [])];
+        const idx = slots.findIndex(s => s.unitId === unitId);
+        if (idx < 0) return prev;
+        slots[idx] = activateQr(slots[idx], {
+          qrToken:      data.qr_token,
+          qrImageUrl:   data.qr_image_url,
+          generatedAt:  data.generated_at,
+          generatedBy:  currentUser?.id ?? null,
+        });
+        return { ...prev, [order.id]: slots };
+      });
+    } catch (err) {
+      console.error("generateUnitQr failed:", err);
+    }
   };
 
-  const generateAllUnitQrs = () => {
-    setUnitQrs(prev => {
-      const slots = (prev[order.id] ?? []).map(s => {
-        if (s.generatedAt) return s;
-        const token = genUnitQrToken(order.id, s.productName, s.unitIndex);
-        return activateQr(s, { qrToken: token, generatedBy: currentUser?.id ?? null });
-      });
-      return { ...prev, [order.id]: slots };
-    });
+  const generateAllUnitQrs = async () => {
+    const pending = (unitQrs[order.id] ?? []).filter(s => !s.generatedAt);
+    await Promise.all(pending.map(s => generateUnitQr(s.unitId)));
   };
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
@@ -2415,10 +2492,17 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                               </button>
                               <button
                                 className="adm-unit-qr-btn adm-unit-qr-btn--dl"
-                                onClick={() => downloadQrAsPng(
-                                  unit.qrToken,
-                                  `qr-${unit.productName.replace(/\s+/g,"-")}-u${unit.unitIndex}-${order.id}.png`
-                                )}
+                                onClick={() => {
+                                  const filename = `qr-${unit.productName.replace(/\s+/g,"-")}-u${unit.unitIndex}-${order.id}.png`;
+                                  if (unit.qrImageUrl) {
+                                    const a = document.createElement("a");
+                                    a.href = unit.qrImageUrl;
+                                    a.download = filename;
+                                    a.click();
+                                  } else {
+                                    downloadQrAsPng(unit.qrToken, filename);
+                                  }
+                                }}
                               >
                                 <IcDownload /> Unduh
                               </button>
@@ -2645,7 +2729,10 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
             <div className="adm-unit-qr-modal-body">
               <div className="adm-unit-qr-modal-qr-wrap">
-                <MockQr value={viewingQr.qrToken} size={180} />
+                {viewingQr.qrImageUrl
+                  ? <img src={viewingQr.qrImageUrl} alt={`QR ${viewingQr.qrToken}`} width={180} height={180} style={{ imageRendering: "pixelated", display: "block" }} />
+                  : <MockQr value={viewingQr.qrToken} size={180} />
+                }
                 <span className={`adm-unit-qr-status adm-unit-qr-status--${viewingQr.qrStatus ?? QR_STATUS.ACTIVE}`} style={{ marginTop: 10, display: "block", textAlign: "center" }}>
                   ● {viewingQr.qrStatus === QR_STATUS.ACTIVE ? "Aktif" : viewingQr.qrStatus === QR_STATUS.RETURNED ? "Dikembalikan" : "Invalid"}
                 </span>
@@ -2686,10 +2773,17 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
             <div className="adm-modal-footer">
               <button
                 className="adm-pa-approve-btn"
-                onClick={() => downloadQrAsPng(
-                  viewingQr.qrToken,
-                  `qr-${viewingQr.productName.replace(/\s+/g,"-")}-u${viewingQr.unitIndex}-${order.id}.png`
-                )}
+                onClick={() => {
+                  const filename = `qr-${viewingQr.productName.replace(/\s+/g,"-")}-u${viewingQr.unitIndex}-${order.id}.png`;
+                  if (viewingQr.qrImageUrl) {
+                    const a = document.createElement("a");
+                    a.href = viewingQr.qrImageUrl;
+                    a.download = filename;
+                    a.click();
+                  } else {
+                    downloadQrAsPng(viewingQr.qrToken, filename);
+                  }
+                }}
               >
                 <IcDownload /> Unduh PNG
               </button>
