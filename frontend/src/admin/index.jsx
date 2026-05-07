@@ -2971,37 +2971,62 @@ const PaymentApproval = OrderDetail;
    → tampilkan hasil VALID atau INVALID
    ═══════════════════════════════════════════════════════════ */
 function ReceiptVerify() {
-  const [file,      setFile]      = useState(null);
-  const [dragOver,  setDragOver]  = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [result,    setResult]    = useState(null); // null | "valid" | "invalid"
-
-  /* Simulasi proses verifikasi */
-  const runVerify = (simulatedResult) => {
-    setVerifying(true);
-    setResult(null);
-    setTimeout(() => {
-      setVerifying(false);
-      setResult(simulatedResult);
-    }, 2200);
-  };
+  const [file,       setFile]       = useState(null);
+  const [dragOver,   setDragOver]   = useState(false);
+  const [verifying,  setVerifying]  = useState(false);
+  const [result,     setResult]     = useState(null); // null | "valid" | "invalid"
+  const [verifyData, setVerifyData] = useState(null);
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files[0];
-    if (f) { setFile(f); setResult(null); }
+    if (f) { setFile(f); setResult(null); setVerifyData(null); }
   };
 
   const handleFileInput = (e) => {
     const f = e.target.files[0];
-    if (f) { setFile(f); setResult(null); }
+    if (f) { setFile(f); setResult(null); setVerifyData(null); }
   };
 
-  const handleVerify = () => runVerify("valid"); // default: anggap valid bila upload manual
+  const handleVerify = async () => {
+    if (!file) return;
+    setVerifying(true);
+    setResult(null);
+    setVerifyData(null);
+    const formData = new FormData();
+    formData.append("pdf_file", file);
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: formData });
+      const data = await res.json();
+      setVerifyData(data);
+      setResult(data.valid ? "valid" : "invalid");
+    } catch {
+      setVerifyData({ valid: false, failure_reason: "Tidak dapat terhubung ke server" });
+      setResult("invalid");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
-  const simulateValid   = () => { setFile({ name: "receipt-ORD-2024-001.pdf" }); runVerify("valid"); };
-  const simulateInvalid = () => { setFile({ name: "receipt-tampered.pdf" });     runVerify("invalid"); };
+  const simulateValid = () => {
+    setFile({ name: "receipt-ORD-2024-001.pdf" });
+    setResult(null); setVerifyData(null); setVerifying(true);
+    setTimeout(() => {
+      setVerifying(false); setResult("valid");
+      setVerifyData({ valid: true, order_id: "ORD-017", customer_name: "Dewi Larasati", customer_email: "dewi@example.com", total: 335000, generated_at: new Date().toISOString(), receipt_id: "RCP-001", failure_reason: "" });
+    }, 1800);
+  };
+
+  const simulateInvalid = () => {
+    setFile({ name: "receipt-tampered.pdf" });
+    setResult(null); setVerifyData(null); setVerifying(true);
+    setTimeout(() => {
+      setVerifying(false); setResult("invalid");
+      setVerifyData({ valid: false, failure_reason: "Signature tidak cocok dengan database", order_id: "", customer_name: "", customer_email: "", total: 0, generated_at: null });
+    }, 1800);
+  };
 
   return (
     <div className="adm-section">
@@ -3051,7 +3076,7 @@ function ReceiptVerify() {
             <div className="adm-rv-file-preview">
               <IcReceipt />
               <span className="adm-rv-file-name">{file.name}</span>
-              <button className="adm-rv-file-remove" onClick={() => { setFile(null); setResult(null); }}>✕</button>
+              <button className="adm-rv-file-remove" onClick={() => { setFile(null); setResult(null); setVerifyData(null); }}>✕</button>
             </div>
           )}
 
@@ -3101,12 +3126,12 @@ function ReceiptVerify() {
                 <div className="adm-card adm-rv-detail-card">
                   <h3 className="adm-card-title" style={{marginBottom:16}}>Informasi Terverifikasi</h3>
                   {[
-                    ["Order ID",              VALID_RECEIPT_DATA.orderId],
-                    ["Nama Pelanggan",         VALID_RECEIPT_DATA.customer],
-                    ["Total Pembayaran",       fmt(VALID_RECEIPT_DATA.total)],
-                    ["Tanggal Transaksi",      VALID_RECEIPT_DATA.date],
-                    ["Diverifikasi pada",      VALID_RECEIPT_DATA.verifiedAt],
-                    ["Status Tanda Tangan",    VALID_RECEIPT_DATA.signatureStatus],
+                    ["Order ID",           verifyData?.order_id || "—"],
+                    ["Nama Pelanggan",      verifyData?.customer_name || "—"],
+                    ["Total Pembayaran",    verifyData?.total ? fmt(verifyData.total) : "—"],
+                    ["Email Pelanggan",     verifyData?.customer_email || "—"],
+                    ["Dibuat Pada",         verifyData?.generated_at ? new Date(verifyData.generated_at).toLocaleString("id-ID") : "—"],
+                    ["Status Tanda Tangan", "Cocok dengan database ✓"],
                   ].map(([label, val]) => (
                     <div key={label} className="adm-rv-detail-row">
                       <span className="adm-rv-detail-label">{label}</span>
@@ -3137,7 +3162,9 @@ function ReceiptVerify() {
                   <h3 className="adm-card-title" style={{marginBottom:16}}>Detail Pemeriksaan</h3>
                   <div className="adm-rv-detail-row">
                     <span className="adm-rv-detail-label">Status</span>
-                    <span className="adm-rv-detail-val" style={{color:"#ef4444",fontWeight:700}}>Signature tidak ditemukan dalam file</span>
+                    <span className="adm-rv-detail-val" style={{color:"#ef4444",fontWeight:700}}>
+                      {verifyData?.failure_reason || "Signature tidak ditemukan dalam file"}
+                    </span>
                   </div>
                   <div style={{marginTop:16}}>
                     <p className="adm-rv-causes-title">Kemungkinan penyebab:</p>
@@ -3171,20 +3198,31 @@ function ReceiptVerify() {
    Riwayat semua verifikasi receipt yang pernah dilakukan admin.
    ═══════════════════════════════════════════════════════════ */
 function VerifyHistory() {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [query,        setQuery]        = useState("");
+  const [statusFilter,   setStatusFilter]   = useState("all");
+  const [query,          setQuery]          = useState("");
+  const [historyData,    setHistoryData]    = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
-  const filtered = VERIFY_HISTORY_DATA.filter(v => {
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+    fetch(`${apiBase}/api/receipts/history/`)
+      .then(r => r.json())
+      .then(data => setHistoryData(data.history ?? []))
+      .catch(() => setHistoryData([]))
+      .finally(() => setHistoryLoading(false));
+  }, []);
+
+  const filtered = historyData.filter(v => {
     const matchStatus = statusFilter === "all" || v.result === statusFilter;
     const q = query.toLowerCase();
-    const matchQ = !q || v.orderId.toLowerCase().includes(q) || v.customer.toLowerCase().includes(q);
+    const matchQ = !q || (v.orderId ?? "").toLowerCase().includes(q) || (v.customer ?? "").toLowerCase().includes(q);
     return matchStatus && matchQ;
   });
 
-  const validCount   = VERIFY_HISTORY_DATA.filter(v => v.result === "valid").length;
-  const invalidCount = VERIFY_HISTORY_DATA.filter(v => v.result === "invalid").length;
+  const validCount   = historyData.filter(v => v.result === "valid").length;
+  const invalidCount = historyData.filter(v => v.result === "invalid").length;
 
-  const validRate = Math.round((validCount / VERIFY_HISTORY_DATA.length) * 100);
+  const validRate = historyData.length > 0 ? Math.round((validCount / historyData.length) * 100) : 0;
   const circleLen = 2 * Math.PI * 20; // r=20
 
   return (
@@ -3192,7 +3230,7 @@ function VerifyHistory() {
       <div className="adm-section-header">
         <div>
           <h2 className="adm-section-title">Riwayat Verifikasi Receipt</h2>
-          <p className="adm-section-sub">{VERIFY_HISTORY_DATA.length} verifikasi tercatat</p>
+          <p className="adm-section-sub">{historyLoading ? "Memuat…" : `${historyData.length} verifikasi tercatat`}</p>
         </div>
       </div>
 
@@ -3203,7 +3241,7 @@ function VerifyHistory() {
             <IcHistory />
           </div>
           <div>
-            <span className="adm-vh-stat-num">{VERIFY_HISTORY_DATA.length}</span>
+            <span className="adm-vh-stat-num">{historyData.length}</span>
             <span className="adm-vh-stat-lbl">Total Verifikasi</span>
           </div>
         </div>
@@ -3273,9 +3311,14 @@ function VerifyHistory() {
 
       {/* ── Card list ── */}
       <div className="adm-vh-list">
-        {filtered.length === 0 ? (
+        {historyLoading ? (
           <div className="adm-card" style={{padding:"32px", textAlign:"center", color:"var(--adm-text-3)"}}>
-            Tidak ada data ditemukan.
+            <div className="adm-modal-spinner" style={{margin:"0 auto 12px"}} />
+            Memuat riwayat verifikasi…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="adm-card" style={{padding:"32px", textAlign:"center", color:"var(--adm-text-3)"}}>
+            {historyData.length === 0 ? "Belum ada riwayat verifikasi." : "Tidak ada data ditemukan."}
           </div>
         ) : filtered.map((v, i) => (
           <div key={v.id} className={`adm-vh-item adm-vh-item--${v.result}`}>

@@ -447,21 +447,22 @@ function buildReceiptHtml(order, logoDataUrl = "") {
 }
 
 async function handleDownload(order) {
-  let logoDataUrl = "";
   try {
-    const resp = await fetch("/logo-careofyou.png");
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+    const resp = await fetch(`${apiBase}/api/receipts/${order.id}/download/`);
+    if (!resp.ok) throw new Error("gagal");
     const blob = await resp.blob();
-    logoDataUrl = await new Promise((res) => {
-      const r = new FileReader();
-      r.onloadend = () => res(r.result);
-      r.readAsDataURL(blob);
-    });
-  } catch (_) {}
-  const html = buildReceiptHtml(order, logoDataUrl);
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `e-receipt-${order.id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch {
+    alert("Gagal mengunduh e-receipt. Pastikan backend aktif lalu coba lagi.");
+  }
 }
 
 /* ─── SVG Icons ────────────────────────────────────────────── */
