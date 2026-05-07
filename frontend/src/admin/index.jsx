@@ -3010,24 +3010,6 @@ function ReceiptVerify() {
     }
   };
 
-  const simulateValid = () => {
-    setFile({ name: "receipt-ORD-2024-001.pdf" });
-    setResult(null); setVerifyData(null); setVerifying(true);
-    setTimeout(() => {
-      setVerifying(false); setResult("valid");
-      setVerifyData({ valid: true, order_id: "ORD-017", customer_name: "Dewi Larasati", customer_email: "dewi@example.com", total: 335000, generated_at: new Date().toISOString(), receipt_id: "RCP-001", failure_reason: "" });
-    }, 1800);
-  };
-
-  const simulateInvalid = () => {
-    setFile({ name: "receipt-tampered.pdf" });
-    setResult(null); setVerifyData(null); setVerifying(true);
-    setTimeout(() => {
-      setVerifying(false); setResult("invalid");
-      setVerifyData({ valid: false, failure_reason: "Signature tidak cocok dengan database", order_id: "", customer_name: "", customer_email: "", total: 0, generated_at: null });
-    }, 1800);
-  };
-
   return (
     <div className="adm-section">
       <div className="adm-section-header">
@@ -3095,14 +3077,7 @@ function ReceiptVerify() {
             </div>
           )}
 
-          {/* ── Demo/Testing toggle buttons ── */}
-          <div className="adm-rv-demo">
-            <p className="adm-rv-demo-label">Demo / Testing:</p>
-            <div className="adm-rv-demo-row">
-              <button className="adm-rv-sim-btn adm-rv-sim--valid"   onClick={simulateValid}>Simulasi Valid</button>
-              <button className="adm-rv-sim-btn adm-rv-sim--invalid" onClick={simulateInvalid}>Simulasi Invalid</button>
-            </div>
-          </div>
+
         </div>
 
         {/* ── Hasil Verifikasi ── */}
