@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CreditCard, Paperclip, Loader2, PartyPopper, Package, AlertTriangle, Clock } from "lucide-react";
 import { useOrders } from "../context/OrderContext";
+import { useCart } from "../context/CartContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -82,6 +83,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addOrder } = useOrders();
+  const { clearCart } = useCart();
   const { session, currentUser } = useMockData();
 
   const cartItems = location.state?.cartItems ?? ORDER_ITEMS;
@@ -258,6 +260,7 @@ export default function CheckoutPage() {
         deviceInfo: session?.deviceInfo ?? {},
       },
     });
+    clearCart();
     setSubmitted(true);
   };
 

@@ -41,7 +41,7 @@ def generate_receipt(request):
 
     receipt = EReceipt.objects.create(
         order_id=order.order_id,
-        customer_name=order.customer,
+        customer_name=order.recipient or order.customer,
         customer_email=order.email,
         total=order.total,
         signature_hash=signature,
@@ -82,7 +82,7 @@ def download_receipt(request, order_id):
         pdf_b64, signature, generated_at = generate_receipt_pdf(order)
         receipt = EReceipt.objects.create(
             order_id=order.order_id,
-            customer_name=order.customer,
+            customer_name=order.recipient or order.customer,
             customer_email=order.email,
             total=order.total,
             signature_hash=signature,
