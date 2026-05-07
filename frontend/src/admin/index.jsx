@@ -20,6 +20,11 @@ import {
   StepUpVerificationModal,
   TrustedDeviceCard,
 } from "./risk-monitoring.jsx";
+import {
+  QR_STATUS,
+  activateQr,
+  buildOrderQrSlots,
+} from "../lib/unitQrService.js";
 
 /* ═══════════════════════════════════════════════════════════
    MOCK DATA
@@ -133,6 +138,7 @@ const IcShield     = () => <svg width="18" height="18" viewBox="0 0 24 24" fill=
 const IcHistory    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/><polyline points="12 7 12 12 15 14"/></svg>;
 const IcCreditCard = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
 const IcQr         = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="16" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>;
+const IcDownload   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 
 /* ═══════════════════════════════════════════════════════════
    COMPONENT: Revenue Chart (modern SVG area chart)
@@ -609,6 +615,71 @@ function MockQr({ value, size = 120 }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   HELPERS: Unit QR generation
+   ═══════════════════════════════════════════════════════════ */
+function genUnitQrToken(orderId, productName, unitIndex) {
+  const orderCode = orderId.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(-6);
+  const prodCode  = productName.replace(/\s+/g, "").toUpperCase().slice(0, 4);
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let hash = 0;
+  const seed = `${orderId}||${productName}||${unitIndex}||${Date.now()}`;
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  let suffix = "";
+  let h = Math.abs(hash) || 7919;
+  for (let i = 0; i < 7; i++) { suffix += chars[h % chars.length]; h = Math.floor(h / chars.length) || 7919; }
+  return `UNIT-${orderCode}-${prodCode}-U${unitIndex}-${suffix}`;
+}
+
+function generateQrSvgString(value, size = 200) {
+  const GRID = 21;
+  const cell = size / GRID;
+  const finderCells = [];
+  [[0,0],[14,0],[0,14]].forEach(([dr,dc]) => {
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
+      if (r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4)) finderCells.push([dr+r, dc+c]);
+    }
+  });
+  const reserved = new Set();
+  [[0,0],[14,0],[0,14]].forEach(([dr,dc]) => {
+    for (let r=dr-1;r<=dr+7;r++) for (let c=dc-1;c<=dc+7;c++)
+      if (r>=0&&r<GRID&&c>=0&&c<GRID) reserved.add(`${r},${c}`);
+  });
+  for (let i=8;i<13;i++) { reserved.add(`6,${i}`); reserved.add(`${i},6`); }
+  const timingCells = [];
+  for (let i=8;i<13;i+=2) { timingCells.push([6,i]); timingCells.push([i,6]); }
+  let hash = 0;
+  for (let i=0;i<value.length;i++) hash = ((hash<<5)-hash+value.charCodeAt(i))|0;
+  const dataCells = [];
+  for (let r=0;r<GRID;r++) for (let c=0;c<GRID;c++) {
+    if (reserved.has(`${r},${c}`)) continue;
+    const s = (hash^(r*31+c*17))|0;
+    if ((s^(s>>>7))&1) dataCells.push([r,c]);
+  }
+  const rects = [...finderCells,...timingCells,...dataCells]
+    .map(([r,c]) => `<rect x="${(c*cell).toFixed(2)}" y="${(r*cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}" fill="#1a1a1a"/>`)
+    .join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="white"/>${rects}</svg>`;
+}
+
+function downloadQrAsPng(token, filename) {
+  const svgStr = generateQrSvgString(token, 240);
+  const canvas = document.createElement("canvas");
+  canvas.width = 280; canvas.height = 280;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 280, 280);
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 20, 20, 240, 240);
+    const a = document.createElement("a");
+    a.download = filename;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
@@ -617,7 +688,6 @@ function Products() {
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
-  const [qrView,  setQrView]    = useState(null);
 
   const cats = ["all", ...Array.from(new Set(PRODUCTS.map(p => p.category)))];
   const filtered = products.filter(p => {
@@ -629,23 +699,10 @@ function Products() {
 
   const remove = (id) => setProducts(prev => prev.filter(p => p.id !== id));
 
-  const genQrCode = (id, category, name) => {
-    const catCode = category.replace(/\s+/g, "").toUpperCase().slice(0, 3);
-    let hash = 0;
-    const str = `${id}-${name}`;
-    for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let suffix = "";
-    let h = Math.abs(hash) || 7919;
-    for (let i = 0; i < 8; i++) { suffix += chars[h % chars.length]; h = Math.floor(h / chars.length) || 7919; }
-    return `PROD-NEW-${catCode}-QR-${suffix}`;
-  };
-
   const handleAdd = (e) => {
     e.preventDefault();
     if (!newProd.name || !newProd.category || !newProd.price) return;
     const id = Date.now();
-    const qrCode = genQrCode(id, newProd.category, newProd.name);
     setProducts(prev => [...prev, {
       id,
       name: newProd.name,
@@ -654,7 +711,6 @@ function Products() {
       image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
       rating: 0,
       reviews: 0,
-      qrCode,
     }]);
     setNewProd({ name: "", category: "", price: "", image: "" });
     setShowAdd(false);
@@ -752,7 +808,6 @@ function Products() {
                   <td className="adm-date-cell">{p.reviews}</td>
                   <td>
                     <div className="adm-action-btns">
-                      <button className="adm-act-btn adm-act-btn--qr" title="Lihat QR" onClick={() => setQrView(p)}><IcQr /></button>
                       <button className="adm-act-btn adm-act-btn--edit" title="Edit"><IcEdit /></button>
                       <button className="adm-act-btn adm-act-btn--danger" title="Hapus" onClick={() => remove(p.id)}><IcTrash /></button>
                     </div>
@@ -764,35 +819,6 @@ function Products() {
         </div>
       </div>
 
-      {/* QR View Modal */}
-      {qrView && (
-        <div className="adm-modal-overlay" onClick={() => setQrView(null)}>
-          <div className="adm-modal adm-pqr-modal" onClick={e => e.stopPropagation()}>
-            <div className="adm-modal-header">
-              <div className="adm-modal-header-info">
-                <div className="adm-modal-header-row">
-                  <h3 className="adm-modal-title">Kode QR Produk</h3>
-                  <span className="adm-cat-badge">{qrView.category}</span>
-                </div>
-                <p className="adm-modal-sub">{qrView.name}</p>
-              </div>
-              <button className="adm-modal-close" onClick={() => setQrView(null)}>✕</button>
-            </div>
-            <div className="adm-pqr-body">
-              <div className="adm-pqr-visual">
-                <MockQr value={qrView.qrCode || qrView.name} size={160} />
-              </div>
-              <div className="adm-pqr-info">
-                <p className="adm-pqr-label">QR Code</p>
-                <code className="adm-qr-code-chip adm-qr-code-chip--neutral">{qrView.qrCode || "–"}</code>
-                <p className="adm-pqr-desc">
-                  Dibuat otomatis saat produk ini ditambahkan. Cetak dan tempel di kemasan produk untuk mengaktifkan verifikasi pengembalian.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -1989,8 +2015,16 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const [localStatuses, setLocalStatuses] = useState({});
   const [localShip, setLocalShip] = useState({});
 
+  // Unit QR state: { [orderId]: UnitQrSlot[] }
+  const [unitQrs, setUnitQrs] = useState({});
+  const [viewingQr, setViewingQr] = useState(null);
+
   const getStatus = (o) => localStatuses[o.id] ?? o.status;
   const curStatus = order ? getStatus(order) : null;
+
+  // Derived QR values for current order
+  const orderQrs = unitQrs[order?.id] ?? [];
+  const allQrsGenerated = orderQrs.length > 0 && orderQrs.every(q => q.generatedAt !== null);
 
   useEffect(() => {
     if (!order?.id) return;
@@ -2012,6 +2046,40 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     setDeliverFile(null);
     setDeliverPreview(null);
   }, [order?.id]);
+
+  // Initialise QR slots once the order moves to packing (or is already past packing)
+  useEffect(() => {
+    if (!order?.id || !order?.items?.length) return;
+    const postPending = ["packing", "shipped", "delivered"].includes(curStatus);
+    if (!postPending) return;
+    setUnitQrs(prev => {
+      if (prev[order.id]) return prev; // already initialised
+      return { ...prev, [order.id]: buildOrderQrSlots(order) };
+    });
+  }, [curStatus, order?.id, order?.items]);
+
+  const generateUnitQr = (unitId) => {
+    setUnitQrs(prev => {
+      const slots = [...(prev[order.id] ?? [])];
+      const idx = slots.findIndex(s => s.unitId === unitId);
+      if (idx < 0 || slots[idx].generatedAt) return prev;
+      const s = slots[idx];
+      const token = genUnitQrToken(order.id, s.productName, s.unitIndex);
+      slots[idx] = activateQr(s, { qrToken: token, generatedBy: currentUser?.id ?? null });
+      return { ...prev, [order.id]: slots };
+    });
+  };
+
+  const generateAllUnitQrs = () => {
+    setUnitQrs(prev => {
+      const slots = (prev[order.id] ?? []).map(s => {
+        if (s.generatedAt) return s;
+        const token = genUnitQrToken(order.id, s.productName, s.unitIndex);
+        return activateQr(s, { qrToken: token, generatedBy: currentUser?.id ?? null });
+      });
+      return { ...prev, [order.id]: slots };
+    });
+  };
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
@@ -2288,6 +2356,88 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
               </div>
             </div>
 
+            {/* ── Unit QR Produk — visible once order is approved (packing+) ── */}
+            {["packing","shipped","delivered"].includes(curStatus) && (
+              <div className="adm-pa-block adm-unit-qr-block">
+                <div className="adm-unit-qr-hdr">
+                  <p className="adm-pa-block-label" style={{ margin: 0 }}>Unit QR Produk</p>
+                  {curStatus === "packing" && !allQrsGenerated && orderQrs.length > 0 && (
+                    <button className="adm-unit-qr-gen-all-btn" onClick={generateAllUnitQrs}>
+                      <IcQr /> Generate Semua
+                    </button>
+                  )}
+                </div>
+
+                <div className="adm-unit-qr-banner">
+                  <IcShield />
+                  <p>QR unik per unit — digunakan saat customer mengajukan pengembalian untuk memverifikasi keaslian produk dan mencegah penipuan.</p>
+                </div>
+
+                {orderQrs.length === 0 ? (
+                  <p className="adm-unit-qr-empty">Memuat slot QR…</p>
+                ) : (
+                  <div className="adm-unit-qr-list">
+                    {orderQrs.map((unit) => (
+                      <div key={unit.unitId} className={`adm-unit-qr-row${unit.generatedAt ? " adm-unit-qr-row--generated" : ""}`}>
+                        <div className="adm-unit-qr-row-left">
+                          <span className="adm-unit-qr-name">{unit.productName}</span>
+                          <span className="adm-unit-qr-badge">Unit #{unit.unitIndex}</span>
+                        </div>
+
+                        <div className="adm-unit-qr-row-mid">
+                          {unit.generatedAt ? (
+                            <>
+                              <span className="adm-unit-qr-status adm-unit-qr-status--active">● Aktif</span>
+                              <span className="adm-unit-qr-ts">
+                                {new Date(unit.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="adm-unit-qr-status adm-unit-qr-status--pending">○ Belum digenerate</span>
+                          )}
+                        </div>
+
+                        <div className="adm-unit-qr-row-actions">
+                          {!unit.generatedAt ? (
+                            <button
+                              className="adm-unit-qr-btn adm-unit-qr-btn--gen"
+                              onClick={() => generateUnitQr(unit.unitId)}
+                            >
+                              <IcQr /> Generate
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="adm-unit-qr-btn adm-unit-qr-btn--view"
+                                onClick={() => setViewingQr(unit)}
+                              >
+                                <IcQr /> Lihat
+                              </button>
+                              <button
+                                className="adm-unit-qr-btn adm-unit-qr-btn--dl"
+                                onClick={() => downloadQrAsPng(
+                                  unit.qrToken,
+                                  `qr-${unit.productName.replace(/\s+/g,"-")}-u${unit.unitIndex}-${order.id}.png`
+                                )}
+                              >
+                                <IcDownload /> Unduh
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {curStatus === "packing" && orderQrs.length > 0 && !allQrsGenerated && (
+                  <p className="adm-unit-qr-warn">
+                    ⚠ Generate semua QR sebelum bisa melanjutkan ke pengiriman.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Alamat Pengiriman</p>
               <p className="adm-pa-shipping-val">{order.address || "—"}</p>
@@ -2424,10 +2574,21 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                 </div>
               )}
               {curStatus === "packing" && (
-                <div className="adm-pa-actions">
-                  <button className="adm-pa-approve-btn" onClick={() => { setShipModal(true); setCourierInput(""); setTrackingInput(""); }}>
+                <div className="adm-pa-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                  <button
+                    className="adm-pa-approve-btn"
+                    disabled={!allQrsGenerated}
+                    title={!allQrsGenerated ? "Generate semua QR produk terlebih dahulu" : undefined}
+                    onClick={() => { setShipModal(true); setCourierInput(""); setTrackingInput(""); }}
+                    style={{ opacity: allQrsGenerated ? 1 : 0.5, cursor: allQrsGenerated ? "pointer" : "not-allowed" }}
+                  >
                     <IcTruck /> Input Pengiriman
                   </button>
+                  {!allQrsGenerated && (
+                    <p className="adm-unit-qr-ship-block-hint">
+                      Generate semua QR unit produk di atas sebelum melanjutkan pengiriman.
+                    </p>
+                  )}
                 </div>
               )}
               {curStatus === "shipped" && (
@@ -2469,6 +2630,74 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         onClose={closeStepUp}
         onSuccess={handleStepUpSuccess}
       />
+
+      {/* ── Unit QR View Modal ── */}
+      {viewingQr && (
+        <div className="adm-modal-overlay" onClick={() => setViewingQr(null)}>
+          <div className="adm-modal adm-unit-qr-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <div className="adm-modal-header-info">
+                <h3 className="adm-modal-title">QR Unit Produk</h3>
+                <p className="adm-modal-sub">{viewingQr.productName} — Unit #{viewingQr.unitIndex} · {order.id}</p>
+              </div>
+              <button className="adm-modal-close" onClick={() => setViewingQr(null)}>✕</button>
+            </div>
+
+            <div className="adm-unit-qr-modal-body">
+              <div className="adm-unit-qr-modal-qr-wrap">
+                <MockQr value={viewingQr.qrToken} size={180} />
+                <span className={`adm-unit-qr-status adm-unit-qr-status--${viewingQr.qrStatus ?? QR_STATUS.ACTIVE}`} style={{ marginTop: 10, display: "block", textAlign: "center" }}>
+                  ● {viewingQr.qrStatus === QR_STATUS.ACTIVE ? "Aktif" : viewingQr.qrStatus === QR_STATUS.RETURNED ? "Dikembalikan" : "Invalid"}
+                </span>
+              </div>
+
+              <div className="adm-unit-qr-modal-info">
+                <div className="adm-unit-qr-modal-field">
+                  <span className="adm-pqr-label">Token QR</span>
+                  <code className="adm-qr-code-chip adm-qr-code-chip--neutral">{viewingQr.qrToken}</code>
+                </div>
+                <div className="adm-unit-qr-modal-field">
+                  <span className="adm-pqr-label">Digenerate</span>
+                  <span className="adm-unit-qr-modal-val">
+                    {new Date(viewingQr.generatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                  </span>
+                </div>
+                <div className="adm-unit-qr-modal-field">
+                  <span className="adm-pqr-label">Pesanan</span>
+                  <span className="adm-unit-qr-modal-val">{order.id} · {order.customer}</span>
+                </div>
+
+                <div className="adm-unit-qr-modal-desc">
+                  <div className="adm-unit-qr-modal-desc-hdr">
+                    <IcShield />
+                    <strong>Verifikasi Pengembalian &amp; Anti-Penipuan</strong>
+                  </div>
+                  <p>
+                    QR ini dilekatkan secara unik pada unit <strong>{viewingQr.productName}</strong> (Unit #{viewingQr.unitIndex}) dalam pesanan <strong>{order.id}</strong>.
+                    Saat customer mengajukan pengembalian, admin scan QR ini untuk memastikan produk yang dikembalikan adalah barang asli dari pesanan yang sama — bukan produk palsu atau unit dari pesanan lain.
+                  </p>
+                  <p style={{ marginTop: 8, color: "#c97269", fontWeight: 600 }}>
+                    Cetak dan tempel QR ini di dalam kemasan sebelum dikirim.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="adm-modal-footer">
+              <button
+                className="adm-pa-approve-btn"
+                onClick={() => downloadQrAsPng(
+                  viewingQr.qrToken,
+                  `qr-${viewingQr.productName.replace(/\s+/g,"-")}-u${viewingQr.unitIndex}-${order.id}.png`
+                )}
+              >
+                <IcDownload /> Unduh PNG
+              </button>
+              <button className="adm-ghost-btn" onClick={() => setViewingQr(null)}>Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {proofZoom && order.paymentProof?.startsWith("data:") && (
         <div className="adm-proof-zoom-overlay" onClick={() => setProofZoom(false)}>

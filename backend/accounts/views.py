@@ -45,7 +45,7 @@ def login(request):
     if user.status == "locked":
         return Response({"error": "Akun dikunci. Hubungi admin."}, status=status.HTTP_403_FORBIDDEN)
 
-    return Response({"message": "Login berhasil", "user": UserSerializer(user).data})
+    return Response({"message": "Login berhasil", "user": _serialize_user(user)})
 
 
 @api_view(["GET"])

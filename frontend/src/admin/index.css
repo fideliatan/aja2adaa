@@ -4260,3 +4260,228 @@
 .adm-cam-err-btn:hover {
   background: #3a8fc4;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   UNIT QR — per-order-unit QR section (Order Detail)
+   ═══════════════════════════════════════════════════════════ */
+.adm-unit-qr-block {
+  padding-top: 0;
+}
+.adm-unit-qr-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.adm-unit-qr-gen-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 13px;
+  border-radius: 8px;
+  border: 1.5px solid #c97269;
+  background: #fff9f8;
+  color: #c97269;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.adm-unit-qr-gen-all-btn:hover {
+  background: #fef0ee;
+}
+.adm-unit-qr-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #f8f9fa;
+  border: 1px solid #e8eaec;
+  border-radius: 9px;
+  padding: 10px 13px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  color: #555;
+  line-height: 1.5;
+}
+.adm-unit-qr-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #7c3aed;
+}
+.adm-unit-qr-banner p { margin: 0; }
+.adm-unit-qr-empty {
+  font-size: 12.5px;
+  color: #bbb;
+  padding: 8px 0;
+}
+.adm-unit-qr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.adm-unit-qr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1.5px solid #e8eaec;
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+.adm-unit-qr-row--generated {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.adm-unit-qr-row-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.adm-unit-qr-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-unit-qr-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c3aed;
+  background: #f3e8ff;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.adm-unit-qr-row-mid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.adm-unit-qr-status {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.adm-unit-qr-status--active  { color: #16a34a; }
+.adm-unit-qr-status--pending { color: #94a3b8; }
+.adm-unit-qr-status--returned { color: #f59e0b; }
+.adm-unit-qr-status--invalid  { color: #dc2626; }
+.adm-unit-qr-ts {
+  font-size: 11px;
+  color: #999;
+}
+.adm-unit-qr-row-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.adm-unit-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background 0.13s, border-color 0.13s;
+}
+.adm-unit-qr-btn--gen {
+  background: #c97269;
+  color: #fff;
+  border-color: #c97269;
+}
+.adm-unit-qr-btn--gen:hover { background: #b5625a; }
+.adm-unit-qr-btn--view {
+  background: #fff;
+  color: #7c3aed;
+  border-color: #c4b5fd;
+}
+.adm-unit-qr-btn--view:hover { background: #f5f3ff; }
+.adm-unit-qr-btn--dl {
+  background: #fff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.adm-unit-qr-btn--dl:hover { background: #f0f9ff; }
+.adm-unit-qr-warn {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.adm-unit-qr-ship-block-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #b45309;
+  text-align: center;
+}
+
+/* ── Unit QR Modal ─────────────────────────────────────── */
+.adm-unit-qr-modal {
+  max-width: 580px;
+  width: 90vw;
+}
+.adm-unit-qr-modal-body {
+  display: flex;
+  gap: 24px;
+  padding: 20px 24px;
+  align-items: flex-start;
+}
+.adm-unit-qr-modal-qr-wrap {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f9f9f9;
+  border: 1.5px solid #e8eaec;
+  border-radius: 12px;
+  padding: 16px;
+}
+.adm-unit-qr-modal-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.adm-unit-qr-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.adm-unit-qr-modal-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+.adm-unit-qr-modal-desc {
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: #555;
+  line-height: 1.55;
+}
+.adm-unit-qr-modal-desc p { margin: 0; }
+.adm-unit-qr-modal-desc-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.adm-unit-qr-modal-desc-hdr svg { color: #7c3aed; }
