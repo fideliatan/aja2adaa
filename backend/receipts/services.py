@@ -73,7 +73,7 @@ def _build_receipt_html(order) -> str:
       margin: 0 auto;
       border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 8px 48px rgba(201,114,105,0.2);
+      border: 1.5px solid #f0d5d2;
     }}
     .rc-head {{
       background: linear-gradient(135deg, #d6867c 0%, #c97269 40%, #b05a52 100%);

@@ -1412,7 +1412,9 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="od-rp-row">
                   <span>Ongkos Kirim</span>
-                  <span style={{ color: "#22c55e", fontWeight: 700 }}>Gratis</span>
+                  {liveOrder.deliveryFee > 0
+                    ? <span style={{ fontWeight: 700, color: "#2d2d2d" }}>{fmt(liveOrder.deliveryFee)}</span>
+                    : <span style={{ color: "#22c55e", fontWeight: 700 }}>Gratis</span>}
                 </div>
 
                 {/* Total */}
