@@ -192,6 +192,43 @@ def approve_qr_return(unit_id: str, approved_by: str) -> dict:
     }
 
 
+def _log_verification(cur, unit_id, token: str, scanned_by: str, result: str, notes: str) -> str | None:
+    """
+    Insert a row into qr_verifications. Returns the new row's UUID string, or
+    None if the insert fails (e.g. schema mismatch).  Caller should never raise
+    on logging failure — it must not block a legitimate scan result.
+    """
+    try:
+        cur.execute(
+            """
+            INSERT INTO qr_verifications
+                (product_unit_id, raw_qr_token, scanned_by, verification_result, notes)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            [unit_id, token, scanned_by, result, notes],
+        )
+        row = cur.fetchone()
+        return str(row[0]) if row else None
+    except Exception:
+        # raw_qr_token column may not exist if migration 006 was not run;
+        # fall back to inserting without it.
+        try:
+            cur.execute(
+                """
+                INSERT INTO qr_verifications
+                    (product_unit_id, scanned_by, verification_result, notes)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+                """,
+                [unit_id, scanned_by, result, notes],
+            )
+            row = cur.fetchone()
+            return str(row[0]) if row else None
+        except Exception:
+            return None
+
+
 def verify_qr_token(
     token: str,
     scanned_by: str,
@@ -199,29 +236,101 @@ def verify_qr_token(
     claimed_product_id: str | None = None,
 ) -> dict:
     """
-    Delegate verification to the verify_qr_for_return PostgreSQL function
-    (defined in migration 006).  That function logs to qr_verifications and
-    raises fraud_flags automatically.
+    Verify a scanned QR token directly in Python (no stored procedure dependency).
+
+    Checks:
+      1. Token exists in product_units
+      2. qr_status is 'active' and unit not already returned
+      3. Optional: order_id cross-check if claimed_order_id is supplied
+    Logs every scan to qr_verifications regardless of outcome.
     """
     with connection.cursor() as cur:
+        # ── Step 1: token lookup ────────────────────────────────────────────
         cur.execute(
             """
-            SELECT is_valid, result_code, message,
-                   out_unit_id, out_order_id, out_product_id,
-                   verification_id, fraud_flag_id
-            FROM   verify_qr_for_return(%s, %s, %s, %s)
+            SELECT id, order_id, product_id, qr_status, is_returned
+            FROM   product_units
+            WHERE  qr_token = %s
             """,
-            [token, scanned_by, claimed_order_id, claimed_product_id],
+            [token],
         )
         row = cur.fetchone()
 
-    return {
-        "is_valid":        row[0],
-        "result_code":     row[1],
-        "message":         row[2],
-        "unit_id":         str(row[3]) if row[3] else None,
-        "order_id":        row[4],
-        "product_id":      row[5],
-        "verification_id": str(row[6]) if row[6] else None,
-        "fraud_flag_id":   str(row[7]) if row[7] else None,
-    }
+        if not row:
+            _log_verification(cur, None, token, scanned_by, "not_found",
+                              "Token tidak ditemukan dalam sistem")
+            return {
+                "is_valid":        False,
+                "result_code":     "not_found",
+                "message":         "QR code tidak ditemukan. Pastikan kode QR benar dan belum rusak.",
+                "unit_id":         None,
+                "order_id":        None,
+                "product_id":      None,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        unit_id, order_id, product_id, qr_status, is_returned = row
+        unit_id_str = str(unit_id)
+
+        # ── Step 2: lifecycle status ────────────────────────────────────────
+        if is_returned or qr_status == "returned":
+            _log_verification(cur, unit_id, token, scanned_by, "already_returned",
+                              "Unit sudah dikembalikan sebelumnya")
+            return {
+                "is_valid":        False,
+                "result_code":     "already_returned",
+                "message":         "Produk ini sudah pernah dikembalikan sebelumnya.",
+                "unit_id":         unit_id_str,
+                "order_id":        order_id,
+                "product_id":      product_id,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        if qr_status != "active":
+            _log_verification(cur, unit_id, token, scanned_by, "invalid",
+                              f"qr_status bukan active: {qr_status}")
+            return {
+                "is_valid":        False,
+                "result_code":     "invalid",
+                "message":         "QR code ini tidak aktif dan tidak dapat digunakan.",
+                "unit_id":         unit_id_str,
+                "order_id":        order_id,
+                "product_id":      product_id,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        # ── Step 3: optional order cross-check ─────────────────────────────
+        if claimed_order_id and order_id != claimed_order_id:
+            _log_verification(cur, unit_id, token, scanned_by, "invalid",
+                              f"Order mismatch — QR: {order_id}, klaim: {claimed_order_id}")
+            return {
+                "is_valid":        False,
+                "result_code":     "invalid",
+                "message":         (
+                    f"QR ini terdaftar untuk pesanan {order_id}, "
+                    f"bukan {claimed_order_id}. Pastikan QR sesuai dengan produk yang di-return."
+                ),
+                "unit_id":         unit_id_str,
+                "order_id":        order_id,
+                "product_id":      product_id,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        # ── All clear ───────────────────────────────────────────────────────
+        verification_id = _log_verification(
+            cur, unit_id, token, scanned_by, "valid", "Verifikasi berhasil"
+        )
+        return {
+            "is_valid":        True,
+            "result_code":     "valid",
+            "message":         "Verifikasi berhasil. Produk dapat diproses untuk pengembalian.",
+            "unit_id":         unit_id_str,
+            "order_id":        order_id,
+            "product_id":      product_id,
+            "verification_id": verification_id,
+            "fraud_flag_id":   None,
+        }

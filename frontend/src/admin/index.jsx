@@ -1123,11 +1123,19 @@ function buildAllReturns(ctxReturns) {
     conditionNote:  r.conditionNote  ?? r.reason,
     photos:         r.photos ?? (r.productPhotoB64 ? [r.productPhotoB64] : []),
     receiptB64:     r.receiptB64     ?? null,
-    qrCode:         r.qrCode         ?? "—",
-    scannedQr:      r.scannedQr      ?? "—",
     qrStatus:       r.qrStatus       ?? null,
     fromCtx: true,
   }));
+}
+
+function buildReturnUnits(products) {
+  const units = [];
+  (products ?? []).forEach((p, pi) => {
+    for (let u = 1; u <= (p.qty ?? 1); u++) {
+      units.push({ key: `${pi}-${u}`, name: p.name, unitIndex: u });
+    }
+  });
+  return units;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1138,11 +1146,17 @@ function CameraScanner({ onScan, onClose }) {
   const canvasRef = useRef(null);
   const rafRef    = useRef(null);
   const streamRef = useRef(null);
-  const [camErr,   setCamErr]   = useState(null);
-  const [active,   setActive_]  = useState(false);
+  const [camErr,      setCamErr]     = useState(null);
+  const [scanning,    setScanning]   = useState(false); // true = jsQR loop active
+  const [foundCode,   setFoundCode]  = useState(null);  // detected token waiting for confirm
+  const [manualToken, setManualToken] = useState("");
 
+  // Start camera, then wait 1.5 s before activating jsQR
+  // so the admin has time to position the QR (and we don't
+  // accidentally scan a QR code that's already on screen).
   useEffect(() => {
     let alive = true;
+    let timer  = null;
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
@@ -1150,8 +1164,8 @@ function CameraScanner({ onScan, onClose }) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play();
-          setActive_(true);
         }
+        timer = setTimeout(() => { if (alive) setScanning(true); }, 1500);
       })
       .catch(err => {
         if (!alive) return;
@@ -1159,13 +1173,15 @@ function CameraScanner({ onScan, onClose }) {
       });
     return () => {
       alive = false;
+      clearTimeout(timer);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
+  // jsQR decode loop — runs only while scanning=true and no code found yet
   useEffect(() => {
-    if (!active) return;
+    if (!scanning || foundCode) return;
     const tick = () => {
       const video  = videoRef.current;
       const canvas = canvasRef.current;
@@ -1178,19 +1194,37 @@ function CameraScanner({ onScan, onClose }) {
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0);
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
-      if (code) {
-        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
+      if (code?.data) {
         cancelAnimationFrame(rafRef.current);
-        setActive_(false);
-        onScan(code.data);
+        setFoundCode(code.data); // pause and ask for confirmation
         return;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [active, onScan]);
+  }, [scanning, foundCode]);
+
+  const confirmScan = () => {
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    onScan(foundCode);
+  };
+
+  const retryScan = () => {
+    setFoundCode(null);
+    // brief pause so admin can reposition, then resume loop
+    setScanning(false);
+    setTimeout(() => setScanning(true), 400);
+  };
+
+  const submitManual = () => {
+    const val = manualToken.trim();
+    if (!val) return;
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    onScan(val);
+  };
 
   return (
     <div className="adm-cam-overlay" onClick={onClose}>
@@ -1199,12 +1233,23 @@ function CameraScanner({ onScan, onClose }) {
           <span className="adm-cam-title">Scan QR Produk</span>
           <button className="adm-cam-close" onClick={onClose}>✕</button>
         </div>
+
         <div className="adm-cam-body">
           {camErr ? (
             <div className="adm-cam-error">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <p className="adm-cam-error-msg">{camErr}</p>
               <button className="adm-cam-err-btn" onClick={onClose}>Tutup</button>
+            </div>
+          ) : foundCode ? (
+            <div className="adm-cam-found">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <p className="adm-cam-found-title">QR Terdeteksi</p>
+              <code className="adm-cam-found-token">{foundCode}</code>
+              <div className="adm-cam-found-btns">
+                <button className="adm-cam-manual-btn" onClick={confirmScan}>Gunakan Token Ini</button>
+                <button className="adm-cam-err-btn" onClick={retryScan}>Scan Ulang</button>
+              </div>
             </div>
           ) : (
             <div className="adm-cam-viewfinder">
@@ -1215,12 +1260,38 @@ function CameraScanner({ onScan, onClose }) {
                 <span className="adm-cam-corner adm-cam-corner--tr" />
                 <span className="adm-cam-corner adm-cam-corner--bl" />
                 <span className="adm-cam-corner adm-cam-corner--br" />
-                <div className="adm-cam-scanline" />
+                {scanning && <div className="adm-cam-scanline" />}
               </div>
+              {!scanning && (
+                <div className="adm-cam-preparing">
+                  <Loader2 size={22} className="adm-spin" />
+                  <span>Mempersiapkan kamera…</span>
+                </div>
+              )}
             </div>
           )}
         </div>
-        <p className="adm-cam-hint">Arahkan kamera ke QR code produk untuk scan otomatis</p>
+
+        {!foundCode && (
+          <>
+            <p className="adm-cam-hint">
+              {scanning ? "Arahkan kamera ke QR code produk" : "Mempersiapkan kamera…"}
+            </p>
+            <div className="adm-cam-manual">
+              <input
+                className="adm-cam-manual-input"
+                type="text"
+                placeholder="Atau ketik / tempel token QR..."
+                value={manualToken}
+                onChange={e => setManualToken(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") submitManual(); }}
+              />
+              <button className="adm-cam-manual-btn" onClick={submitManual} disabled={!manualToken.trim()}>
+                Konfirmasi
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1322,9 +1393,6 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
   const [localId,       setLocalId]       = useState(selectedReturnId ?? allReturns[0]?.id);
   const [localStatuses, setLocalStatuses] = useState({});
-  const [localQr,       setLocalQr]       = useState({});
-  const [scanning,      setScanning]      = useState(false);
-  const [verifyResult,  setVerifyResult]  = useState(null);
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
   const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary(mockStore, "return", initialReturnId));
@@ -1336,16 +1404,22 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     helperText: "",
   });
   const stepUpActionRef = useRef(null);
-  const [showScanner,      setShowScanner]     = useState(false);
-  const [localScannedVal,  setLocalScannedVal] = useState({});
-  const [localVerifyData,  setLocalVerifyData] = useState({});
-  const [scanVerifying,    setScanVerifying]   = useState(false);
+  const [showScanner,     setShowScanner]    = useState(false);
+  const [unitScans,       setUnitScans]      = useState({});   // { retId: { unitKey: { status, token, unit_id, message, fraud_flag_id, order_id } } }
+  const [pendingScanUnit, setPendingScanUnit] = useState(null); // unitKey waiting for scanner
 
   const currentId  = localId ?? allReturns[0]?.id;
   const ret        = allReturns.find(r => r.id === currentId) ?? allReturns[0];
   const currentIdx = allReturns.findIndex(r => r.id === currentId);
   const curStatus  = ret ? (localStatuses[ret.id] ?? ret.status) : null;
-  const curQr      = ret ? (localQr[ret.id] ?? ret.qrStatus)     : null;
+
+  const returnUnits  = buildReturnUnits(ret?.products);
+  const scansForRet  = unitScans[ret?.id] ?? {};
+  const allVerified  = returnUnits.length > 0 && returnUnits.every(u => scansForRet[u.key]?.status === "valid");
+  const anyInvalid   = returnUnits.some(u => scansForRet[u.key]?.status === "invalid");
+  const anyFraudFlag = returnUnits.some(u => scansForRet[u.key]?.fraud_flag_id);
+  const validCount   = returnUnits.filter(u => scansForRet[u.key]?.status === "valid").length;
+  const curQr        = allVerified ? "valid" : anyInvalid ? "invalid" : null;
 
   useEffect(() => {
     if (selectedReturnId) setLocalId(selectedReturnId);
@@ -1367,62 +1441,117 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const patchReturn = (id, patch) => {
     if (ret?.fromCtx) updateReturn(id, patch);
     if (patch.status) setLocalStatuses(p => ({ ...p, [id]: patch.status }));
-    if (patch.qrStatus) setLocalQr(p => ({ ...p, [id]: patch.qrStatus }));
   };
 
-  const handleScanResult = async (scannedValue) => {
+  const handleScanResult = (scannedToken) => {
     setShowScanner(false);
-    if (!ret) return;
-    setScanVerifying(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/verify/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          qr_token:         scannedValue,
-          scanned_by:       currentUser?.id ?? "admin",
-          claimed_order_id: ret.orderId ?? null,
-        }),
-      });
-      const data = await res.json();
-      const matched = data.is_valid === true;
-      const result  = matched ? "valid" : "invalid";
+    const unitKey = pendingScanUnit;
+    setPendingScanUnit(null);
+    if (!ret || !unitKey) return;
 
-      setLocalVerifyData(p => ({ ...p, [ret.id]: { ...data, scannedToken: scannedValue } }));
-      setVerifyResult(result);
-      setLocalQr(p => ({ ...p, [ret.id]: result }));
-      setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
-      setRiskSummary((prev) => ({
-        ...prev,
-        timeline: [
-          ...prev.timeline,
-          createSecurityTimelineEvent(
-            ret.id.toLowerCase(),
-            "qr",
-            matched ? "Verifikasi QR berhasil" : `Verifikasi QR gagal (${data.result_code ?? "invalid"})`,
-            matched ? "success" : "danger"
-          ),
-        ],
-      }));
-      if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged", qrStatus: "invalid" });
-      else patchReturn(ret.id, { qrStatus: result });
-    } catch (err) {
-      console.error("QR verify failed:", err);
-      setVerifyResult("invalid");
-      setLocalQr(p => ({ ...p, [ret.id]: "invalid" }));
-      setLocalScannedVal(p => ({ ...p, [ret.id]: scannedValue }));
-    } finally {
-      setScanVerifying(false);
-    }
+    setUnitScans(p => ({
+      ...p,
+      [ret.id]: { ...(p[ret.id] ?? {}), [unitKey]: { status: "loading", token: scannedToken } },
+    }));
+
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/verify/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        qr_token:         scannedToken,
+        scanned_by:       currentUser?.id ?? "admin",
+        claimed_order_id: ret.orderId ?? null,
+      }),
+    })
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `Server error ${r.status}`);
+        return data;
+      })
+      .then(data => {
+        const backendValid = data.is_valid === true;
+
+        // Use a functional updater so we read the LATEST scans state —
+        // prevents the same physical unit_id from verifying two different slots.
+        let finalStatus  = backendValid ? "valid" : "invalid";
+        let finalMessage = data.message ?? (backendValid ? "Terverifikasi" : "Verifikasi gagal");
+        let finalCode    = data.result_code ?? "invalid";
+
+        setUnitScans(current => {
+          const currentScans = current[ret.id] ?? {};
+
+          // If backend said valid, check whether this unit_id was already used
+          // for a different slot in this same return.
+          if (backendValid && data.unit_id) {
+            const alreadyUsed = Object.entries(currentScans).some(
+              ([k, s]) => k !== unitKey && s.unit_id === data.unit_id
+            );
+            if (alreadyUsed) {
+              finalStatus  = "invalid";
+              finalMessage = "QR ini sudah digunakan untuk produk lain dalam return ini. Gunakan QR yang berbeda.";
+              finalCode    = "duplicate_unit";
+            }
+          }
+
+          return {
+            ...current,
+            [ret.id]: {
+              ...currentScans,
+              [unitKey]: {
+                status:        finalStatus,
+                token:         scannedToken,
+                message:       finalMessage,
+                unit_id:       data.unit_id,
+                fraud_flag_id: data.fraud_flag_id,
+                order_id:      data.order_id,
+                result_code:   finalCode,
+              },
+            },
+          };
+        });
+
+        const matched = finalStatus === "valid";
+        setRiskSummary(prev => ({
+          ...prev,
+          timeline: [
+            ...prev.timeline,
+            createSecurityTimelineEvent(
+              ret.id.toLowerCase(), "qr",
+              matched ? `QR ${unitKey} terverifikasi` : `QR ${unitKey} gagal (${finalCode})`,
+              matched ? "success" : "danger"
+            ),
+          ],
+        }));
+        if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged" });
+      })
+      .catch(err => {
+        console.error("QR verify failed:", err);
+        setUnitScans(p => ({
+          ...p,
+          [ret.id]: {
+            ...(p[ret.id] ?? {}),
+            [unitKey]: { status: "invalid", token: scannedToken, message: err.message ?? "Gagal terhubung ke server." },
+          },
+        }));
+      });
   };
 
-  const doScanQR = () => {
-    if (!ret || scanning) return;
-    setVerifyResult(null);
+  const doScanQR = (unitKey) => {
+    if (!ret) return;
+    setPendingScanUnit(unitKey);
     setShowScanner(true);
   };
 
-  const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setVerifyResult(null); setScanning(false); setScanVerifying(false); };
+  const resetUnitScan = (unitKey) => {
+    if (!ret) return;
+    setUnitScans(p => {
+      const updated = { ...(p[ret.id] ?? {}) };
+      delete updated[unitKey];
+      return { ...p, [ret.id]: updated };
+    });
+  };
+
+  const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setPendingScanUnit(null); };
 
   const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
@@ -1689,126 +1818,79 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Verifikasi QR Produk</p>
-              <div className="adm-qrv-wrap">
-                <div className="adm-qr-steps">
+              <p style={{ fontSize: 12.5, color: "#888", marginBottom: 12 }}>
+                Scan QR code tiap produk yang dikembalikan. {returnUnits.length} unit perlu diverifikasi.
+              </p>
 
-                  {/* Step 1 — scan */}
-                  <div className="adm-qr-step">
-                    <div className={`adm-qr-step-num${curQr === "valid" ? " adm-qr-step-num--match" : curQr === "invalid" ? " adm-qr-step-num--mismatch" : " adm-qr-step-num--done"}`}>
-                      {curQr === "valid" ? "✓" : curQr === "invalid" ? "✗" : "1"}
-                    </div>
-                    <div className="adm-qr-step-body">
-                      <p className="adm-qr-step-lbl">Scan Produk Dikembalikan</p>
-                      {scanVerifying ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#888" }}>
-                          <Loader2 size={16} className="adm-spin" />
-                          Memverifikasi QR...
-                        </div>
-                      ) : !curQr ? (
-                        <button className="adm-qrv-cam-btn" onClick={doScanQR}
-                          disabled={curStatus === "completed" || curStatus === "rejected"}>
-                          <IcQr />
-                          Scan QR Code
-                        </button>
-                      ) : (
-                        <div className="adm-qr-scanned-row">
-                          <code className={`adm-qr-code-chip adm-qr-code-chip--${curQr === "valid" ? "valid" : "invalid"}`}>
-                            {localScannedVal[ret.id] ?? ret.scannedQr ?? "—"}
-                          </code>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Step 3 — result */}
-                  {curQr && (() => {
-                    const scanned = localScannedVal[ret.id] ?? ret.scannedQr ?? "—";
-                    const isMatch = curQr === "valid";
+              {returnUnits.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#bbb" }}>Tidak ada produk terdaftar pada return ini.</p>
+              ) : (
+                <div className="adm-unit-qr-list">
+                  {returnUnits.map((unit) => {
+                    const scan = scansForRet[unit.key];
+                    const isLoading = scan?.status === "loading";
+                    const isValid   = scan?.status === "valid";
+                    const isInvalid = scan?.status === "invalid";
+                    const locked    = curStatus === "completed" || curStatus === "rejected";
                     return (
-                      <div className="adm-qr-step adm-qr-step--last">
-                        <div className={`adm-qr-step-num ${isMatch ? "adm-qr-step-num--match" : "adm-qr-step-num--mismatch"}`}>
-                          {isMatch ? "✓" : "✗"}
+                      <div key={unit.key} className={`adm-unit-qr-row${isValid ? " adm-unit-qr-row--generated" : ""}`}>
+                        <div className="adm-unit-qr-row-left">
+                          <span className="adm-unit-qr-name">{unit.name}</span>
+                          <span className="adm-unit-qr-badge">Unit #{unit.unitIndex}</span>
                         </div>
-                        <div className="adm-qr-step-body">
-                          <p className="adm-qr-step-lbl">Hasil Verifikasi</p>
-                          <div className={`adm-qrv-result ${isMatch ? "adm-qrv-result--match" : "adm-qrv-result--mismatch"}`}>
 
-                            {/* Header */}
-                            <div className="adm-qrv-result-head">
-                              {isMatch ? (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                              ) : (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                              )}
-                              <span className={`adm-qrv-result-title ${isMatch ? "adm-qrv-result-title--match" : "adm-qrv-result-title--mismatch"}`}>
-                                {isMatch ? "Produk Terverifikasi" : "QR Tidak Cocok"}
-                              </span>
-                            </div>
+                        <div className="adm-unit-qr-row-mid">
+                          {isLoading ? (
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#888" }}>
+                              <Loader2 size={13} className="adm-spin" /> Memverifikasi...
+                            </span>
+                          ) : isValid ? (
+                            <span className="adm-unit-qr-status adm-unit-qr-status--active">✓ Terverifikasi</span>
+                          ) : isInvalid ? (
+                            <span style={{ fontSize: 12.5, color: "#ef4444", wordBreak: "break-word", overflowWrap: "break-word" }}>
+                              ✗ {scan.message ?? "QR tidak cocok"}
+                              {scan.fraud_flag_id && <span style={{ marginLeft: 6, fontWeight: 600 }}>⚑ Fraud</span>}
+                            </span>
+                          ) : (
+                            <span className="adm-unit-qr-status adm-unit-qr-status--pending">○ Belum discan</span>
+                          )}
+                        </div>
 
-                            {/* Description */}
-                            <p className="adm-qrv-result-desc">
-                              {isMatch
-                                ? "Kode QR cocok. Produk yang dikembalikan adalah produk asli yang terdaftar."
-                                : "Produk yang dikembalikan tidak sesuai dengan sistem. Kemungkinan produk berbeda atau tidak asli."}
-                            </p>
-
-                            {/* Backend message */}
-                            {localVerifyData[ret.id]?.message && (
-                              <p style={{ fontSize: 12.5, color: isMatch ? "#16a34a" : "#dc2626", marginBottom: 8, lineHeight: 1.5 }}>
-                                {localVerifyData[ret.id].message}
-                              </p>
-                            )}
-
-                            {/* Code comparison */}
-                            <div className="adm-qrv-compare">
-                              <div className="adm-qrv-compare-col">
-                                <span className="adm-qrv-compare-lbl">Pesanan di QR</span>
-                                <code className="adm-qrv-compare-code">{localVerifyData[ret.id]?.order_id ?? "—"}</code>
-                              </div>
-                              <div className={`adm-qrv-compare-op ${isMatch ? "adm-qrv-compare-op--eq" : "adm-qrv-compare-op--neq"}`}>
-                                {isMatch ? "=" : "≠"}
-                              </div>
-                              <div className="adm-qrv-compare-col">
-                                <span className="adm-qrv-compare-lbl">Pesanan Return</span>
-                                <code className={`adm-qrv-compare-code ${isMatch ? "adm-qrv-compare-code--match" : "adm-qrv-compare-code--mismatch"}`}>{ret.orderId}</code>
-                              </div>
-                            </div>
-
-                            {/* Fraud flag warning */}
-                            {localVerifyData[ret.id]?.fraud_flag_id && (
-                              <div style={{ marginTop: 8, padding: "7px 10px", background: "rgba(239,68,68,0.08)", borderRadius: 8, fontSize: 12, color: "#dc2626", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", gap: 6 }}>
-                                <AlertTriangle size={13} />
-                                Fraud flag ditandai — aktivitas mencurigakan tercatat
-                              </div>
-                            )}
-
-                            {/* Footer hint / action */}
-                            {isMatch ? (
-                              <div className="adm-qrv-hint adm-qrv-hint--ok">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                Proses refund dapat dilanjutkan
-                              </div>
-                            ) : (
-                              <div className="adm-qrv-mismatch-footer">
-                                <div className="adm-qrv-hint adm-qrv-hint--warn">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                  Return ini otomatis ditandai mencurigakan
-                                </div>
-                                <button className="adm-qr-rescan-btn"
-                                  onClick={() => { setVerifyResult(null); setLocalQr(p => ({ ...p, [ret.id]: null })); setLocalScannedVal(p => ({ ...p, [ret.id]: null })); }}>
-                                  ↺ Scan Ulang
-                                </button>
-                              </div>
-                            )}
-
-                          </div>
+                        <div className="adm-unit-qr-row-actions">
+                          {isLoading ? null : isValid ? (
+                            <button className="adm-qr-rescan-btn" onClick={() => resetUnitScan(unit.key)} disabled={locked}>
+                              ↺ Scan Ulang
+                            </button>
+                          ) : (
+                            <button
+                              className="adm-qrv-cam-btn"
+                              style={isInvalid ? { background: "rgba(239,68,68,0.08)", color: "#ef4444", borderColor: "rgba(239,68,68,0.3)" } : {}}
+                              onClick={() => doScanQR(unit.key)}
+                              disabled={locked}
+                            >
+                              <IcQr /> {isInvalid ? "Scan Ulang" : "Scan QR"}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
-                  })()}
-
+                  })}
                 </div>
-              </div>
+              )}
+
+              {anyFraudFlag && (
+                <div style={{ marginTop: 10, padding: "7px 12px", background: "rgba(239,68,68,0.08)", borderRadius: 8, fontSize: 12.5, color: "#dc2626", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <AlertTriangle size={13} /> Fraud flag terdeteksi — aktivitas mencurigakan telah dicatat
+                </div>
+              )}
+
+              {returnUnits.length > 0 && (
+                <p style={{ marginTop: 10, fontSize: 12.5, color: allVerified ? "#22c55e" : "#888", fontWeight: allVerified ? 600 : 400 }}>
+                  {allVerified
+                    ? "✓ Semua produk terverifikasi — siap diputuskan."
+                    : `${validCount} / ${returnUnits.length} produk terverifikasi`}
+                </p>
+              )}
             </div>
 
             <div className="adm-pa-block adm-pa-block--last">
@@ -1831,18 +1913,16 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                         <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
                       </div>
                       <button className="adm-pa-approve-btn" onClick={async () => {
-                        const verifyData = localVerifyData[ret.id];
-                        if (verifyData?.unit_id) {
-                          try {
-                            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/approve/`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ unit_id: verifyData.unit_id, approved_by: currentUser?.id ?? "admin" }),
-                            });
-                          } catch (err) {
-                            console.error("QR approve failed:", err);
-                          }
-                        }
+                        const unitIds = returnUnits
+                          .map(u => scansForRet[u.key]?.unit_id)
+                          .filter(Boolean);
+                        await Promise.allSettled(unitIds.map(unit_id =>
+                          fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/approve/`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ unit_id, approved_by: currentUser?.id ?? "admin" }),
+                          }).catch(err => console.error("QR approve failed:", err))
+                        ));
                         patchReturn(ret.id, { status: "completed" });
                       }}><IcCheck /> Tandai Return Selesai</button>
                     </>
@@ -2434,7 +2514,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
             </div>
 
             {/* ── Unit QR Produk — visible once order is approved (packing+) ── */}
-            {["packing","shipped","delivered"].includes(curStatus) && (
+            {["packing", "shipped", "delivered"].includes(curStatus) && (
               <div className="adm-pa-block adm-unit-qr-block">
                 <div className="adm-unit-qr-hdr">
                   <p className="adm-pa-block-label" style={{ margin: 0 }}>Unit QR Produk</p>
@@ -2476,12 +2556,16 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
                         <div className="adm-unit-qr-row-actions">
                           {!unit.generatedAt ? (
-                            <button
-                              className="adm-unit-qr-btn adm-unit-qr-btn--gen"
-                              onClick={() => generateUnitQr(unit.unitId)}
-                            >
-                              <IcQr /> Generate
-                            </button>
+                            curStatus === "packing" ? (
+                              <button
+                                className="adm-unit-qr-btn adm-unit-qr-btn--gen"
+                                onClick={() => generateUnitQr(unit.unitId)}
+                              >
+                                <IcQr /> Generate
+                              </button>
+                            ) : (
+                              <span className="adm-unit-qr-status adm-unit-qr-status--pending">— Tidak digenerate</span>
+                            )
                           ) : (
                             <>
                               <button

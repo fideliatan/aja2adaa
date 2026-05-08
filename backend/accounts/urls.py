@@ -18,10 +18,10 @@ qr_urlpatterns = [
     path("generate/",               qr_views.generate_unit_qr, name="qr_generate"),
     # GET   /api/qr/order/<order_id>/   → list all QRs for an order
     path("order/<str:order_id>/",   qr_views.get_order_qrs,    name="qr_order"),
-    # GET   /api/qr/<qr_token>/         → fetch single unit by token
-    path("<str:qr_token>/",         qr_views.get_qr_detail,    name="qr_detail"),
     # POST  /api/qr/verify/             → verify a scanned QR
     path("verify/",                 qr_views.verify_qr,        name="qr_verify"),
-    # POST  /api/qr/approve/           → mark unit as returned after admin confirms
+    # POST  /api/qr/approve/            → mark unit as returned after admin confirms
     path("approve/",                qr_views.approve_qr,       name="qr_approve"),
+    # GET   /api/qr/<qr_token>/         → fetch single unit by token (catch-all — must be last)
+    path("<str:qr_token>/",         qr_views.get_qr_detail,    name="qr_detail"),
 ]

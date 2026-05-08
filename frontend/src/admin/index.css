@@ -4226,8 +4226,87 @@
   text-align: center;
   font-size: 13px;
   color: var(--adm-text-muted, #6b7280);
-  padding: 14px 20px 18px;
+  padding: 10px 20px 6px;
   margin: 0;
+}
+
+.adm-cam-manual {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 18px;
+}
+.adm-cam-manual-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  background: #f9fafb;
+}
+.adm-cam-manual-input:focus { border-color: #7c5cbf; background: #fff; }
+.adm-cam-manual-btn {
+  padding: 8px 14px;
+  background: #7c5cbf;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.adm-cam-manual-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* "QR Terdeteksi" confirmation screen */
+.adm-cam-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 24px 20px;
+  text-align: center;
+}
+.adm-cam-found-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #16a34a;
+  margin: 0;
+}
+.adm-cam-found-token {
+  font-family: monospace;
+  font-size: 13px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #374151;
+  word-break: break-all;
+  max-width: 100%;
+}
+.adm-cam-found-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* "Mempersiapkan kamera" overlay on viewfinder */
+.adm-cam-preparing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.45);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .adm-cam-error {
@@ -4337,7 +4416,8 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  flex: 1;
+  flex: 0 0 auto;
+  max-width: 40%;
   min-width: 0;
 }
 .adm-unit-qr-name {
@@ -4360,8 +4440,10 @@
 .adm-unit-qr-row-mid {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
 }
 .adm-unit-qr-status {
   font-size: 11.5px;
