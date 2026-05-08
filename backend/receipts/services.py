@@ -30,14 +30,15 @@ def _barcode_bars(order_id: str) -> str:
 
 
 def _build_receipt_html(order) -> str:
-    subtotal   = order.subtotal
-    recipient  = order.recipient or order.customer or "—"
-    order_ref  = order.order_id.replace("-", "") + " 0 1 7 5 8 3"
-    barcode    = _barcode_bars(order.order_id)
+    subtotal      = order.subtotal
+    delivery_fee  = order.delivery_fee if order.delivery_fee > 0 else max(0, order.total - order.subtotal)
+    recipient     = order.recipient or order.customer or "—"
+    order_ref     = order.order_id.replace("-", "") + " 0 1 7 5 8 3"
+    barcode       = _barcode_bars(order.order_id)
     delivery_html = (
         '<span style="color:#22c55e;font-weight:700">Gratis ✓</span>'
-        if order.delivery_fee == 0
-        else f'<span style="font-weight:700;color:#2d2d2d">{_fmt_idr(order.delivery_fee)}</span>'
+        if delivery_fee == 0
+        else f'<span style="font-weight:700;color:#2d2d2d">{_fmt_idr(delivery_fee)}</span>'
     )
 
     items_html = ""
@@ -58,15 +59,21 @@ def _build_receipt_html(order) -> str:
   <meta charset="UTF-8" />
   <title>E-Receipt careofyou — {order.order_id}</title>
   <style>
-    @page {{ margin: 0; size: 480px auto; }}
+    @page {{ margin: 0; size: 520px auto; }}
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{
       font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
       background: white;
+      padding: 32px 20px 48px;
     }}
     .receipt {{
       background: white;
-      width: 480px;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 48px rgba(201,114,105,0.2);
     }}
     .rc-head {{
       background: linear-gradient(135deg, #d6867c 0%, #c97269 40%, #b05a52 100%);
@@ -269,6 +276,7 @@ def _build_receipt_html(order) -> str:
         <span>Ongkos Kirim</span>
         {delivery_html}
       </div>
+
     </div>
     <div class="rc-total-row">
       <span class="rc-total-label">Total Pembayaran</span>

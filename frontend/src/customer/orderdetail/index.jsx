@@ -405,7 +405,7 @@ function buildReceiptHtml(order, logoDataUrl = "") {
     <!-- Summary -->
     <div class="rc-summary">
       <div class="rc-summary-row"><span>Subtotal</span><span style="font-weight:700;color:#2d2d2d">${fmtID(subtotal)}</span></div>
-      <div class="rc-summary-row"><span>Ongkos Kirim</span><span style="color:#22c55e;font-weight:700">Gratis ✓</span></div>
+      <div class="rc-summary-row"><span>Ongkos Kirim</span>${order.deliveryFee > 0 ? `<span style="font-weight:700;color:#2d2d2d">${fmtID(order.deliveryFee)}</span>` : `<span style="color:#22c55e;font-weight:700">Gratis ✓</span>`}</div>
     </div>
 
     <div class="rc-total-row">
