@@ -98,7 +98,6 @@ function buildLegacyMockDatabase(seed) {
       clone(seed.activityTimeline ?? []),
     orders: orders ? migrateOrders(orders) : clone(seed.orders ?? []),
     returns: returns ?? clone(seed.returns ?? []),
-    approvalStatusChanges: clone(seed.approvalStatusChanges ?? []),
   };
 }
 

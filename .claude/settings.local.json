@@ -21,7 +21,10 @@
       "Bash(.venv\\\\Scripts\\\\pip install *)",
       "Bash(C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\.venv\\\\Scripts\\\\pip install *)",
       "PowerShell(& \"C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\.venv\\\\Scripts\\\\pip.exe\" install qrcode pillow --trusted-host pypi.org --trusted-host files.pythonhosted.org)",
-      "PowerShell(& \"C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\.venv\\\\Scripts\\\\python.exe\" -m django migrate --pythonpath \"C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\backend\" --settings backend.settings 2>&1)"
+      "PowerShell(& \"C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\.venv\\\\Scripts\\\\python.exe\" -m django migrate --pythonpath \"C:\\\\Users\\\\User\\\\Documents\\\\aja2ada\\\\backend\" --settings backend.settings 2>&1)",
+      "Bash(python manage.py shell -c ' *)",
+      "Bash(Select-String -Path \"c:\\\\Users\\\\lodar\\\\OneDrive\\\\Dokumen\\\\Capstonee\\\\aja2adaa\\\\frontend\\\\src\\\\admin\\\\index.jsx\" -Pattern \"buildAllReturns|fromCtx|allReturns\")",
+      "Bash(Select-Object -First 15)"
     ]
   }
 }

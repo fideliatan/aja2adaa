@@ -8,6 +8,7 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Asia/Jakarta",
 });
 
 function formatTimestamp(value) {
@@ -71,22 +72,22 @@ function buildActionReasons(riskSummary, sessionRiskState, entityType, actionLab
         ? buildStepUpConfig(
             actionLabel,
             reasons,
-            "Enter admin OTP to continue. Testing code: 123456."
+            "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
           )
         : buildStepUpConfig(
             actionLabel,
             reasons,
-            "Enter admin OTP to continue. Testing code: 123456."
+            "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
           ),
     reject: buildStepUpConfig(
       actionLabel,
       reasons,
-      "Enter admin OTP to continue. Testing code: 123456."
+      "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
     ),
     resolve: buildStepUpConfig(
       actionLabel,
       reasons,
-      "Enter admin OTP to resolve this flag. Testing code: 123456."
+      "Masukkan OTP yang dikirim ke email admin untuk menyelesaikan flag ini."
     ),
   };
 }
@@ -213,7 +214,8 @@ function mapEventStatus(eventType, metadata = {}) {
   if (
     eventType.includes("failed") ||
     eventType.includes("rejected") ||
-    eventType.includes("flag_created")
+    eventType.includes("flag_created") ||
+    eventType.includes("invalid")
   ) {
     return "danger";
   }
@@ -256,19 +258,6 @@ function buildTimeline(mockStore, entityType, entityId) {
       status: mapEventStatus(event.eventType, event.metadata ?? {}),
     }));
 
-  const statusChanges = (mockStore.approvalStatusChanges ?? [])
-    .filter(
-      (change) => change.entityType === entityType && change.entityId === entityId
-    )
-    .map((change) => ({
-      id: change.id,
-      type: "action",
-      label: change.note ?? `${change.fromStatus ?? "new"} -> ${change.toStatus}`,
-      timestamp: formatTimestamp(change.createdAt),
-      rawTimestamp: change.createdAt,
-      status: "success",
-    }));
-
   const entityHistory = (entity?.statusHistory ?? []).map((entry) => ({
     id: entry.id,
     type: entityType,
@@ -278,7 +267,7 @@ function buildTimeline(mockStore, entityType, entityId) {
     status: "success",
   }));
 
-  return [...activityItems, ...statusChanges, ...entityHistory]
+  return [...activityItems, ...entityHistory]
     .sort(
       (left, right) =>
         new Date(left.rawTimestamp).getTime() - new Date(right.rawTimestamp).getTime()
@@ -327,27 +316,27 @@ function buildDefaultSummary(entityType, entityId) {
       approvePayment: buildStepUpConfig(
         "Approve Payment",
         ["Sensitive action requires confirmation."],
-        "Enter admin OTP to continue. Testing code: 123456."
+        "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
       ),
       rejectPayment: buildStepUpConfig(
         "Reject Payment",
         ["Sensitive action requires confirmation."],
-        "Enter admin OTP to continue. Testing code: 123456."
+        "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
       ),
       approveReturn: buildStepUpConfig(
         "Approve Return",
         ["Sensitive action requires confirmation."],
-        "Enter admin OTP to continue. Testing code: 123456."
+        "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
       ),
       rejectReturn: buildStepUpConfig(
         "Reject Return",
         ["Sensitive action requires confirmation."],
-        "Enter admin OTP to continue. Testing code: 123456."
+        "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
       ),
       resolveHighRiskFlag: buildStepUpConfig(
         "Resolve High Risk Flag",
         ["Resolving a security flag requires confirmation."],
-        "Enter admin OTP to continue. Testing code: 123456."
+        "Masukkan OTP yang dikirim ke email admin untuk melanjutkan."
       ),
     },
     flags: [],

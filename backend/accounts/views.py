@@ -1,3 +1,8 @@
+import secrets
+import uuid
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
@@ -5,17 +10,65 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+_WIB = ZoneInfo("Asia/Jakarta")
+
+def _now():
+    return datetime.now(_WIB).replace(tzinfo=None)
+
 from .models import (
     User,
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     LoginAttempt, TrustedDevice,
-    MonitoringFlag, ActivityTimeline, ApprovalStatusChange,
+    MonitoringFlag, ActivityTimeline, OtpSession,
 )
 from .serializers import RegisterSerializer, UserSerializer
 
 
+# ── Helpers ───────────────────────────────────────────────────
+
+def _log_activity(actor_id, actor_role, event_type, label, metadata=None):
+
+    ActivityTimeline.objects.create(
+        event_id=str(uuid.uuid4()),
+        actor_id=actor_id,
+        actor_role=actor_role,
+        event_type=event_type,
+        label=label,
+        timestamp=_now(),
+        metadata=metadata or {},
+    )
+
+
 # ── Auth views ────────────────────────────────────────────────
+
+def _parse_device_label(ua):
+    if "Edg" in ua:
+        browser = "Edge"
+    elif "Chrome" in ua:
+        browser = "Chrome"
+    elif "Firefox" in ua:
+        browser = "Firefox"
+    elif "Safari" in ua:
+        browser = "Safari"
+    else:
+        browser = "Browser"
+
+    if "Android" in ua:
+        os = "Android"
+    elif "iPhone" in ua or "iPad" in ua:
+        os = "iOS"
+    elif "Windows" in ua:
+        os = "Windows"
+    elif "Mac" in ua:
+        os = "macOS"
+    elif "Linux" in ua:
+        os = "Linux"
+    else:
+        os = "Unknown OS"
+
+    return f"{browser} · {os}"
+
 
 @api_view(["POST"])
 def register(request):
@@ -24,6 +77,13 @@ def register(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     user = serializer.save()
+    _log_activity(
+        actor_id=user.user_code or f"USR-{user.pk:03d}",
+        actor_role="customer",
+        event_type="user_registered",
+        label=f"New user registered: {user.email}",
+        metadata={"email": user.email, "name": user.name},
+    )
     return Response(
         {"message": "Registrasi berhasil", "user": UserSerializer(user).data},
         status=status.HTTP_201_CREATED,
@@ -32,20 +92,189 @@ def register(request):
 
 @api_view(["POST"])
 def login(request):
+
+
     email = request.data.get("email", "").strip()
     password = request.data.get("password", "")
+    ip_address = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", ""))
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    device_fingerprint = request.data.get("deviceFingerprint", "")
 
     if not email or not password:
         return Response({"error": "Email dan password wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
 
     user = authenticate(request, username=email, password=password)
+
     if user is None:
+        # Try to find the user to attach the attempt to a userId
+        try:
+            found_user = User.objects.get(email=email)
+            user_id = found_user.user_code or f"USR-{found_user.pk:03d}"
+            user_role = found_user.role
+            found_user.failed_login_count = (found_user.failed_login_count or 0) + 1
+            found_user.save(update_fields=["failed_login_count"])
+        except User.DoesNotExist:
+            user_id = ""
+            user_role = "unknown"
+
+        LoginAttempt.objects.create(
+            attempt_id=str(uuid.uuid4()),
+            user_id=user_id,
+            email=email,
+            role=user_role,
+            success=False,
+            timestamp=_now(),
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_fingerprint=device_fingerprint,
+            reason="wrong_password",
+        )
+        _log_activity(
+            actor_id=user_id or None,
+            actor_role=user_role,
+            event_type="login_failed",
+            label=f"Login failed for {email}",
+            metadata={"email": email, "reason": "wrong_password", "ipAddress": ip_address},
+        )
         return Response({"error": "Email atau password salah"}, status=status.HTTP_401_UNAUTHORIZED)
 
     if user.status == "locked":
         return Response({"error": "Akun dikunci. Hubungi admin."}, status=status.HTTP_403_FORBIDDEN)
 
-    return Response({"message": "Login berhasil", "user": _serialize_user(user)})
+    user_id = user.user_code or f"USR-{user.pk:03d}"
+    user.failed_login_count = 0
+    user.save(update_fields=["failed_login_count"])
+
+    device_status = "new"
+    device_match = None
+    if device_fingerprint:
+        matched = TrustedDevice.objects.filter(
+            user_id=user_id,
+            fingerprint_hash=device_fingerprint,
+            trusted_status="trusted",
+        ).first()
+        if matched:
+            device_status = "trusted"
+            ua_match = bool(user_agent and user_agent == matched.user_agent)
+            device_match = {
+                "trustedDeviceId":       matched.device_id,
+                "deviceToken":           matched.device_token,
+                "deviceLabel":           matched.device_label,
+                "fingerprintSimilarity": 100,
+                "userAgentMatch":        ua_match,
+                "subnetSimilarity":      matched.subnet_similarity,
+            }
+            matched.last_seen_at = _now()
+            matched.last_seen_ip = ip_address
+            matched.user_agent_match = ua_match
+            matched.save(update_fields=["last_seen_at", "last_seen_ip", "user_agent_match"])
+        else:
+            # Only auto-trust if this is the user's very first device.
+            # If they already have trusted devices, a new fingerprint means an
+            # unrecognized device — treat it as suspicious (deviceStatus stays "new").
+            already_has_device = TrustedDevice.objects.filter(
+                user_id=user_id, trusted_status="trusted"
+            ).exists()
+            if not already_has_device:
+                device_id    = f"DEV-{uuid.uuid4().hex[:12].upper()}"
+                device_token = f"dt_{user_id}_{int(_now().timestamp())}"
+                device_label = _parse_device_label(user_agent)
+                now = _now()
+                TrustedDevice.objects.create(
+                    device_id=device_id,
+                    user_id=user_id,
+                    device_token=device_token,
+                    fingerprint_hash=device_fingerprint,
+                    device_label=device_label,
+                    user_agent=user_agent,
+                    first_seen_ip=ip_address,
+                    last_seen_ip=ip_address,
+                    trusted_status="trusted",
+                    fingerprint_similarity=100,
+                    subnet_similarity=90,
+                    user_agent_match=True,
+                    first_seen_at=now,
+                    last_seen_at=now,
+                    last_verification_at=now,
+                )
+                _log_activity(
+                    actor_id=user_id,
+                    actor_role=user.role,
+                    event_type="device_trusted",
+                    label=f"First device auto-trusted on registration: {device_label}",
+                    metadata={"deviceId": device_id, "deviceLabel": device_label, "fingerprint": device_fingerprint},
+                )
+            else:
+                # User already has trusted devices + this fingerprint is unknown
+                # → require OTP to verify identity before trusting new device
+                # (skip for twoFactorEnabled users — their 2FA flow handles it)
+                if not user.two_factor_enabled:
+                    otp_session_id = str(uuid.uuid4())
+                    otp_code = f"{secrets.randbelow(1000000):06d}"
+                    OtpSession.objects.filter(
+                        user_id=user_id, purpose="device_verification",
+                        is_expired=False, is_verified=False,
+                    ).update(is_expired=True)
+                    OtpSession.objects.create(
+                        session_id=otp_session_id,
+                        user_id=user_id,
+                        purpose="device_verification",
+                        expires_at=_now() + timedelta(minutes=5),
+                        metadata={
+                            "otpCode": otp_code,
+                            "deviceFingerprint": device_fingerprint,
+                            "userAgent": user_agent,
+                            "ipAddress": ip_address,
+                        },
+                    )
+                    _send_otp_email(user.email, otp_code, "device_verification")
+                    LoginAttempt.objects.create(
+                        attempt_id=str(uuid.uuid4()),
+                        user_id=user_id, email=email, role=user.role,
+                        success=True, timestamp=_now(),
+                        ip_address=ip_address, user_agent=user_agent,
+                        device_fingerprint=device_fingerprint, reason=None,
+                    )
+                    _log_activity(
+                        actor_id=user_id, actor_role=user.role,
+                        event_type="new_device_otp_required",
+                        label=f"New device detected for {email} — OTP required",
+                        metadata={"email": email, "ipAddress": ip_address, "deviceFingerprint": device_fingerprint},
+                    )
+                    return Response({
+                        "requireDeviceOtp": True,
+                        "sessionId": otp_session_id,
+                        "user": _serialize_user(user),
+                        "deviceStatus": "new",
+                        "deviceMatch": None,
+                    })
+
+    LoginAttempt.objects.create(
+        attempt_id=str(uuid.uuid4()),
+        user_id=user_id,
+        email=email,
+        role=user.role,
+        success=True,
+        timestamp=_now(),
+        ip_address=ip_address,
+        user_agent=user_agent,
+        device_fingerprint=device_fingerprint,
+        reason=None,
+    )
+    _log_activity(
+        actor_id=user_id,
+        actor_role=user.role,
+        event_type="login_success",
+        label=f"Login success for {email}",
+        metadata={"email": email, "ipAddress": ip_address, "deviceStatus": device_status, "deviceFingerprint": device_fingerprint},
+    )
+
+    return Response({
+        "message": "Login berhasil",
+        "user": _serialize_user(user),
+        "deviceStatus": device_status,
+        "deviceMatch": device_match,
+    })
 
 
 @api_view(["GET"])
@@ -58,6 +287,218 @@ def me(request):
         return Response(UserSerializer(user).data)
     except User.DoesNotExist:
         return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+
+def _send_otp_email(to_email, otp_code, purpose):
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    if purpose == "device_verification":
+        subject = "careofyou — Verifikasi Perangkat Baru"
+        body = (
+            f"Hai,\n\n"
+            f"Login dari perangkat baru terdeteksi di akun careofyou kamu.\n\n"
+            f"Kode OTP kamu: {otp_code}\n\n"
+            f"Kode berlaku selama 5 menit. Jangan bagikan kode ini ke siapapun.\n\n"
+            f"Jika kamu tidak merasa melakukan ini, abaikan email ini.\n\n"
+            f"— Tim careofyou"
+        )
+    else:
+        subject = "careofyou — Kode Verifikasi Login"
+        body = (
+            f"Hai,\n\n"
+            f"Kode OTP untuk login ke careofyou:\n\n"
+            f"Kode OTP kamu: {otp_code}\n\n"
+            f"Kode berlaku selama 5 menit. Jangan bagikan kode ini ke siapapun.\n\n"
+            f"— Tim careofyou"
+        )
+
+    try:
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
+    except Exception as e:
+        raise RuntimeError(f"Gagal mengirim email OTP: {e}")
+
+
+@api_view(["POST"])
+def otp_request(request):
+
+
+    user_id = request.data.get("userId", "")
+    purpose = request.data.get("purpose", "login")
+
+    if not user_id:
+        return Response({"error": "userId wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(user_code=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Expire any active sessions for same user+purpose
+    OtpSession.objects.filter(
+        user_id=user_id, purpose=purpose, is_expired=False, is_verified=False
+    ).update(is_expired=True)
+
+    otp_code = f"{secrets.randbelow(1000000):06d}"
+    session_id = str(uuid.uuid4())
+    expires_at = _now() + timedelta(minutes=5)
+    OtpSession.objects.create(
+        session_id=session_id,
+        user_id=user_id,
+        purpose=purpose,
+        expires_at=expires_at,
+        metadata={
+            "otpCode": otp_code,
+            "deviceFingerprint": request.data.get("deviceFingerprint", ""),
+            "userAgent": request.META.get("HTTP_USER_AGENT", ""),
+            "ipAddress": request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")),
+        },
+    )
+
+    try:
+        _send_otp_email(user.email, otp_code, purpose)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    _log_activity(
+        actor_id=user_id,
+        actor_role=None,
+        event_type="otp_requested",
+        label=f"OTP requested for {purpose}",
+        metadata={"userId": user_id, "purpose": purpose},
+    )
+
+    return Response({"sessionId": session_id})
+
+
+@api_view(["POST"])
+def otp_verify(request):
+    MAX_ATTEMPTS = 3
+
+    session_id = request.data.get("sessionId", "")
+    code = request.data.get("code", "").strip()
+
+    if not session_id or not code:
+        return Response({"error": "sessionId dan code wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        session = OtpSession.objects.get(session_id=session_id)
+    except OtpSession.DoesNotExist:
+        return Response({"error": "Sesi OTP tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    if session.is_verified:
+        return Response({"error": "OTP sudah digunakan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if session.is_expired or _now() > session.expires_at:
+        session.is_expired = True
+        session.save(update_fields=["is_expired"])
+        _log_activity(
+            actor_id=session.user_id,
+            actor_role=None,
+            event_type="otp_expired",
+            label="OTP session expired",
+            metadata={"userId": session.user_id, "purpose": session.purpose},
+        )
+        return Response({"error": "OTP sudah kadaluarsa", "reason": "otp_expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    expected_code = session.metadata.get("otpCode", "")
+    session.attempts += 1
+    if not expected_code or code != expected_code:
+        session.save(update_fields=["attempts"])
+        _log_activity(
+            actor_id=session.user_id,
+            actor_role=None,
+            event_type="otp_failed",
+            label="OTP verification failed",
+            metadata={"userId": session.user_id, "purpose": session.purpose, "attempts": session.attempts},
+        )
+        if session.attempts >= MAX_ATTEMPTS:
+            session.is_expired = True
+            session.save(update_fields=["is_expired"])
+            return Response(
+                {"error": "OTP salah 3 kali. Sesi dikunci.", "reason": "otp_max_attempts"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        remaining = MAX_ATTEMPTS - session.attempts
+        return Response(
+            {"error": f"OTP salah. Sisa {remaining} percobaan.", "reason": "otp_wrong", "attemptsLeft": remaining},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    session.is_verified = True
+    session.save(update_fields=["attempts", "is_verified"])
+    _log_activity(
+        actor_id=session.user_id,
+        actor_role=None,
+        event_type="otp_verified",
+        label=f"OTP verified for {session.purpose}",
+        metadata={"userId": session.user_id, "purpose": session.purpose},
+    )
+
+    try:
+        user = User.objects.get(user_code=session.user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Auto-trust device after successful OTP verification
+    device_status = "trusted"
+    device_match = None
+    fp = session.metadata.get("deviceFingerprint", "")
+    ua = session.metadata.get("userAgent", "")
+    ip = session.metadata.get("ipAddress", "")
+
+    if fp:
+        existing = TrustedDevice.objects.filter(
+            user_id=session.user_id, fingerprint_hash=fp, trusted_status="trusted"
+        ).first()
+        if existing:
+            ua_match = bool(ua and ua == existing.user_agent)
+            device_match = {
+                "trustedDeviceId":       existing.device_id,
+                "deviceToken":           existing.device_token,
+                "deviceLabel":           existing.device_label,
+                "fingerprintSimilarity": 100,
+                "userAgentMatch":        ua_match,
+                "subnetSimilarity":      existing.subnet_similarity,
+            }
+            existing.last_seen_at = _now()
+            existing.save(update_fields=["last_seen_at"])
+        else:
+            device_id    = f"DEV-{uuid.uuid4().hex[:12].upper()}"
+            device_token = f"dt_{session.user_id}_{int(_now().timestamp())}"
+            device_label = _parse_device_label(ua) if ua else "Browser session"
+            now = _now()
+            new_dev = TrustedDevice.objects.create(
+                device_id=device_id, user_id=session.user_id,
+                device_token=device_token, fingerprint_hash=fp,
+                device_label=device_label, user_agent=ua,
+                first_seen_ip=ip, last_seen_ip=ip,
+                trusted_status="trusted",
+                fingerprint_similarity=100, subnet_similarity=90,
+                user_agent_match=True,
+                first_seen_at=now, last_seen_at=now, last_verification_at=now,
+            )
+            device_match = {
+                "trustedDeviceId":       new_dev.device_id,
+                "deviceToken":           new_dev.device_token,
+                "deviceLabel":           new_dev.device_label,
+                "fingerprintSimilarity": 100,
+                "userAgentMatch":        True,
+                "subnetSimilarity":      90,
+            }
+            _log_activity(
+                actor_id=session.user_id, actor_role=None,
+                event_type="device_trusted",
+                label=f"Device trusted after OTP: {device_label}",
+                metadata={"deviceId": device_id, "deviceLabel": device_label, "purpose": session.purpose},
+            )
+
+    return Response({
+        "success": True,
+        "user": _serialize_user(user),
+        "deviceStatus": device_status,
+        "deviceMatch": device_match,
+    })
 
 
 # ── Serializer helpers ────────────────────────────────────────
@@ -233,21 +674,6 @@ def _serialize_timeline(e):
     }
 
 
-def _serialize_approval_change(c):
-    return {
-        "id": c.change_id,
-        "entityType": c.entity_type,
-        "entityId": c.entity_id,
-        "fromStatus": c.from_status,
-        "toStatus": c.to_status,
-        "actorId": c.actor_id,
-        "actorRole": c.actor_role,
-        "note": c.note,
-        "metadata": c.metadata,
-        "createdAt": c.created_at.isoformat(),
-    }
-
-
 # ── Store views ───────────────────────────────────────────────
 
 @api_view(["GET"])
@@ -285,11 +711,6 @@ def store_init(request):
         for e in ActivityTimeline.objects.order_by("-timestamp")[:200]
     ]
 
-    approval_changes = [
-        _serialize_approval_change(c)
-        for c in ApprovalStatusChange.objects.order_by("-created_at")
-    ]
-
     return Response({
         "users": users,
         "orders": orders,
@@ -298,16 +719,20 @@ def store_init(request):
         "trustedDevices": trusted_devices,
         "monitoringFlags": monitoring_flags,
         "activityTimeline": activity_timeline,
-        "approvalStatusChanges": approval_changes,
     })
 
 
 def _dt(val):
-    """Parse ISO datetime string, return None if blank/None."""
+    """Parse ISO datetime string → naive WIB datetime, or None."""
     if not val:
         return None
     try:
-        return parse_datetime(str(val).replace("Z", "+00:00"))
+        dt = parse_datetime(str(val).replace("Z", "+00:00"))
+        if dt is None:
+            return None
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(_WIB).replace(tzinfo=None)
+        return dt
     except Exception:
         return None
 
@@ -320,8 +745,7 @@ def _upsert_order(data):
     created_at = _dt(data.get("createdAt")) or _dt(data.get("created_at"))
     updated_at = _dt(data.get("updatedAt")) or _dt(data.get("updated_at")) or created_at
 
-    from django.utils import timezone
-    now = timezone.now()
+    now = _now()
     if not created_at:
         created_at = now
     if not updated_at:
@@ -387,8 +811,7 @@ def _upsert_return(data):
     if not return_id:
         return
 
-    from django.utils import timezone
-    now = timezone.now()
+    now = _now()
     created_at = _dt(data.get("createdAt")) or now
     updated_at = _dt(data.get("updatedAt")) or created_at
 
@@ -450,8 +873,7 @@ def store_sync(request):
     if not isinstance(data, dict):
         return Response({"error": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
 
-    from django.utils import timezone
-    now = timezone.now()
+    now = _now()
 
     try:
         with transaction.atomic():
@@ -478,26 +900,6 @@ def store_sync(request):
             # Upsert returns
             for return_data in data.get("returns", []):
                 _upsert_return(return_data)
-
-            # Upsert login attempts
-            for a in data.get("loginAttempts", []):
-                attempt_id = a.get("id")
-                if not attempt_id:
-                    continue
-                LoginAttempt.objects.update_or_create(
-                    attempt_id=attempt_id,
-                    defaults={
-                        "user_id": a.get("userId", ""),
-                        "email": a.get("email", ""),
-                        "role": a.get("role", ""),
-                        "success": a.get("success", False),
-                        "timestamp": _dt(a.get("timestamp")) or now,
-                        "ip_address": a.get("ipAddress", ""),
-                        "user_agent": a.get("userAgent", ""),
-                        "device_fingerprint": a.get("deviceFingerprint", ""),
-                        "reason": a.get("reason"),
-                    },
-                )
 
             # Upsert trusted devices
             for d in data.get("trustedDevices", []):
@@ -561,26 +963,6 @@ def store_sync(request):
                         "label": e.get("label", ""),
                         "timestamp": _dt(e.get("timestamp")) or now,
                         "metadata": e.get("metadata") or {},
-                    },
-                )
-
-            # Upsert approval status changes
-            for c in data.get("approvalStatusChanges", []):
-                change_id = c.get("id")
-                if not change_id:
-                    continue
-                ApprovalStatusChange.objects.update_or_create(
-                    change_id=change_id,
-                    defaults={
-                        "entity_type": c.get("entityType", ""),
-                        "entity_id": c.get("entityId", ""),
-                        "from_status": c.get("fromStatus"),
-                        "to_status": c.get("toStatus", ""),
-                        "actor_id": c.get("actorId"),
-                        "actor_role": c.get("actorRole"),
-                        "note": c.get("note", ""),
-                        "metadata": c.get("metadata") or {},
-                        "created_at": _dt(c.get("createdAt")) or now,
                     },
                 )
 

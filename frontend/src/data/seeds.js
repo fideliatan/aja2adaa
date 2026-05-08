@@ -629,31 +629,6 @@ export const SEED_RETURNS = [
   },
 ];
 
-export const SEED_APPROVAL_STATUS_CHANGES = [
-  {
-    id: "APP-001",
-    entityType: "order",
-    entityId: "ORD-014",
-    fromStatus: "pending",
-    toStatus: "packing",
-    actorId: "USR-001",
-    actorRole: "admin",
-    note: "Payment approved by admin.",
-    createdAt: new Date(_now - 3 * 86400000).toISOString(),
-  },
-  {
-    id: "APP-002",
-    entityType: "return",
-    entityId: "RET-002",
-    fromStatus: "pending",
-    toStatus: "processing",
-    actorId: "USR-001",
-    actorRole: "admin",
-    note: "Return moved to manual review due to QR mismatch.",
-    createdAt: "2025-04-18T10:00:00.000Z",
-  },
-];
-
 export const INITIAL_MOCK_DATA = {
   meta: {
     version: 3,
@@ -669,7 +644,6 @@ export const INITIAL_MOCK_DATA = {
   activityTimeline: SEED_ACTIVITY_TIMELINE,
   orders: SEED_ORDERS,
   returns: SEED_RETURNS,
-  approvalStatusChanges: SEED_APPROVAL_STATUS_CHANGES,
 };
 
 // ── USER PROFILES (data profil per user untuk My Profile page) ─

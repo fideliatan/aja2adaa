@@ -1,234 +1,155 @@
 // ─────────────────────────────────────────────────────────────
 //  CareOfYou — Risk Engine (pure functions, no React)
-//  Hitung risk score, generate flags, buat timeline events.
-//  Semua fungsi murni — terima data, return hasil.
+//  Hitung risk score dari data log. Tidak disimpan di DB.
 // ─────────────────────────────────────────────────────────────
 
-// ── Score weights per rule ─────────────────────────────────────
-export const RISK_WEIGHTS = {
-  REPEATED_FAILED_LOGIN:       20,
-  MULTIPLE_FAILED_LOGIN_HIST:  12,
-  NEW_DEVICE_DETECTED:         15,
-  KNOWN_DEVICE_UNUSUAL_NETWORK: 10,
-  MULTIPLE_ORDERS_SHORT_TIME:  25,
-  REPEATED_RETURN_REQUEST:     30,
-  OTP_RETRY_ABUSE:             15,
-  SHARED_IP_ANOMALY:           20,
-};
+const THREE_DAYS_MS  = 3 * 24 * 60 * 60 * 1000;
+const ONE_DAY_MS     = 24 * 60 * 60 * 1000;
+const HIGH_VALUE_IDR = 500_000;
 
-// ── Risk level thresholds ──────────────────────────────────────
 export function riskLevelFromScore(score) {
-  if (score >= 70) return "high";
-  if (score >= 40) return "medium";
+  if (score >= 35) return "high";
+  if (score >= 15) return "medium";
   return "low";
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Internal helpers ──────────────────────────────────────────
 
-function failedLoginsForUser(userId, loginAttempts) {
-  return loginAttempts.filter((a) => a.userId === userId && !a.success);
-}
-
-function recentFailedLogins(userId, loginAttempts, windowMs = 30 * 60000) {
-  const cutoff = Date.now() - windowMs;
+function recentFailedLogins(userId, loginAttempts) {
+  const cutoff = Date.now() - THREE_DAYS_MS;
   return loginAttempts.filter(
     (a) =>
-      a.userId === userId &&
+      (a.userId === userId || a.user_id === userId) &&
       !a.success &&
       new Date(a.timestamp).getTime() > cutoff
   );
 }
 
-function otpResendAbuse(userId, otpRecords, threshold = 2) {
-  const maxResend = otpRecords
-    .filter((r) => r.userId === userId)
-    .reduce((max, r) => Math.max(max, r.resendCount ?? 0), 0);
-  return maxResend >= threshold;
-}
-
-// ── Per-entity risk computation ───────────────────────────────
-
-/**
- * Hitung risk score untuk sebuah akun (bukan per-order/return).
- */
-export function computeUserRisk(userId, loginAttempts, deviceStatus) {
-  const breakdown = [];
-  let score = 0;
-
-  const recentFails = recentFailedLogins(userId, loginAttempts);
-  const totalFails  = failedLoginsForUser(userId, loginAttempts);
-
-  if (recentFails.length >= 3) {
-    score += RISK_WEIGHTS.REPEATED_FAILED_LOGIN;
-    breakdown.push({
-      label: "Repeated failed login",
-      scoreImpact: RISK_WEIGHTS.REPEATED_FAILED_LOGIN,
-      ruleCode: "RISK-LOGIN-FAIL",
-    });
-  } else if (totalFails.length >= 3) {
-    score += RISK_WEIGHTS.MULTIPLE_FAILED_LOGIN_HIST;
-    breakdown.push({
-      label: "Multiple failed logins (historical)",
-      scoreImpact: RISK_WEIGHTS.MULTIPLE_FAILED_LOGIN_HIST,
-      ruleCode: "RISK-LOGIN-FAIL",
-    });
-  }
-
-  if (deviceStatus === "new") {
-    score += RISK_WEIGHTS.NEW_DEVICE_DETECTED;
-    breakdown.push({
-      label: "New device detected",
-      scoreImpact: RISK_WEIGHTS.NEW_DEVICE_DETECTED,
-      ruleCode: "RISK-DEVICE-NEW",
-    });
-  } else if (deviceStatus === "known-unusual-network") {
-    score += RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK;
-    breakdown.push({
-      label: "Known device but unusual network",
-      scoreImpact: RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK,
-      ruleCode: "RISK-DEVICE-NET",
-    });
-  }
-
-  const clamped = Math.min(score, 100);
-  return { score: clamped, level: riskLevelFromScore(clamped), breakdown };
-}
-
-/**
- * Hitung risk score untuk sebuah order.
- */
-export function computeOrderRisk(
-  orderId,
-  customerId,
-  orders,
-  loginAttempts,
-  otpRecords,
-  deviceStatus
-) {
-  const breakdown = [];
-  let score = 0;
-
-  // Banyak order dari user yang sama
-  const userOrders = orders.filter((o) => o.customerId === customerId);
-  if (userOrders.length >= 3) {
-    score += RISK_WEIGHTS.MULTIPLE_ORDERS_SHORT_TIME;
-    breakdown.push({
-      label: "Multiple orders in short time",
-      scoreImpact: RISK_WEIGHTS.MULTIPLE_ORDERS_SHORT_TIME,
-      ruleCode: "RISK-ORDER-BURST",
-    });
-  }
-
-  // Failed login
-  const recentFails = recentFailedLogins(customerId, loginAttempts);
-  const totalFails  = failedLoginsForUser(customerId, loginAttempts);
-
-  if (recentFails.length >= 3) {
-    score += RISK_WEIGHTS.REPEATED_FAILED_LOGIN;
-    breakdown.push({
-      label: "Repeated failed login",
-      scoreImpact: RISK_WEIGHTS.REPEATED_FAILED_LOGIN,
-      ruleCode: "RISK-LOGIN-FAIL",
-    });
-  } else if (totalFails.length >= 3) {
-    score += RISK_WEIGHTS.MULTIPLE_FAILED_LOGIN_HIST;
-    breakdown.push({
-      label: "Multiple failed logins on account",
-      scoreImpact: RISK_WEIGHTS.MULTIPLE_FAILED_LOGIN_HIST,
-      ruleCode: "RISK-LOGIN-FAIL",
-    });
-  }
-
-  // OTP abuse
-  if (otpResendAbuse(customerId, otpRecords)) {
-    score += RISK_WEIGHTS.OTP_RETRY_ABUSE;
-    breakdown.push({
-      label: "OTP retry abuse",
-      scoreImpact: RISK_WEIGHTS.OTP_RETRY_ABUSE,
-      ruleCode: "RISK-OTP-ABUSE",
-    });
-  }
-
-  // Device
-  if (deviceStatus === "new") {
-    score += RISK_WEIGHTS.NEW_DEVICE_DETECTED;
-    breakdown.push({
-      label: "New device detected",
-      scoreImpact: RISK_WEIGHTS.NEW_DEVICE_DETECTED,
-      ruleCode: "RISK-DEVICE-NEW",
-    });
-  } else if (deviceStatus === "known-unusual-network") {
-    score += RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK;
-    breakdown.push({
-      label: "Known device but unusual network",
-      scoreImpact: RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK,
-      ruleCode: "RISK-DEVICE-NET",
-    });
-  }
-
-  const clamped = Math.min(score, 100);
-  return { score: clamped, level: riskLevelFromScore(clamped), breakdown };
-}
-
-/**
- * Hitung risk score untuk sebuah return request.
- */
-export function computeReturnRisk(
-  returnId,
-  customerId,
-  returns,
-  loginAttempts,
-  otpRecords,
-  deviceStatus
-) {
-  const breakdown = [];
-  let score = 0;
-
-  const userReturns = returns.filter(
-    (r) => r.customerId === customerId || r.customer === customerId
+function recentOtpFails(userId, activityTimeline) {
+  const cutoff = Date.now() - THREE_DAYS_MS;
+  return activityTimeline.filter(
+    (e) =>
+      e.eventType === "otp_failed" &&
+      (e.actorId === userId || e.metadata?.userId === userId) &&
+      new Date(e.timestamp).getTime() > cutoff
   );
-  if (userReturns.length >= 2) {
-    score += RISK_WEIGHTS.REPEATED_RETURN_REQUEST;
-    breakdown.push({
-      label: "Repeated return request",
-      scoreImpact: RISK_WEIGHTS.REPEATED_RETURN_REQUEST,
-      ruleCode: "RISK-RETURN-REPEAT",
-    });
-  }
+}
 
-  const totalFails = failedLoginsForUser(customerId, loginAttempts);
-  if (totalFails.length >= 3) {
-    const impact = Math.round(RISK_WEIGHTS.REPEATED_FAILED_LOGIN * 0.5);
+function recentOrdersForCustomer(customerId, orders) {
+  const cutoff = Date.now() - THREE_DAYS_MS;
+  return orders.filter(
+    (o) =>
+      o.customerId === customerId &&
+      new Date(o.createdAt).getTime() > cutoff
+  );
+}
+
+function recentReturnsForCustomer(customerId, returns) {
+  const cutoff = Date.now() - THREE_DAYS_MS;
+  return returns.filter(
+    (r) =>
+      (r.customerId === customerId || r.customer === customerId) &&
+      new Date(r.createdAt).getTime() > cutoff
+  );
+}
+
+// ── User-level risk signals (reused across all three functions) ─
+
+function addUserSignals(breakdown, score, userId, loginAttempts, deviceStatus, activityTimeline) {
+  const failedLogins = recentFailedLogins(userId, loginAttempts);
+  if (failedLogins.length > 0) {
+    const impact = Math.min(failedLogins.length * 3, 15);
     score += impact;
     breakdown.push({
-      label: "Multiple failed logins on account",
+      label: `${failedLogins.length} failed login attempt${failedLogins.length > 1 ? "s" : ""} (last 3 days)`,
       scoreImpact: impact,
       ruleCode: "RISK-LOGIN-FAIL",
     });
   }
 
-  if (otpResendAbuse(customerId, otpRecords)) {
-    score += RISK_WEIGHTS.OTP_RETRY_ABUSE;
+  const otpFails = recentOtpFails(userId, activityTimeline);
+  if (otpFails.length > 0) {
+    const impact = Math.min(otpFails.length * 5, 20);
+    score += impact;
     breakdown.push({
-      label: "OTP retry abuse",
-      scoreImpact: RISK_WEIGHTS.OTP_RETRY_ABUSE,
-      ruleCode: "RISK-OTP-ABUSE",
+      label: `${otpFails.length} OTP failure${otpFails.length > 1 ? "s" : ""} (last 3 days)`,
+      scoreImpact: impact,
+      ruleCode: "RISK-OTP-FAIL",
     });
   }
 
   if (deviceStatus === "new") {
-    score += RISK_WEIGHTS.NEW_DEVICE_DETECTED;
+    score += 15;
     breakdown.push({
-      label: "New device detected",
-      scoreImpact: RISK_WEIGHTS.NEW_DEVICE_DETECTED,
+      label: "New / unrecognized device",
+      scoreImpact: 15,
       ruleCode: "RISK-DEVICE-NEW",
     });
-  } else if (deviceStatus === "known-unusual-network") {
-    score += RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK;
+  }
+
+  return score;
+}
+
+function addNewAccountSignal(breakdown, score, customerId, users, label) {
+  const user = users.find((u) => u.id === customerId);
+  if (user && Date.now() - new Date(user.createdAt).getTime() < ONE_DAY_MS) {
+    score += 10;
+    breakdown.push({ label, scoreImpact: 10, ruleCode: "RISK-NEW-ACCOUNT" });
+  }
+  return score;
+}
+
+// ── Per-entity risk computation ───────────────────────────────
+
+export function computeUserRisk(userId, loginAttempts, deviceStatus, activityTimeline = []) {
+  const breakdown = [];
+  let score = 0;
+
+  score = addUserSignals(breakdown, score, userId, loginAttempts, deviceStatus, activityTimeline);
+
+  const clamped = Math.min(score, 100);
+  return { score: clamped, level: riskLevelFromScore(clamped), breakdown };
+}
+
+export function computeOrderRisk(
+  orderId,
+  customerId,
+  orders,
+  loginAttempts,
+  _otpRecords,
+  deviceStatus,
+  activityTimeline = [],
+  users = [],
+  orderRecord = null
+) {
+  const breakdown = [];
+  let score = 0;
+
+  score = addUserSignals(breakdown, score, customerId, loginAttempts, deviceStatus, activityTimeline);
+
+  const recentOrders = recentOrdersForCustomer(customerId, orders);
+  if (recentOrders.length >= 3) {
+    score += 12;
     breakdown.push({
-      label: "Known device but unusual network",
-      scoreImpact: RISK_WEIGHTS.KNOWN_DEVICE_UNUSUAL_NETWORK,
-      ruleCode: "RISK-DEVICE-NET",
+      label: `${recentOrders.length} orders placed in last 3 days`,
+      scoreImpact: 12,
+      ruleCode: "RISK-ORDER-BURST",
+    });
+  }
+
+  // New account (< 24h) placing an order
+  score = addNewAccountSignal(
+    breakdown, score, customerId, users,
+    "Akun baru (< 24 jam) langsung melakukan order"
+  );
+
+  // High-value order from unrecognized device
+  if (deviceStatus === "new" && orderRecord && (orderRecord.total ?? 0) > HIGH_VALUE_IDR) {
+    score += 10;
+    breakdown.push({
+      label: `Order nilai tinggi (Rp${Number(orderRecord.total).toLocaleString("id-ID")}) dari perangkat baru`,
+      scoreImpact: 10,
+      ruleCode: "RISK-HIGH-VALUE-NEW-DEVICE",
     });
   }
 
@@ -236,11 +157,64 @@ export function computeReturnRisk(
   return { score: clamped, level: riskLevelFromScore(clamped), breakdown };
 }
 
-// ── Flag & Timeline builders ───────────────────────────────────
+export function computeReturnRisk(
+  returnId,
+  customerId,
+  returns,
+  loginAttempts,
+  _otpRecords,
+  deviceStatus,
+  activityTimeline = [],
+  users = [],
+  returnRecord = null
+) {
+  const breakdown = [];
+  let score = 0;
 
-/**
- * Generate monitoring flags dari hasil risk breakdown.
- */
+  score = addUserSignals(breakdown, score, customerId, loginAttempts, deviceStatus, activityTimeline);
+
+  const recentReturns = recentReturnsForCustomer(customerId, returns);
+  if (recentReturns.length >= 2) {
+    score += 20;
+    breakdown.push({
+      label: `${recentReturns.length} return requests in last 3 days`,
+      scoreImpact: 20,
+      ruleCode: "RISK-RETURN-BURST",
+    });
+  }
+
+  // New account (< 24h) submitting a return
+  score = addNewAccountSignal(
+    breakdown, score, customerId, users,
+    "Akun baru (< 24 jam) mengajukan return"
+  );
+
+  // Return after QR scan failed
+  if (returnRecord && returnRecord.qrStatus === "invalid") {
+    score += 25;
+    breakdown.push({
+      label: "Return diajukan setelah QR scan gagal (QR tidak cocok)",
+      scoreImpact: 25,
+      ruleCode: "RISK-QR-MISMATCH",
+    });
+  }
+
+  // E-receipt mismatch
+  if (returnRecord && returnRecord.monitoringFlag === "E-receipt tidak cocok") {
+    score += 25;
+    breakdown.push({
+      label: "E-receipt yang dilampirkan tidak cocok dengan data order",
+      scoreImpact: 25,
+      ruleCode: "RISK-RECEIPT-MISMATCH",
+    });
+  }
+
+  const clamped = Math.min(score, 100);
+  return { score: clamped, level: riskLevelFromScore(clamped), breakdown };
+}
+
+// ── Flag & Timeline builders ──────────────────────────────────
+
 export function generateFlagsFromBreakdown(entityType, entityId, breakdown) {
   const now = new Date().toISOString();
   return breakdown.map((item) => ({
@@ -249,8 +223,8 @@ export function generateFlagsFromBreakdown(entityType, entityId, breakdown) {
     entityId,
     ruleCode: item.ruleCode ?? "RISK-GENERIC",
     title: item.label,
-    severity: item.scoreImpact >= 25 ? "high"
-            : item.scoreImpact >= 15 ? "medium"
+    severity: item.scoreImpact >= 20 ? "high"
+            : item.scoreImpact >= 12 ? "medium"
             : "low",
     status: "open",
     reason: `Terdeteksi dari analisis realtime: ${item.label}`,
@@ -258,9 +232,6 @@ export function generateFlagsFromBreakdown(entityType, entityId, breakdown) {
   }));
 }
 
-/**
- * Buat timeline event baru.
- */
 export function buildTimelineEvent(actorId, actorRole, eventType, label, metadata = {}) {
   return {
     id: `EVT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -273,9 +244,6 @@ export function buildTimelineEvent(actorId, actorRole, eventType, label, metadat
   };
 }
 
-/**
- * Recommended action text berdasarkan risk level.
- */
 export function recommendedAction(level) {
   switch (level) {
     case "high":

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./index.css";
 import { useMockData } from "../context/MockDataContext.jsx";
 import api from "../lib/api.js";
+import { collectFingerprint } from "../lib/fingerprint.js";
 
 const OTP_LENGTH = 6;
 const OTP_MAX_ATTEMPTS = 3;
@@ -35,7 +37,7 @@ const maskEmail = (email) => {
 };
 
 const getOtpNotice = (email) =>
-  `Kode verifikasi sudah dikirim ke ${maskEmail(email)}. Cek inbox atau folder spam.`;
+  `Kode verifikasi sudah dikirim ke ${maskEmail(email)}. Silakan cek inbox atau folder spam.`;
 
 const IconEye = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -103,8 +105,11 @@ export default function AuthPage() {
   const switchTimerRef = useRef(null);
   const otpInputsRef = useRef([]);
 
-  const { loginUser, verifyOtp, setUserSession, generateOtp, resendOtp } = useMockData();
+  const { setUserSession } = useMockData();
   const [pendingUser, setPendingUser] = useState(null);
+  const [otpSessionId, setOtpSessionId] = useState(null);
+  const [pendingDeviceMeta, setPendingDeviceMeta] = useState({});
+  const [otpPurpose, setOtpPurpose] = useState("new_device");
 
   const [mode, setMode] = useState(
     location.pathname === "/register" ? "register" : "login"
@@ -236,13 +241,44 @@ export default function AuthPage() {
     setLoginError("");
 
     try {
+      const fingerprint = collectFingerprint();
       const { data } = await api.post("/api/auth/login/", {
         email: loginForm.email.trim().toLowerCase(),
         password: loginForm.password,
+        deviceFingerprint: fingerprint,
       });
       const user = data.user;
-      setUserSession(user, {});
-      navigate(user.role === "admin" ? "/admin" : "/");
+      const deviceMeta = {
+        deviceStatus: data.deviceStatus ?? "new",
+        deviceInfo: {
+          fingerprint,
+          userAgent: navigator.userAgent,
+          ...(data.deviceMatch ?? {}),
+        },
+      };
+
+      if (data.requireDeviceOtp) {
+        // New device detected — backend already created OTP session
+        setOtpSessionId(data.sessionId);
+        setPendingUser(user);
+        setPendingDeviceMeta(deviceMeta);
+        setOtpPurpose("new_device");
+        openOtpModal(user.email);
+      } else if (user.twoFactorEnabled) {
+        const otpRes = await api.post("/api/auth/otp/request/", {
+          userId: user.id,
+          purpose: "login",
+          deviceFingerprint: fingerprint,
+        });
+        setOtpSessionId(otpRes.data.sessionId);
+        setPendingUser(user);
+        setPendingDeviceMeta(deviceMeta);
+        setOtpPurpose("admin_2fa");
+        openOtpModal(user.email);
+      } else {
+        flushSync(() => setUserSession(user, deviceMeta));
+        navigate(user.role === "admin" ? "/admin" : "/");
+      }
     } catch (err) {
       const msg = err.response?.data?.error ?? err.response?.data?.detail ?? "Login gagal. Silakan coba lagi.";
       setLoginError(msg);
@@ -362,7 +398,7 @@ export default function AuthPage() {
     focusOtpInput(Math.min(pasted.length, OTP_LENGTH) - 1);
   };
 
-  const handleOtpSubmit = (event) => {
+  const handleOtpSubmit = async (event) => {
     event.preventDefault();
 
     if (otpLockSeconds > 0) {
@@ -380,26 +416,39 @@ export default function AuthPage() {
     setOtpLoading(true);
     setOtpError("");
 
-    window.setTimeout(() => {
+    try {
+      const { data } = await api.post("/api/auth/otp/verify/", {
+        sessionId: otpSessionId,
+        code,
+      });
+
+      closeOtpModal();
+      const resolvedMeta = {
+        deviceStatus: data.deviceStatus ?? "trusted",
+        deviceInfo: {
+          ...pendingDeviceMeta.deviceInfo,
+          ...(data.deviceMatch ?? {}),
+        },
+      };
+      flushSync(() => setUserSession(data.user, resolvedMeta));
+      navigate(data.user.role === "admin" ? "/admin" : "/");
+    } catch (err) {
       setOtpLoading(false);
-
-      const result = verifyOtp(pendingUser.id, code, { purpose: "login" });
-
-      if (result.success) {
-        closeOtpModal();
-        setUserSession(pendingUser, {
-          deviceStatus: pendingUser.deviceStatus,
-          deviceInfo: pendingUser.deviceInfo,
-          riskSummary: pendingUser.riskSummary,
-        });
-        navigate(pendingUser.role === "admin" ? "/admin" : "/");
-        return;
-      }
-
       setOtpDigits(createEmptyOtp());
       window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
 
-      if (result.reason === "otp_max_attempts" || result.reason === "otp_expired") {
+      const reason = err.response?.data?.reason ?? "";
+      const msg = err.response?.data?.error ?? "OTP salah. Silakan coba lagi.";
+
+      if (reason === "otp_expired") {
+        setOtpAttemptsLeft(0);
+        setOtpLockSeconds(OTP_LOCK_SECONDS);
+        setOtpResendSeconds(OTP_RESEND_SECONDS);
+        setOtpError(`Kode OTP sudah kadaluarsa. Klik "Kirim ulang kode" untuk mendapatkan kode baru.`);
+        return;
+      }
+
+      if (reason === "otp_max_attempts") {
         setOtpAttemptsLeft(0);
         setOtpLockSeconds(OTP_LOCK_SECONDS);
         setOtpResendSeconds(OTP_RESEND_SECONDS);
@@ -407,28 +456,36 @@ export default function AuthPage() {
         return;
       }
 
-      const nextAttempts = otpAttemptsLeft - 1;
-      if (nextAttempts <= 0) {
+      const attemptsLeft = err.response?.data?.attemptsLeft ?? otpAttemptsLeft - 1;
+      if (attemptsLeft <= 0) {
         setOtpAttemptsLeft(0);
         setOtpLockSeconds(OTP_LOCK_SECONDS);
         setOtpResendSeconds(OTP_RESEND_SECONDS);
         setOtpError(`OTP salah 3 kali. Sistem dikunci ${OTP_LOCK_SECONDS} detik sebelum bisa dicoba lagi.`);
         return;
       }
-      setOtpAttemptsLeft(nextAttempts);
-      setOtpError(`OTP salah. Sisa percobaan ${nextAttempts} kali.`);
-    }, 800);
+      setOtpAttemptsLeft(attemptsLeft);
+      setOtpError(msg);
+    }
   };
 
-  const handleOtpResend = () => {
+  const handleOtpResend = async () => {
     if (otpResendSeconds > 0 || otpLoading || otpLockSeconds > 0 || !pendingUser) return;
 
-    resendOtp(pendingUser.id, { purpose: "login" });
+    try {
+      const otpRes = await api.post("/api/auth/otp/request/", {
+        userId: pendingUser.id,
+        purpose: otpPurpose === "admin_2fa" ? "login" : "device_verification",
+        deviceFingerprint: pendingDeviceMeta.deviceInfo?.fingerprint ?? "",
+      });
+      setOtpSessionId(otpRes.data.sessionId);
+    } catch (_) {}
+
     setOtpDigits(createEmptyOtp());
     setOtpError("");
     setOtpAttemptsLeft(OTP_MAX_ATTEMPTS);
     setOtpResendSeconds(OTP_RESEND_SECONDS);
-    setOtpNotice("Kode OTP baru sudah dikirim. Untuk testing gunakan kode 123456.");
+    setOtpNotice("Kode OTP baru sudah dikirim. Silakan cek inbox atau folder spam.");
     window.requestAnimationFrame(() => otpInputsRef.current[0]?.focus());
   };
 
@@ -597,10 +654,14 @@ export default function AuthPage() {
               </div>
 
               <div className="otp-header-copy">
-                <p className="otp-kicker">Verifikasi Admin</p>
+                <p className="otp-kicker">
+                  {otpPurpose === "new_device" ? "Perangkat Baru Terdeteksi" : "Verifikasi Admin"}
+                </p>
                 <h3 id="otp-title" className="otp-title">Masukkan OTP 6 digit</h3>
                 <p className="otp-subtitle">
-                  Kami sudah mengirim kode verifikasi ke email admin terdaftar sebelum dashboard bisa dibuka.
+                  {otpPurpose === "new_device"
+                    ? "Login dari perangkat baru terdeteksi. Masukkan kode OTP untuk memverifikasi identitasmu dan mempercayai perangkat ini."
+                    : "Kami sudah mengirim kode verifikasi ke email admin terdaftar sebelum dashboard bisa dibuka."}
                 </p>
               </div>
             </div>

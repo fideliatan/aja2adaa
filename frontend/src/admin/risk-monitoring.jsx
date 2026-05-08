@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-const STEP_UP_OTP_CODE = "123456";
 const OTP_LENGTH = 6;
 const createOtpDigits = () => Array(OTP_LENGTH).fill("");
 
@@ -635,7 +634,7 @@ export function StepUpVerificationModal({
     }
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const code = digits.join("");
 
@@ -647,30 +646,26 @@ export function StepUpVerificationModal({
     setStatus("loading");
     setError("");
 
-    window.setTimeout(() => {
-      const result = onVerifyCode
-        ? onVerifyCode(code)
-        : {
-            success: code === STEP_UP_OTP_CODE,
-          };
+    const result = onVerifyCode
+      ? await onVerifyCode(code)
+      : { success: false, reason: "no_handler" };
 
-      if (result?.success) {
-        setStatus("success");
-        window.setTimeout(() => {
-          onSuccess?.();
-        }, 650);
-        return;
-      }
+    if (result?.success) {
+      setStatus("success");
+      window.setTimeout(() => {
+        onSuccess?.();
+      }, 650);
+      return;
+    }
 
-      setStatus("form");
-      setDigits(createOtpDigits());
-      setError(
-        result?.reason === "otp_expired"
-          ? "OTP sudah kedaluwarsa. Minta kode baru lalu coba lagi."
-          : "Kode verifikasi tidak valid. Silakan coba lagi."
-      );
-      window.requestAnimationFrame(() => inputsRef.current[0]?.focus());
-    }, 850);
+    setStatus("form");
+    setDigits(createOtpDigits());
+    setError(
+      result?.reason === "otp_expired"
+        ? "OTP sudah kedaluwarsa. Minta kode baru lalu coba lagi."
+        : "Kode verifikasi tidak valid. Silakan coba lagi."
+    );
+    window.requestAnimationFrame(() => inputsRef.current[0]?.focus());
   };
 
   if (!open) return null;

@@ -1,4 +1,5 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+import uuid as _uuid
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
 
@@ -19,7 +20,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser):
     ROLE_CHOICES = [("admin", "Admin"), ("customer", "Customer")]
     STATUS_CHOICES = [("active", "Active"), ("locked", "Locked"), ("inactive", "Inactive")]
 
@@ -35,8 +36,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_code = models.CharField(max_length=20, blank=True, default="")
 
     is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def has_perm(self, perm, obj=None):
+        return self.is_superuser
+
+    def has_module_perms(self, app_label):
+        return self.is_superuser
 
     objects = UserManager()
 
@@ -165,7 +173,7 @@ class ReturnStatusHistory(models.Model):
 
 
 class LoginAttempt(models.Model):
-    attempt_id         = models.CharField(max_length=30, unique=True)
+    attempt_id         = models.CharField(max_length=60, unique=True)
     user_id            = models.CharField(max_length=30, blank=True, default="")
     email              = models.CharField(max_length=254)
     role               = models.CharField(max_length=20, blank=True, default="")
@@ -181,7 +189,7 @@ class LoginAttempt(models.Model):
 
 
 class TrustedDevice(models.Model):
-    device_id              = models.CharField(max_length=30, unique=True)
+    device_id              = models.CharField(max_length=60, unique=True)
     user_id                = models.CharField(max_length=30)
     device_token           = models.CharField(max_length=100)
     fingerprint_hash       = models.CharField(max_length=100)
@@ -234,17 +242,31 @@ class ActivityTimeline(models.Model):
         ordering = ["-timestamp"]
 
 
-class ApprovalStatusChange(models.Model):
-    change_id   = models.CharField(max_length=30, unique=True)
-    entity_type = models.CharField(max_length=20)
-    entity_id   = models.CharField(max_length=30)
-    from_status = models.CharField(max_length=20, null=True, blank=True)
-    to_status   = models.CharField(max_length=20)
-    actor_id    = models.CharField(max_length=30, null=True, blank=True)
-    actor_role  = models.CharField(max_length=20, null=True, blank=True)
-    note        = models.TextField(blank=True, default="")
+class OtpSession(models.Model):
+    session_id  = models.CharField(max_length=60, unique=True)
+    user_id     = models.CharField(max_length=30)
+    purpose     = models.CharField(max_length=30, default="login")
+    attempts    = models.IntegerField(default=0)
+    is_verified = models.BooleanField(default=False)
+    is_expired  = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    expires_at  = models.DateTimeField()
     metadata    = models.JSONField(default=dict)
-    created_at  = models.DateTimeField()
 
     class Meta:
-        db_table = "approval_status_changes"
+        db_table = "otp_sessions"
+
+
+class Address(models.Model):
+    id            = models.UUIDField(primary_key=True, default=_uuid.uuid4)
+    user_id       = models.TextField()
+    label         = models.TextField()
+    receiver_name = models.TextField()
+    phone         = models.TextField()
+    address       = models.TextField()
+    is_primary    = models.BooleanField(default=False)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "addresses"
+        managed  = False

@@ -14,7 +14,7 @@ from accounts.models import (
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     LoginAttempt, TrustedDevice,
-    MonitoringFlag, ActivityTimeline, ApprovalStatusChange,
+    MonitoringFlag, ActivityTimeline,
 )
 
 
@@ -36,7 +36,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options["reset"]:
             self.stdout.write("Wiping existing store data...")
-            ApprovalStatusChange.objects.all().delete()
             ActivityTimeline.objects.all().delete()
             MonitoringFlag.objects.all().delete()
             TrustedDevice.objects.all().delete()
@@ -53,7 +52,6 @@ class Command(BaseCommand):
         self._seed_trusted_devices()
         self._seed_monitoring_flags()
         self._seed_activity_timeline()
-        self._seed_approval_changes()
 
         self.stdout.write(self.style.SUCCESS("Seed complete."))
 
@@ -556,44 +554,3 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(f"  Created event {e['id']}")
 
-    # ── Approval status changes ──────────────────────────────────
-
-    def _seed_approval_changes(self):
-        import time
-        now_ms = int(time.time() * 1000)
-
-        def ms_ago(ms):
-            return datetime.fromtimestamp((now_ms - ms) / 1000, tz=tz.utc).isoformat()
-
-        changes = [
-            {
-                "id": "APP-001", "entityType": "order", "entityId": "ORD-014",
-                "fromStatus": "pending", "toStatus": "packing",
-                "actorId": "USR-001", "actorRole": "admin",
-                "note": "Payment approved by admin.", "createdAt": ms_ago(3*86400000),
-            },
-            {
-                "id": "APP-002", "entityType": "return", "entityId": "RET-002",
-                "fromStatus": "pending", "toStatus": "processing",
-                "actorId": "USR-001", "actorRole": "admin",
-                "note": "Return moved to manual review due to QR mismatch.",
-                "createdAt": "2025-04-18T10:00:00+00:00",
-            },
-        ]
-        for c in changes:
-            _, created = ApprovalStatusChange.objects.get_or_create(
-                change_id=c["id"],
-                defaults={
-                    "entity_type": c["entityType"],
-                    "entity_id": c["entityId"],
-                    "from_status": c.get("fromStatus"),
-                    "to_status": c["toStatus"],
-                    "actor_id": c.get("actorId"),
-                    "actor_role": c.get("actorRole"),
-                    "note": c.get("note", ""),
-                    "metadata": {},
-                    "created_at": _dt(c["createdAt"]),
-                },
-            )
-            if created:
-                self.stdout.write(f"  Created approval change {c['id']}")

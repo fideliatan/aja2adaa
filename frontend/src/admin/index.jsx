@@ -68,6 +68,7 @@ const SECURITY_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Asia/Jakarta",
 });
 
 function formatSecurityTimestamp(date = new Date()) {
@@ -1387,7 +1388,7 @@ function Returns({ goToReturnDetail }) {
    ═══════════════════════════════════════════════════════════ */
 function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const { returns: ctxReturns, updateReturn } = useOrders();
-  const { mockStore, session, currentUser, generateOtp, verifyOtp, resolveFlag } = useMockData();
+  const { mockStore, session, currentUser, generateOtp, verifyOtp, resolveFlag, addTimelineEvent } = useMockData();
   const allReturns = buildAllReturns(ctxReturns);
   const initialReturnId = selectedReturnId ?? allReturns[0]?.id;
 
@@ -1395,6 +1396,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const [localStatuses, setLocalStatuses] = useState({});
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
+  const [receiptVerify, setReceiptVerify] = useState(null); // null | "verifying" | "valid" | "invalid"
   const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary(mockStore, "return", initialReturnId));
   const [stepUpState,   setStepUpState]   = useState({
     open: false,
@@ -1428,6 +1430,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   useEffect(() => {
     if (!ret?.id) return;
     setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
+    setReceiptVerify(null);
     setStepUpState({
       open: false,
       actionKey: "",
@@ -1437,6 +1440,12 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     });
     stepUpActionRef.current = null;
   }, [ret?.id]);
+
+  // Re-compute risk summary in real-time whenever flags or timeline change in the store
+  useEffect(() => {
+    if (!ret?.id) return;
+    setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
+  }, [mockStore.monitoringFlags, mockStore.activityTimeline]);
 
   const patchReturn = (id, patch) => {
     if (ret?.fromCtx) updateReturn(id, patch);
@@ -1511,18 +1520,22 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         });
 
         const matched = finalStatus === "valid";
-        setRiskSummary(prev => ({
-          ...prev,
-          timeline: [
-            ...prev.timeline,
-            createSecurityTimelineEvent(
-              ret.id.toLowerCase(), "qr",
-              matched ? `QR ${unitKey} terverifikasi` : `QR ${unitKey} gagal (${finalCode})`,
-              matched ? "success" : "danger"
-            ),
-          ],
-        }));
-        if (!matched && curStatus === "pending") patchReturn(ret.id, { status: "flagged" });
+        const evtLabel = matched
+          ? `QR ${unitKey} terverifikasi`
+          : `QR ${unitKey} gagal (${finalCode})`;
+        addTimelineEvent({
+          actorId: currentUser?.id ?? "admin",
+          actorRole: "admin",
+          eventType: matched ? "qr_verified" : "qr_failed",
+          label: evtLabel,
+          metadata: { entityType: "return", entityId: ret.id, orderId: ret.orderId ?? null, unitKey, resultCode: finalCode },
+        });
+        if (!matched) {
+          patchReturn(ret.id, {
+            status: curStatus === "pending" ? "flagged" : curStatus,
+            qrStatus: "invalid",
+          });
+        }
       })
       .catch(err => {
         console.error("QR verify failed:", err);
@@ -1758,24 +1771,79 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Bukti Pembelian (E-Receipt)</p>
               {receipt ? (
-                receipt.startsWith("data:application/pdf") ? (
-                  <a
-                    className="adm-proof-file-btn"
-                    href={receipt}
-                    download={`e-receipt-${ret.orderId}.pdf`}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    e-receipt-{ret.orderId}.pdf
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  </a>
-                ) : (
-                  <button className="adm-proof-file-btn" onClick={() => setReceiptZoom(true)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    e-receipt-{ret.orderId}.jpg
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
-                  </button>
-                )
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {receipt.startsWith("data:application/pdf") ? (
+                      <a
+                        className="adm-proof-file-btn"
+                        href={receipt}
+                        download={`e-receipt-${ret.orderId}.pdf`}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        e-receipt-{ret.orderId}.pdf
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      </a>
+                    ) : (
+                      <button className="adm-proof-file-btn" onClick={() => setReceiptZoom(true)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        e-receipt-{ret.orderId}.jpg
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
+                      </button>
+                    )}
+                    {receiptVerify === null && receipt.startsWith("data:application/pdf") && (
+                      <button
+                        className="adm-qrv-cam-btn"
+                        style={{ fontSize: 12 }}
+                        onClick={async () => {
+                          setReceiptVerify("verifying");
+                          try {
+                            const base64 = receipt.replace(/^data:application\/pdf;base64,/, "");
+                            const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                            const blob = new Blob([bytes], { type: "application/pdf" });
+                            const form = new FormData();
+                            form.append("pdf_file", blob, `e-receipt-${ret.orderId}.pdf`);
+                            form.append("verified_by", currentUser?.id ?? "admin");
+                            const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+                            const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: form });
+                            const data = await res.json();
+                            const isValid = data.valid === true;
+                            setReceiptVerify(isValid ? "valid" : "invalid");
+                            addTimelineEvent({
+                              actorId: currentUser?.id ?? "admin",
+                              actorRole: "admin",
+                              eventType: isValid ? "receipt_verified" : "receipt_invalid",
+                              label: isValid ? `E-receipt ${ret.orderId} terverifikasi` : `E-receipt ${ret.orderId} tidak valid`,
+                              metadata: { entityType: "return", entityId: ret.id, orderId: ret.orderId, valid: isValid },
+                            });
+                            if (!isValid) {
+                              patchReturn(ret.id, {
+                                status: curStatus === "pending" ? "flagged" : curStatus,
+                                monitoringFlag: "E-receipt tidak cocok",
+                              });
+                            }
+                          } catch {
+                            setReceiptVerify(null);
+                          }
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Verifikasi
+                      </button>
+                    )}
+                    {receiptVerify === "verifying" && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#888" }}>
+                        <Loader2 size={12} className="adm-spin" /> Memverifikasi...
+                      </span>
+                    )}
+                    {receiptVerify === "valid" && (
+                      <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✓ Receipt valid</span>
+                    )}
+                    {receiptVerify === "invalid" && (
+                      <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>✗ Receipt tidak cocok</span>
+                    )}
+                  </div>
+                </>
               ) : (
                 <p style={{ fontSize: 13, color: "#bbb" }}>Tidak ada e-receipt dilampirkan.</p>
               )}
@@ -2028,7 +2096,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
         caseId={ret.id}
         reasons={stepUpState.reasons}
         helperText={stepUpState.helperText}
-        verificationHint="Use test OTP 123456."
+        verificationHint="Kode OTP telah dikirim ke email admin."
         onVerifyCode={(code) =>
           verifyOtp(session?.userId ?? currentUser?.id, code, {
             purpose: "step_up",
@@ -2546,7 +2614,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                             <>
                               <span className="adm-unit-qr-status adm-unit-qr-status--active">● Aktif</span>
                               <span className="adm-unit-qr-ts">
-                                {new Date(unit.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                                {new Date(unit.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}
                               </span>
                             </>
                           ) : (
@@ -2789,7 +2857,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
         caseId={order.id}
         reasons={stepUpState.reasons}
         helperText={stepUpState.helperText}
-        verificationHint="Use test OTP 123456."
+        verificationHint="Kode OTP telah dikirim ke email admin."
         onVerifyCode={(code) =>
           verifyOtp(session?.userId ?? currentUser?.id, code, {
             purpose: "step_up",
@@ -2830,7 +2898,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                 <div className="adm-unit-qr-modal-field">
                   <span className="adm-pqr-label">Digenerate</span>
                   <span className="adm-unit-qr-modal-val">
-                    {new Date(viewingQr.generatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                    {new Date(viewingQr.generatedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })}
                   </span>
                 </div>
                 <div className="adm-unit-qr-modal-field">
@@ -3189,7 +3257,7 @@ function ReceiptVerify() {
                     ["Nama Pelanggan",      verifyData?.customer_name || "—"],
                     ["Total Pembayaran",    verifyData?.total ? fmt(verifyData.total) : "—"],
                     ["Email Pelanggan",     verifyData?.customer_email || "—"],
-                    ["Dibuat Pada",         verifyData?.generated_at ? new Date(verifyData.generated_at).toLocaleString("id-ID") : "—"],
+                    ["Dibuat Pada",         verifyData?.generated_at ? new Date(verifyData.generated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "—"],
                     ["Status Tanda Tangan", "Cocok dengan database ✓"],
                   ].map(([label, val]) => (
                     <div key={label} className="adm-rv-detail-row">
