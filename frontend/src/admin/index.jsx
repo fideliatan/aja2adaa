@@ -1463,13 +1463,28 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
       [ret.id]: { ...(p[ret.id] ?? {}), [unitKey]: { status: "loading", token: scannedToken } },
     }));
 
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/verify/`, {
+    // Derive expected product_id and order_item_id for this slot so the
+    // backend can reject QRs from the wrong product or wrong unit of the same product.
+    const pi            = parseInt(unitKey.split("-")[0]);
+    const u             = parseInt(unitKey.split("-")[1]);
+    const expectedName  = ret?.products?.[pi]?.name ?? null;
+    const linkedOrder   = (mockStore.orders ?? []).find(o => o.id === ret.orderId);
+    const itemIdx       = linkedOrder?.items?.findIndex(i => i.name === expectedName) ?? -1;
+    const claimedProductId    = itemIdx >= 0 ? (linkedOrder.items[itemIdx].id ?? `PROD-${itemIdx}`) : null;
+    const claimedOrderItemId  = (itemIdx >= 0 && ret.orderId)
+      ? `${ret.orderId}-ITEM${String(itemIdx).padStart(2, "0")}-U${u}`
+      : null;
+
+    const _apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+    fetch(`${_apiBase}/api/qr/verify/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        qr_token:         scannedToken,
-        scanned_by:       currentUser?.id ?? "admin",
-        claimed_order_id: ret.orderId ?? null,
+        qr_token:              scannedToken,
+        scanned_by:            currentUser?.id ?? "admin",
+        claimed_order_id:      ret.orderId ?? null,
+        claimed_product_id:    claimedProductId,
+        claimed_order_item_id: claimedOrderItemId,
       }),
     })
       .then(async r => {

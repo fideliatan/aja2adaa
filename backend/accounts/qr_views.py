@@ -138,10 +138,11 @@ def verify_qr(request):
         "fraud_flag_id":   "uuid if a flag was raised, else null"
       }
     """
-    qr_token           = request.data.get("qr_token",           "")
-    scanned_by         = request.data.get("scanned_by",         "")
-    claimed_order_id   = request.data.get("claimed_order_id")   or None
-    claimed_product_id = request.data.get("claimed_product_id") or None
+    qr_token               = request.data.get("qr_token",               "")
+    scanned_by             = request.data.get("scanned_by",             "")
+    claimed_order_id       = request.data.get("claimed_order_id")       or None
+    claimed_product_id     = request.data.get("claimed_product_id")     or None
+    claimed_order_item_id  = request.data.get("claimed_order_item_id")  or None
 
     if not qr_token or not scanned_by:
         return Response(
@@ -155,6 +156,7 @@ def verify_qr(request):
             scanned_by=scanned_by,
             claimed_order_id=claimed_order_id,
             claimed_product_id=claimed_product_id,
+            claimed_order_item_id=claimed_order_item_id,
         )
         return Response(result)
     except Exception as exc:

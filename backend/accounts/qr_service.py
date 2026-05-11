@@ -234,21 +234,24 @@ def verify_qr_token(
     scanned_by: str,
     claimed_order_id: str | None = None,
     claimed_product_id: str | None = None,
+    claimed_order_item_id: str | None = None,
 ) -> dict:
     """
-    Verify a scanned QR token directly in Python (no stored procedure dependency).
+    Verify a scanned QR token.
 
-    Checks:
+    Checks (in order):
       1. Token exists in product_units
       2. qr_status is 'active' and unit not already returned
-      3. Optional: order_id cross-check if claimed_order_id is supplied
+      3. Optional: order_id cross-check
+      4. Optional: product_id cross-check (different product, same order)
+      5. Optional: order_item_id cross-check (different unit of same product)
     Logs every scan to qr_verifications regardless of outcome.
     """
     with connection.cursor() as cur:
         # ── Step 1: token lookup ────────────────────────────────────────────
         cur.execute(
             """
-            SELECT id, order_id, product_id, qr_status, is_returned
+            SELECT id, order_id, product_id, qr_status, is_returned, order_item_id
             FROM   product_units
             WHERE  qr_token = %s
             """,
@@ -270,7 +273,7 @@ def verify_qr_token(
                 "fraud_flag_id":   None,
             }
 
-        unit_id, order_id, product_id, qr_status, is_returned = row
+        unit_id, order_id, product_id, qr_status, is_returned, order_item_id = row
         unit_id_str = str(unit_id)
 
         # ── Step 2: lifecycle status ────────────────────────────────────────
@@ -313,6 +316,36 @@ def verify_qr_token(
                     f"QR ini terdaftar untuk pesanan {order_id}, "
                     f"bukan {claimed_order_id}. Pastikan QR sesuai dengan produk yang di-return."
                 ),
+                "unit_id":         unit_id_str,
+                "order_id":        order_id,
+                "product_id":      product_id,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        # ── Step 4: optional product cross-check ────────────────────────────
+        if claimed_product_id and str(product_id) != str(claimed_product_id):
+            _log_verification(cur, unit_id, token, scanned_by, "invalid",
+                              f"Product mismatch — QR: {product_id}, klaim: {claimed_product_id}")
+            return {
+                "is_valid":        False,
+                "result_code":     "wrong_product",
+                "message":         "QR ini milik produk lain dalam pesanan ini. Pastikan kamu scan QR produk yang benar.",
+                "unit_id":         unit_id_str,
+                "order_id":        order_id,
+                "product_id":      product_id,
+                "verification_id": None,
+                "fraud_flag_id":   None,
+            }
+
+        # ── Step 5: optional unit cross-check ───────────────────────────────
+        if claimed_order_item_id and str(order_item_id) != str(claimed_order_item_id):
+            _log_verification(cur, unit_id, token, scanned_by, "invalid",
+                              f"Unit mismatch — QR: {order_item_id}, klaim: {claimed_order_item_id}")
+            return {
+                "is_valid":        False,
+                "result_code":     "wrong_unit",
+                "message":         "QR ini untuk unit lain dari produk yang sama. Pastikan kamu scan QR yang sesuai dengan unit yang di-return.",
                 "unit_id":         unit_id_str,
                 "order_id":        order_id,
                 "product_id":      product_id,
