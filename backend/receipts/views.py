@@ -11,6 +11,29 @@ from .models import EReceipt, ReceiptVerification
 from .services import generate_receipt_pdf, verify_receipt_pdf
 
 
+def _missing_dependency_response(exc):
+    if isinstance(exc, ModuleNotFoundError):
+        package_name = getattr(exc, "name", "") or str(exc)
+        message = (
+            f"Dependency backend untuk e-receipt belum terpasang: {package_name}. "
+            "Jalankan install dependency backend terlebih dahulu."
+        )
+    elif isinstance(exc, OSError) and "libgobject-2.0-0" in str(exc):
+        message = (
+            "WeasyPrint sudah terpasang, tapi library native GTK/Pango Windows belum ada "
+            "(libgobject-2.0-0). Install MSYS2, jalankan "
+            "`pacman -S mingw-w64-x86_64-pango`, set "
+            "`WEASYPRINT_DLL_DIRECTORIES=C:\\msys64\\mingw64\\bin`, lalu restart backend."
+        )
+    else:
+        message = f"Gagal memuat dependency e-receipt: {exc}"
+
+    return Response(
+        {"error": message},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
 # ── Endpoint 1: Generate receipt ───────────────────────────────────────────────
 
 @api_view(["POST"])
@@ -37,7 +60,10 @@ def generate_receipt(request):
             "already_exists": True,
         })
 
-    pdf_b64, signature, generated_at = generate_receipt_pdf(order)
+    try:
+        pdf_b64, signature, generated_at = generate_receipt_pdf(order)
+    except (ModuleNotFoundError, OSError) as exc:
+        return _missing_dependency_response(exc)
 
     receipt = EReceipt.objects.create(
         order_id=order.order_id,
@@ -79,7 +105,10 @@ def download_receipt(request, order_id):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        pdf_b64, signature, generated_at = generate_receipt_pdf(order)
+        try:
+            pdf_b64, signature, generated_at = generate_receipt_pdf(order)
+        except (ModuleNotFoundError, OSError) as exc:
+            return _missing_dependency_response(exc)
         receipt = EReceipt.objects.create(
             order_id=order.order_id,
             customer_name=order.recipient or order.customer,
@@ -110,7 +139,10 @@ def verify_receipt(request):
     if not pdf_file:
         return Response({"error": "File PDF diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
 
-    result = verify_receipt_pdf(pdf_file)
+    try:
+        result = verify_receipt_pdf(pdf_file)
+    except (ModuleNotFoundError, OSError) as exc:
+        return _missing_dependency_response(exc)
 
     ReceiptVerification.objects.create(
         order_id=result.get("order_id", ""),

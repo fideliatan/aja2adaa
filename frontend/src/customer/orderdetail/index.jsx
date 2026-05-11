@@ -450,7 +450,14 @@ async function handleDownload(order) {
   try {
     const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
     const resp = await fetch(`${apiBase}/api/receipts/${order.id}/download/`);
-    if (!resp.ok) throw new Error("gagal");
+    if (!resp.ok) {
+      let message = "Gagal mengunduh e-receipt.";
+      try {
+        const data = await resp.json();
+        message = data.error || data.detail || message;
+      } catch {}
+      throw new Error(message);
+    }
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -460,8 +467,8 @@ async function handleDownload(order) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  } catch {
-    alert("Gagal mengunduh e-receipt. Pastikan backend aktif lalu coba lagi.");
+  } catch (error) {
+    alert(error?.message || "Gagal mengunduh e-receipt. Pastikan backend aktif lalu coba lagi.");
   }
 }
 

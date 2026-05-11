@@ -1,0 +1,9 @@
+django==5.2.13
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+psycopg2-binary==2.9.10
+weasyprint==65.1
+pypdf==5.5.0
+qrcode==8.2
+Pillow==11.2.1
+pypng==0.20220715.0
