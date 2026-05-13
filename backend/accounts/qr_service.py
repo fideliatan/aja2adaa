@@ -16,7 +16,6 @@ import secrets
 import string
 
 import qrcode
-from qrcode.image.pure import PyPNGImage
 from django.db import connection
 
 
@@ -63,7 +62,7 @@ def generate_qr_png_base64(token: str) -> str:
     img = qr.make_image(fill_color="black", back_color="white")
 
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, kind="PNG")
     buf.seek(0)
 
     b64 = base64.b64encode(buf.read()).decode("utf-8")
@@ -120,9 +119,10 @@ def create_product_unit(
                     INSERT INTO product_units (
                         order_id, order_item_id, product_id,
                         qr_token, qr_image_url, qr_status,
-                        generated_at, generated_by, is_returned, verification_count
+                        generated_at, generated_by, is_returned, verification_count,
+                        created_at, updated_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, 'active', NOW(), %s, false, 0)
+                    VALUES (%s, %s, %s, %s, %s, 'active', NOW(), %s, false, 0, NOW(), NOW())
                     RETURNING {_SELECT_COLS}
                     """,
                     [order_id, order_item_id, product_id, token, img_b64, generated_by],
