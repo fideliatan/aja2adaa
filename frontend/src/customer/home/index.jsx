@@ -7,9 +7,9 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
-import { FALLBACK_IMG } from "../../data/products.js";
-import { MAIN_PRODUCT_CATEGORIES, SHOP_CATEGORIES } from "../../data/catalog.js";
 import { useMockData } from "../../context/MockDataContext.jsx";
+
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=400&h=400&q=80";
 
 const TRUST_ITEMS = [
   { icon: "Original", title: "Produk Original", sub: "Pilihan aman untuk beauty routine harian" },
@@ -76,11 +76,11 @@ export default function HomePage() {
   const { addToCart, cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
   const { favorites, toggleFavorite, addToWishlist } = useWishlist();
   const { clearSearch } = useSearch();
-  const { products } = useMockData();
+  const { products, categories } = useMockData();
   const [quickView, setQuickView] = useState(null);
 
   const top3 = [...products].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
-  const categoryCount = MAIN_PRODUCT_CATEGORIES.length;
+  const categoryCount = categories.length;
   const budgetCount = products.filter((product) => product.price <= 100000).length;
 
   const handleToggleFavorite = (product) => {
@@ -272,9 +272,9 @@ export default function HomePage() {
           <h2 className="home-section-title">Belanja berdasarkan kategori</h2>
         </div>
         <div className="category-grid">
-          {SHOP_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <div key={cat.id} className="cat-card" onClick={() => goToProductCategory(cat.name)}>
-              <div className="cat-card-img-wrap" style={{ backgroundImage: `url(${cat.img})` }}>
+              <div className="cat-card-img-wrap" style={{ backgroundImage: `url(${cat.image})` }}>
                 <div className="cat-card-dim" />
                 <span className="cat-card-label">{cat.label}</span>
                 <div className="cat-card-overlay">Lihat Sekarang</div>

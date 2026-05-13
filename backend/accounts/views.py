@@ -22,7 +22,7 @@ def _now():
     return datetime.now(_WIB).replace(tzinfo=None)
 
 from .models import (
-    User, Product, Review,
+    User, Category, Product, Review,
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     LoginAttempt, TrustedDevice,
@@ -703,6 +703,18 @@ def _serialize_flag(f):
     }
 
 
+def _serialize_category(c):
+    return {
+        "id":           c.name.lower().replace(" ", ""),
+        "name":         c.name,
+        "label":        c.label,
+        "desc":         c.desc,
+        "image":        c.image,
+        "displayOrder": c.display_order,
+        "pageLimit":    c.page_limit,
+    }
+
+
 def _serialize_product(p):
     avg = p.avg_rating if hasattr(p, "avg_rating") and p.avg_rating is not None else 0
     cnt = p.review_count if hasattr(p, "review_count") else 0
@@ -849,8 +861,11 @@ def store_init(request):
         for r in product_reviews
     ]
 
+    categories = [_serialize_category(c) for c in Category.objects.filter(is_active=True).order_by("display_order")]
+
     return Response({
         "users": users,
+        "categories": categories,
         "products": products,
         "productReviews": serialized_reviews,
         "orders": orders,

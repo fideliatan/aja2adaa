@@ -39,7 +39,13 @@
       "Bash(python manage.py makemigrations accounts --name add_review_remove_product_rating)",
       "Bash(python -c \"from accounts.models import Review, Product; from django.db.models import Avg, Count; qs = Product.objects.annotate\\(avg_rating=Avg\\('product_reviews__rating'\\), review_count=Count\\('product_reviews'\\)\\); print\\(qs.first\\(\\).avg_rating, qs.first\\(\\).review_count\\)\")",
       "Bash(python manage.py shell -c \"from accounts.models import Review, Product; from django.db.models import Avg, Count; qs = Product.objects.annotate\\(avg_rating=Avg\\('product_reviews__rating'\\), review_count=Count\\('product_reviews'\\)\\); p = qs.first\\(\\); print\\('OK', p.name, p.avg_rating, p.review_count\\)\")",
-      "Bash(python manage.py makemigrations accounts --name add_user_location_postal)"
+      "Bash(python manage.py makemigrations accounts --name add_user_location_postal)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\lodar\\\\OneDrive\\\\Dokumen\\\\Capstonee\\\\aja2adaa\\\\frontend\\\\src\\\\data\\\\seeds.js\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\lodar\\\\OneDrive\\\\Dokumen\\\\Capstonee\\\\aja2adaa\\\\frontend\\\\src\\\\lib\\\\authService.js\" -Force)",
+      "Bash(Write-Host \"Deleted seeds.js and authService.js\")",
+      "Bash(python manage.py makemigrations accounts --name add_category_model)",
+      "Bash(python manage.py seed_categories)",
+      "Bash(python manage.py makemigrations accounts --name add_category_page_limit)"
     ]
   }
 }

@@ -55,7 +55,7 @@ function buildReturnRiskSummary(store, ret) {
 // ── Normalize raw API data ────────────────────────────────────
 
 const EMPTY_STORE = {
-  users: [], products: [], productReviews: [], orders: [], returns: [],
+  users: [], categories: [], products: [], productReviews: [], orders: [], returns: [],
   loginAttempts: [], trustedDevices: [],
   monitoringFlags: [], activityTimeline: [],
   otpRecords: [], session: null, meta: {},
@@ -67,6 +67,7 @@ function normalizeStore(data) {
   const base = {
     ...EMPTY_STORE,
     users: data.users ?? [],
+    categories: data.categories ?? [],
     products: data.products ?? [],
     productReviews: data.productReviews ?? [],
     orders: data.orders ?? [],
@@ -424,6 +425,7 @@ export function MockDataProvider({ children }) {
       value={{
         mockStore,
         users: storeData.users,
+        categories: storeData.categories,
         products: storeData.products,
         productReviews: storeData.productReviews,
         submitReview,

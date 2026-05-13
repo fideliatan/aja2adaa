@@ -7,16 +7,11 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
-import { FALLBACK_IMG } from "../../data/products.js";
-import {
-  MAIN_PRODUCT_CATEGORIES,
-  PRODUCT_PAGE_LIMIT,
-  getMainCategory,
-} from "../../data/catalog.js";
 import { useMockData } from "../../context/MockDataContext.jsx";
 
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=400&h=400&q=80";
+
 const ALL_CATEGORY = "Semua";
-const CATEGORY_TABS = [ALL_CATEGORY, ...MAIN_PRODUCT_CATEGORIES];
 
 function formatRupiah(number) {
   return "Rp " + number.toLocaleString("id-ID");
@@ -44,18 +39,20 @@ export default function ProductPage() {
   const { addToCart } = useCart();
   const { favorites, toggleFavorite, addToWishlist } = useWishlist();
   const { searchQuery, shouldOpenSearch, closeSearchPanel, clearSearch } = useSearch();
-  const { products } = useMockData();
+  const { products, categories } = useMockData();
+  const categoryNames = categories.map((c) => c.name);
+  const CATEGORY_TABS = [ALL_CATEGORY, ...categoryNames];
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickView, setQuickView] = useState(null);
   const categoryParam = new URLSearchParams(location.search).get("category");
-  const activeCategory = MAIN_PRODUCT_CATEGORIES.includes(categoryParam) ? categoryParam : ALL_CATEGORY;
+  const activeCategory = categoryNames.includes(categoryParam) ? categoryParam : ALL_CATEGORY;
 
-  const productGroups = MAIN_PRODUCT_CATEGORIES.map((category) => ({
-    name: category,
+  const productGroups = categories.map((cat) => ({
+    name: cat.name,
     products: products
-      .filter((product) => getMainCategory(product.category) === category)
+      .filter((product) => product.category === cat.name)
       .sort((a, b) => b.reviews - a.reviews)
-      .slice(0, PRODUCT_PAGE_LIMIT),
+      .slice(0, cat.pageLimit ?? 3),
   }));
   const productPageProducts = productGroups.flatMap((group) => group.products);
 
@@ -184,7 +181,7 @@ export default function ProductPage() {
               <span>{searchQuery.trim() ? "produk ditemukan" : "produk tersedia"}</span>
             </div>
             <div className="product-stat">
-              <strong>{MAIN_PRODUCT_CATEGORIES.length}</strong>
+              <strong>{categoryNames.length}</strong>
               <span>kategori</span>
             </div>
             <div className="product-stat">
@@ -197,7 +194,7 @@ export default function ProductPage() {
         <div className="product-hero-card">
           <p className="product-hero-card-label">Kategori Populer</p>
           <div className="product-chip-list">
-            {MAIN_PRODUCT_CATEGORIES.map((category) => (
+            {categoryNames.map((category) => (
               <span key={category} className="product-chip">{category}</span>
             ))}
           </div>
@@ -218,7 +215,7 @@ export default function ProductPage() {
                 ? `${resultCount} item${resultCount !== 1 ? "s" : ""} ditemukan`
                 : activeCategory !== ALL_CATEGORY
                 ? `${resultCount} produk pilihan di kategori ${activeCategory}.`
-                : `Browse semua produk beauty dalam satu halaman. ${MAIN_PRODUCT_CATEGORIES.length} kategori utama, ${PRODUCT_PAGE_LIMIT} produk per kategori.`}
+                : `Browse semua produk beauty dalam satu halaman. ${categoryNames.length} kategori utama.`}
             </p>
           </div>
 

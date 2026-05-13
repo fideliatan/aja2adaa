@@ -68,6 +68,23 @@ class User(AbstractBaseUser):
 
 # ── Store models ───────────────────────────────────────────────
 
+class Category(models.Model):
+    name          = models.CharField(max_length=100, unique=True)
+    label         = models.CharField(max_length=50, blank=True, default="")
+    desc          = models.TextField(blank=True, default="")
+    image         = models.TextField(blank=True, default="")
+    display_order = models.IntegerField(default=0)
+    page_limit    = models.IntegerField(default=3)
+    is_active     = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "categories"
+        ordering = ["display_order"]
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     product_id = models.CharField(max_length=30, unique=True)
     brand      = models.CharField(max_length=100)
