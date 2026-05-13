@@ -7,7 +7,8 @@ from zoneinfo import ZoneInfo
 from django.conf import settings as django_settings
 from django.contrib.auth import authenticate
 from django.db import transaction
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Sum
+from django.db.models.functions import TruncDay, TruncMonth, TruncYear
 from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -734,6 +735,61 @@ def _serialize_timeline(e):
 
 
 # ── Store views ───────────────────────────────────────────────
+
+@api_view(["GET"])
+def revenue_stats(request):
+    """GET /api/store/revenue/?period=daily|monthly|yearly"""
+    period = request.query_params.get("period", "monthly")
+    from datetime import timedelta
+
+    PAID = ["packing", "shipped", "delivered"]
+    qs = Order.objects.filter(status__in=PAID)
+
+    now = _now()
+
+    if period == "daily":
+        # Current ISO week Mon–Sun
+        week_start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week_end = week_start + timedelta(days=7)
+        rows = (
+            qs.filter(created_at__gte=week_start, created_at__lt=week_end)
+            .annotate(day=TruncDay("created_at"))
+            .values("day")
+            .annotate(val=Sum("total"))
+            .order_by("day")
+        )
+        day_map = {r["day"].weekday(): r["val"] for r in rows}
+        LABELS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
+        return Response([{"label": LABELS[i], "val": day_map.get(i, 0)} for i in range(7)])
+
+    if period == "monthly":
+        year = now.year
+        rows = (
+            qs.filter(created_at__year=year)
+            .annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(val=Sum("total"))
+            .order_by("month")
+        )
+        month_map = {r["month"].month: r["val"] for r in rows}
+        LABELS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
+        return Response([{"label": LABELS[m - 1], "val": month_map.get(m, 0)} for m in range(1, 13)])
+
+    if period == "yearly":
+        rows = (
+            qs.annotate(year=TruncYear("created_at"))
+            .values("year")
+            .annotate(val=Sum("total"))
+            .order_by("year")
+        )
+        if not rows:
+            return Response([{"label": str(now.year), "val": 0}])
+        return Response([{"label": str(r["year"].year), "val": r["val"]} for r in rows])
+
+    return Response({"error": "Invalid period"}, status=400)
+
 
 @api_view(["GET"])
 def store_init(request):

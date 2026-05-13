@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2 } from "lucide-react";
 import "./index.css";
 import jsQR from "jsqr";
 import { useOrders } from "../customer/context/OrderContext";
 import { useMockData } from "../context/MockDataContext.jsx";
+import api from "../lib/api.js";
 import {
   getAdminNotifications,
   getCaseRiskSummary,
@@ -25,40 +26,6 @@ import {
   buildOrderQrSlots,
 } from "../lib/unitQrService.js";
 
-/* ═══════════════════════════════════════════════════════════
-   MOCK DATA
-   ═══════════════════════════════════════════════════════════ */
-const DAILY_REVENUE = [
-  { label: "Sen", val: 420000 },
-  { label: "Sel", val: 860000 },
-  { label: "Rab", val: 340000 },
-  { label: "Kam", val: 1200000 },
-  { label: "Jum", val: 780000 },
-  { label: "Sab", val: 1540000 },
-  { label: "Min", val: 960000 },
-];
-const MONTHLY_REVENUE = [
-  { label: "Jan", val: 4200000 },
-  { label: "Feb", val: 5800000 },
-  { label: "Mar", val: 3900000 },
-  { label: "Apr", val: 7200000 },
-  { label: "Mei", val: 6100000 },
-  { label: "Jun", val: 8400000 },
-  { label: "Jul", val: 7800000 },
-  { label: "Agt", val: 9200000 },
-  { label: "Sep", val: 6800000 },
-  { label: "Okt", val: 10500000 },
-  { label: "Nov", val: 12000000 },
-  { label: "Des", val: 15400000 },
-];
-const YEARLY_REVENUE = [
-  { label: "2020", val: 48000000 },
-  { label: "2021", val: 72000000 },
-  { label: "2022", val: 95000000 },
-  { label: "2023", val: 130000000 },
-  { label: "2024", val: 168000000 },
-  { label: "2025", val: 92000000 },
-];
 
 const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
 const SECURITY_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
@@ -141,24 +108,40 @@ const IcQr         = () => <svg width="18" height="18" viewBox="0 0 24 24" fill=
 const IcDownload   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 
 /* ═══════════════════════════════════════════════════════════
-   COMPONENT: Revenue Chart (modern SVG area chart)
+   COMPONENT: Revenue Chart (live data from DB)
    ═══════════════════════════════════════════════════════════ */
 function RevenueChart() {
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState("monthly");
   const [tooltip, setTooltip] = useState(null);
+  const [cache, setCache] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const data = period === "daily" ? DAILY_REVENUE
-    : period === "monthly" ? MONTHLY_REVENUE
-    : YEARLY_REVENUE;
+  const fetchRevenue = useCallback(async (p) => {
+    if (cache[p]) return;
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/api/store/revenue/?period=${p}`);
+      setCache((prev) => ({ ...prev, [p]: data }));
+    } catch {
+      setCache((prev) => ({ ...prev, [p]: [] }));
+    } finally {
+      setLoading(false);
+    }
+  }, [cache]);
+
+  useEffect(() => { fetchRevenue(period); }, [period]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const data = cache[period] ?? [];
+  const hasData = data.length > 0 && data.some((d) => d.val > 0);
 
   const W = 560, H = 200;
   const PAD = { top: 24, right: 16, bottom: 32, left: 52 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top - PAD.bottom;
-  const maxVal = Math.max(...data.map(d => d.val));
+  const maxVal = hasData ? Math.max(...data.map((d) => d.val)) : 1;
 
   const pts = data.map((d, i) => ({
-    x: PAD.left + (i / (data.length - 1)) * cW,
+    x: PAD.left + (data.length > 1 ? (i / (data.length - 1)) * cW : cW / 2),
     y: PAD.top + cH - (d.val / maxVal) * cH,
     val: d.val,
     label: d.label,
@@ -171,19 +154,27 @@ function RevenueChart() {
     return acc + ` C ${cx},${prev.y.toFixed(1)} ${cx},${p.y.toFixed(1)} ${p.x.toFixed(1)},${p.y.toFixed(1)}`;
   }, "");
 
-  const areaPath = linePath
-    + ` L ${pts[pts.length - 1].x.toFixed(1)},${(PAD.top + cH).toFixed(1)}`
-    + ` L ${pts[0].x.toFixed(1)},${(PAD.top + cH).toFixed(1)} Z`;
+  const areaPath = pts.length
+    ? linePath
+      + ` L ${pts[pts.length - 1].x.toFixed(1)},${(PAD.top + cH).toFixed(1)}`
+      + ` L ${pts[0].x.toFixed(1)},${(PAD.top + cH).toFixed(1)} Z`
+    : "";
 
-  const gridVals = [0.25, 0.5, 0.75, 1].map(pct => ({
+  const gridVals = [0.25, 0.5, 0.75, 1].map((pct) => ({
     y: PAD.top + cH - pct * cH,
     val: maxVal * pct,
   }));
 
-  const fmtTick = v =>
+  const fmtTick = (v) =>
     v >= 1_000_000 ? (v / 1_000_000).toFixed(1) + "M" : (v / 1_000).toFixed(0) + "K";
 
-  const periodLabel = period === "daily" ? "Minggu Ini" : period === "monthly" ? "2025" : "Sepanjang Waktu";
+  const now = new Date();
+  const periodLabel =
+    period === "daily"
+      ? "Minggu Ini"
+      : period === "monthly"
+      ? String(now.getFullYear())
+      : "Sepanjang Waktu";
 
   return (
     <div className="adm-card adm-chart-card">
@@ -205,23 +196,33 @@ function RevenueChart() {
         </div>
       </div>
 
-      <div className="adm-chart-svg-wrap">
+      <div className="adm-chart-svg-wrap" style={{ position: "relative" }}>
+        {loading && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.7)", borderRadius: 8, zIndex: 2 }}>
+            <Loader2 size={22} className="adm-spin" style={{ color: "#c97269" }} />
+          </div>
+        )}
+        {!loading && !hasData && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb", fontSize: 13 }}>
+            Belum ada data pendapatan
+          </div>
+        )}
         <svg viewBox={`0 0 ${W} ${H}`} className="adm-chart-svg">
           <defs>
             <linearGradient id="rcGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#c97269" stopOpacity="0.3" />
               <stop offset="100%" stopColor="#c97269" stopOpacity="0.02" />
             </linearGradient>
+            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#e07a73" />
+              <stop offset="100%" stopColor="#c97269" />
+            </linearGradient>
           </defs>
 
           {/* Grid lines */}
           {gridVals.map((g, i) => (
             <g key={i}>
-              <line
-                x1={PAD.left} y1={g.y.toFixed(1)}
-                x2={W - PAD.right} y2={g.y.toFixed(1)}
-                stroke="#f3e8e7" strokeWidth="1" strokeDasharray="5,5"
-              />
+              <line x1={PAD.left} y1={g.y.toFixed(1)} x2={W - PAD.right} y2={g.y.toFixed(1)} stroke="#f3e8e7" strokeWidth="1" strokeDasharray="5,5" />
               <text x={PAD.left - 6} y={g.y + 4} textAnchor="end" fontSize="9" fill="#bbb">
                 {fmtTick(g.val)}
               </text>
@@ -229,55 +230,30 @@ function RevenueChart() {
           ))}
 
           {/* Baseline */}
-          <line
-            x1={PAD.left} y1={PAD.top + cH}
-            x2={W - PAD.right} y2={PAD.top + cH}
-            stroke="#f0e0df" strokeWidth="1"
-          />
+          <line x1={PAD.left} y1={PAD.top + cH} x2={W - PAD.right} y2={PAD.top + cH} stroke="#f0e0df" strokeWidth="1" />
 
-          {/* Area fill */}
-          <path d={areaPath} fill="url(#rcGrad)" />
-
-          {/* Line */}
-          <path
-            d={linePath} fill="none"
-            stroke="url(#lineGrad)" strokeWidth="2.5"
-            strokeLinecap="round" strokeLinejoin="round"
-          />
-          <defs>
-            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#e07a73" />
-              <stop offset="100%" stopColor="#c97269" />
-            </linearGradient>
-          </defs>
+          {hasData && (
+            <>
+              <path d={areaPath} fill="url(#rcGrad)" />
+              <path d={linePath} fill="none" stroke="url(#lineGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </>
+          )}
 
           {/* Dots + x labels */}
           {pts.map((p, i) => (
             <g key={i}>
-              {/* hover hit area */}
-              <circle
-                cx={p.x} cy={p.y} r={16}
-                fill="transparent"
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() => setTooltip(p)}
-                onMouseLeave={() => setTooltip(null)}
-              />
-              {/* outer glow */}
-              <circle cx={p.x} cy={p.y} r={6} fill="#c97269" opacity="0.15" />
-              {/* dot */}
-              <circle cx={p.x} cy={p.y} r={4} fill="white" stroke="#c97269" strokeWidth="2" />
-              {/* x label */}
-              <text
-                x={p.x} y={H - 6}
-                textAnchor="middle" fontSize="9.5" fill="#aaa" fontWeight="600"
-              >
+              <circle cx={p.x} cy={p.y} r={16} fill="transparent" style={{ cursor: "pointer" }}
+                onMouseEnter={() => setTooltip(p)} onMouseLeave={() => setTooltip(null)} />
+              {p.val > 0 && <circle cx={p.x} cy={p.y} r={6} fill="#c97269" opacity="0.15" />}
+              {p.val > 0 && <circle cx={p.x} cy={p.y} r={4} fill="white" stroke="#c97269" strokeWidth="2" />}
+              <text x={p.x} y={H - 6} textAnchor="middle" fontSize="9.5" fill="#aaa" fontWeight="600">
                 {p.label}
               </text>
             </g>
           ))}
 
           {/* Tooltip */}
-          {tooltip && (() => {
+          {tooltip && tooltip.val > 0 && (() => {
             const tx = Math.min(Math.max(tooltip.x, 44), W - 44);
             const ty = tooltip.y > 50 ? tooltip.y - 40 : tooltip.y + 14;
             return (

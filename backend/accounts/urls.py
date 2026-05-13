@@ -16,6 +16,7 @@ urlpatterns = [
 store_urlpatterns = [
     path("init/", views.store_init, name="store_init"),
     path("sync/", views.store_sync, name="store_sync"),
+    path("revenue/", views.revenue_stats, name="revenue_stats"),
     # Orders
     path("orders/", mutation_views.create_order, name="order_create"),
     path("orders/<str:order_id>/approve/", mutation_views.approve_order, name="order_approve"),
