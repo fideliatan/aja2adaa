@@ -5,12 +5,13 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
-import { PRODUCTS } from "../../data/products.js";
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
   const { wishlistItems, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const { products } = useMockData();
   const [addedIds, setAddedIds] = useState([]);
 
   const removeItem = (id) => {
@@ -38,7 +39,7 @@ export default function WishlistPage() {
       {/* NAVBAR */}
       <Navbar 
         activePage="wishlist"
-        allProducts={PRODUCTS}
+        allProducts={products}
         onHomeClick={() => navigate("/")}
         onProductsClick={() => navigate("/products")}
       />

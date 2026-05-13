@@ -6,7 +6,6 @@ import { useCart } from "../context/CartContext";
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { PRODUCTS } from "../../data/products.js";
 import { useMockData } from "../../context/MockDataContext.jsx";
 import {
   getAddresses,
@@ -84,7 +83,7 @@ export default function CheckoutPage() {
   const location = useLocation();
   const { addOrder } = useOrders();
   const { clearCart } = useCart();
-  const { session, currentUser } = useMockData();
+  const { session, currentUser, products } = useMockData();
 
   const cartItems = location.state?.cartItems ?? ORDER_ITEMS;
 
@@ -282,7 +281,7 @@ export default function CheckoutPage() {
 
       {/* NAVBAR */}
       <Navbar 
-        allProducts={PRODUCTS}
+        allProducts={products}
         activePage="checkout"
         onHomeClick={() => navigate("/")}
         onProductsClick={() => navigate("/products")}

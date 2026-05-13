@@ -4,7 +4,7 @@ import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
-import { PRODUCTS } from "../../data/products.js";
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 function formatRupiah(number) {
   return "Rp " + number.toLocaleString("id-ID");
@@ -52,12 +52,13 @@ const ArrowIcon = () => (
 export default function ContactPage() {
   const navigate = useNavigate();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
+  const { products } = useMockData();
 
   return (
     <div className="ct-root">
       <Navbar
         activePage="contact"
-        allProducts={PRODUCTS}
+        allProducts={products}
         onHomeClick={() => navigate("/")}
         onProductsClick={() => navigate("/products")}
       />

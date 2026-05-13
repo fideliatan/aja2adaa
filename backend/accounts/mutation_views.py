@@ -34,19 +34,19 @@ ORDER_STATUS_LABELS = {
 }
 
 RETURN_EVENT_TYPES = {
-    "pending":    "return_requested",
-    "flagged":    "return_flagged",
-    "processing": "return_processing",
-    "completed":  "return_completed",
-    "rejected":   "return_rejected",
+    "pending":       "return_requested",
+    "approved":      "return_approved",
+    "item_received": "return_item_received",
+    "completed":     "return_completed",
+    "rejected":      "return_rejected",
 }
 
 RETURN_STATUS_LABELS = {
-    "pending":    "Return submitted",
-    "flagged":    "Return flagged for review",
-    "processing": "Return moved to manual review",
-    "completed":  "Return completed",
-    "rejected":   "Return rejected",
+    "pending":       "Return submitted",
+    "approved":      "Return approved by admin",
+    "item_received": "Item received and scanned by admin",
+    "completed":     "Return completed",
+    "rejected":      "Return rejected",
 }
 
 

@@ -4,10 +4,9 @@ import { Clock, Package, Truck, CheckCircle, XCircle, Ban, ShoppingBag, Tag, Par
 import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { PRODUCTS } from "../../data/products.js";
 import { useOrders } from "../context/OrderContext";
 import { useMockData } from "../../context/MockDataContext.jsx";
-import { SEED_USER_PROFILES } from "../../data/seeds.js";
+import api from "../../lib/api.js";
 import {
   getAddresses,
   addAddress,
@@ -122,29 +121,61 @@ const navItems = [
 
 /* ── Sections ───────────────────────────────────────────── */
 function UserInfoSection() {
-  const { session } = useMockData();
-  const profile = SEED_USER_PROFILES[session?.userId] ?? {};
-  const nameParts = (session?.name ?? "").split(" ");
+  const { session, currentUser, refresh } = useMockData();
+  const nameParts = (currentUser?.name ?? session?.name ?? "").split(" ");
 
   const [form, setForm] = useState({
-    firstName: profile.firstName ?? nameParts[0] ?? "",
-    lastName:  profile.lastName  ?? nameParts.slice(1).join(" ") ?? "",
-    email:     session?.email ?? "",
-    phone:     profile.phone ?? "",
-    location:  profile.location ?? "Indonesia",
-    postalCode: profile.postalCode ?? "",
+    firstName:  nameParts[0] ?? "",
+    lastName:   nameParts.slice(1).join(" ") ?? "",
+    email:      currentUser?.email ?? session?.email ?? "",
+    phone:      currentUser?.phone ?? "",
+    location:   currentUser?.location ?? "Indonesia",
+    postalCode: currentUser?.postalCode ?? "",
   });
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState("");
+
+  // Sync form when currentUser loads (after initial fetch)
+  useEffect(() => {
+    if (!currentUser) return;
+    const parts = (currentUser.name ?? "").split(" ");
+    setForm({
+      firstName:  parts[0] ?? "",
+      lastName:   parts.slice(1).join(" ") ?? "",
+      email:      currentUser.email ?? "",
+      phone:      currentUser.phone ?? "",
+      location:   currentUser.location ?? "Indonesia",
+      postalCode: currentUser.postalCode ?? "",
+    });
+  }, [currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setSaved(false);
+    setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    setError("");
+    try {
+      await api.patch("/api/auth/profile/", {
+        userId:     session?.userId,
+        name:       `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
+        phone:      form.phone,
+        location:   form.location,
+        postalCode: form.postalCode,
+      });
+      await refresh();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setError("Gagal menyimpan. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -173,7 +204,7 @@ function UserInfoSection() {
         <div className="pr-form-row">
           <div className="pr-form-group">
             <label className="pr-form-label">Alamat Email</label>
-            <input className="pr-input" name="email" type="email" value={form.email} onChange={handleChange} />
+            <input className="pr-input" name="email" type="email" value={form.email} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
           </div>
           <div className="pr-form-group">
             <label className="pr-form-label">Nomor Telepon</label>
@@ -190,9 +221,10 @@ function UserInfoSection() {
             <input className="pr-input" name="postalCode" value={form.postalCode} onChange={handleChange} />
           </div>
         </div>
+        {error && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{error}</p>}
         <div className="pr-save-wrapper">
-          <button type="submit" className={`pr-save-btn${saved ? " pr-save-btn--saved" : ""}`}>
-            {saved ? "Tersimpan!" : "Simpan Perubahan"}
+          <button type="submit" disabled={saving} className={`pr-save-btn${saved ? " pr-save-btn--saved" : ""}`}>
+            {saving ? "Menyimpan…" : saved ? "Tersimpan!" : "Simpan Perubahan"}
           </button>
         </div>
       </form>
@@ -1683,7 +1715,7 @@ function SettingSection() {
 export default function MyProfile() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, logoutUser } = useMockData();
+  const { session, logoutUser, products } = useMockData();
   const [activeNav, setActiveNav] = useState(location.state?.tab ?? "userinfo");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -1752,7 +1784,7 @@ export default function MyProfile() {
       {/* ── NAVBAR ── */}
       <Navbar
         activePage="myprofile"
-        allProducts={PRODUCTS}
+        allProducts={products}
         onHomeClick={() => navigate("/")}
         onProductsClick={() => navigate("/products")}
       />

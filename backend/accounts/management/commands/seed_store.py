@@ -272,7 +272,7 @@ class Command(BaseCommand):
                 "id": "RET-002", "orderId": "ORD-017", "customerId": "USR-004",
                 "customer": "Dewi Larasati", "email": "dewi@example.com",
                 "date": "18 Apr 2025", "createdAt": "2025-04-18T08:45:00+00:00",
-                "reason": "Barang salah dikirim", "status": "processing",
+                "reason": "Barang salah dikirim", "status": "item_received",
                 "monitoringFlag": "Return abuse risk",
                 "conditionNote": "Produk yang datang tidak sesuai dengan item yang tercantum pada order.",
                 "photos": ["https://placehold.co/320x240/fce8e6/c4706a?text=Return+Evidence"],
@@ -280,8 +280,9 @@ class Command(BaseCommand):
                 "qrCode": "PROD-UNIT-20250414-017", "scannedQr": "PROD-UNIT-20250414-999", "qrStatus": "invalid",
                 "total": 146000,
                 "statusHistory": [
-                    {"id": "RET-HIST-002", "status": "pending",    "actorId": "USR-004", "actorRole": "customer", "note": "Return request submitted by customer.", "createdAt": "2025-04-18T08:45:00+00:00"},
-                    {"id": "RET-HIST-003", "status": "processing", "actorId": "USR-001", "actorRole": "admin",    "note": "Return moved to manual review after QR mismatch.", "createdAt": "2025-04-18T10:00:00+00:00"},
+                    {"id": "RET-HIST-002", "status": "pending",       "actorId": "USR-004", "actorRole": "customer", "note": "Return request submitted by customer.", "createdAt": "2025-04-18T08:45:00+00:00"},
+                    {"id": "RET-HIST-003", "status": "approved",      "actorId": "USR-001", "actorRole": "admin",    "note": "Return approved by admin.", "createdAt": "2025-04-18T10:00:00+00:00"},
+                    {"id": "RET-HIST-003B", "status": "item_received","actorId": "USR-001", "actorRole": "admin",    "note": "Item received and scanned by admin.", "createdAt": "2025-04-18T15:30:00+00:00"},
                 ],
             },
             {
@@ -300,16 +301,14 @@ class Command(BaseCommand):
                 "id": "RET-004", "orderId": "ORD-025", "customerId": "USR-005",
                 "customer": "Rina Marlina", "email": "rina@example.com",
                 "date": "24 Apr 2025", "createdAt": "2025-04-24T14:30:00+00:00",
-                "reason": "Produk rusak / cacat", "status": "flagged",
+                "reason": "Produk rusak / cacat", "status": "pending",
                 "monitoringFlag": "QR mismatch detected",
                 "conditionNote": "Kemasan produk tampak sudah dibuka sebelumnya dan label QR terlihat diganti.",
                 "photos": ["https://placehold.co/320x240/fff3e0/e09a3a?text=Return+Evidence"],
                 "products": [{"name": "Retinol 0.5% in Squalane", "qty": 1, "price": 215000, "image": "https://placehold.co/72x72/fff3e0/e09a3a?text=RT"}],
-                "qrCode": "PROD-NEW-SKN-QR-RT05002", "scannedQr": "PROD-FAKE-XXXX-00000000", "qrStatus": "invalid",
                 "total": 215000,
                 "statusHistory": [
                     {"id": "RET-HIST-005", "status": "pending", "actorId": "USR-005", "actorRole": "customer", "note": "Return request submitted by customer.", "createdAt": "2025-04-24T14:30:00+00:00"},
-                    {"id": "RET-HIST-006", "status": "flagged", "actorId": "USR-001", "actorRole": "admin",    "note": "Return otomatis ditandai mencurigakan karena QR tidak cocok.", "createdAt": "2025-04-24T15:05:00+00:00"},
                 ],
             },
             {

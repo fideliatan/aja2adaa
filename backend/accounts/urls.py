@@ -9,6 +9,7 @@ urlpatterns = [
     path("me/", views.me),
     path("otp/request/", views.otp_request),
     path("otp/verify/", views.otp_verify),
+    path("profile/", views.update_profile),
     path("logout/", mutation_views.logout),
 ]
 
@@ -29,6 +30,8 @@ store_urlpatterns = [
     path("flags/", mutation_views.create_flag, name="flag_create"),
     path("flags/<str:flag_id>/resolve/", mutation_views.resolve_flag, name="flag_resolve"),
     path("flags/<str:flag_id>/review/", mutation_views.review_flag, name="flag_review"),
+    # Reviews
+    path("reviews/", views.submit_review, name="review_submit"),
     # Timeline & devices
     path("timeline/", mutation_views.add_timeline_event, name="timeline_add"),
     path("devices/trust/", mutation_views.trust_device, name="device_trust"),

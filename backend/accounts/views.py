@@ -1,14 +1,19 @@
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from django.conf import settings as django_settings
 from django.contrib.auth import authenticate
 from django.db import transaction
+from django.db.models import Avg, Count
 from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 _WIB = ZoneInfo("Asia/Jakarta")
 
@@ -16,7 +21,7 @@ def _now():
     return datetime.now(_WIB).replace(tzinfo=None)
 
 from .models import (
-    User,
+    User, Product, Review,
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     LoginAttempt, TrustedDevice,
@@ -227,7 +232,13 @@ def login(request):
                             "ipAddress": ip_address,
                         },
                     )
-                    _send_otp_email(user.email, otp_code, "device_verification")
+                    if django_settings.DEBUG:
+                        print(f"\n[DEV] OTP for {email}: {otp_code}\n")
+                        logger.warning("[DEV] OTP for %s: %s", email, otp_code)
+                    try:
+                        _send_otp_email(user.email, otp_code, "device_verification")
+                    except Exception as exc:
+                        logger.error("Failed to send OTP email to %s: %s", user.email, exc)
                     LoginAttempt.objects.create(
                         attempt_id=str(uuid.uuid4()),
                         user_id=user_id, email=email, role=user.role,
@@ -287,6 +298,30 @@ def me(request):
         return Response(UserSerializer(user).data)
     except User.DoesNotExist:
         return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["PATCH"])
+def update_profile(request):
+    """PATCH { userId, name, phone, location, postalCode } → update user profile."""
+    data = request.data
+    user_code = data.get("userId")
+    if not user_code:
+        return Response({"error": "userId required"}, status=400)
+    try:
+        user = User.objects.get(user_code=user_code)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    if "name" in data:
+        user.name = data["name"].strip()
+    if "phone" in data:
+        user.phone = data["phone"].strip()
+    if "location" in data:
+        user.location = data["location"].strip()
+    if "postalCode" in data:
+        user.postal_code = data["postalCode"].strip()
+    user.save()
+    return Response({"ok": True, "user": _serialize_user(user)})
 
 
 def _send_otp_email(to_email, otp_code, purpose):
@@ -355,10 +390,13 @@ def otp_request(request):
         },
     )
 
+    if django_settings.DEBUG:
+        print(f"\n[DEV] OTP for {user.email}: {otp_code}\n")
+        logger.warning("[DEV] OTP for %s: %s", user.email, otp_code)
     try:
         _send_otp_email(user.email, otp_code, purpose)
-    except RuntimeError as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error("Failed to send OTP email to %s: %s", user.email, e)
 
     _log_activity(
         actor_id=user_id,
@@ -509,6 +547,8 @@ def _serialize_user(u):
         "email": u.email,
         "name": u.name,
         "phone": u.phone,
+        "location": u.location,
+        "postalCode": u.postal_code,
         "role": u.role,
         "status": u.status,
         "twoFactorEnabled": u.two_factor_enabled,
@@ -662,6 +702,25 @@ def _serialize_flag(f):
     }
 
 
+def _serialize_product(p):
+    avg = p.avg_rating if hasattr(p, "avg_rating") and p.avg_rating is not None else 0
+    cnt = p.review_count if hasattr(p, "review_count") else 0
+    return {
+        "id":          p.product_id,
+        "brand":       p.brand,
+        "name":        p.name,
+        "category":    p.category,
+        "price":       p.price,
+        "image":       p.image,
+        "rating":      round(avg, 1),
+        "reviews":     cnt,
+        "desc":        p.desc,
+        "qrCode":      p.qr_code,
+        "bestseller":  p.bestseller,
+        "isActive":    p.is_active,
+    }
+
+
 def _serialize_timeline(e):
     return {
         "id": e.event_id,
@@ -680,6 +739,15 @@ def _serialize_timeline(e):
 def store_init(request):
     """Return full store state from database."""
     users = [_serialize_user(u) for u in User.objects.all()]
+    products = [
+        _serialize_product(p)
+        for p in Product.objects.filter(is_active=True)
+        .annotate(
+            avg_rating=Avg("product_reviews__rating"),
+            review_count=Count("product_reviews"),
+        )
+        .order_by("product_id")
+    ]
 
     orders = [
         _serialize_order(o)
@@ -711,8 +779,24 @@ def store_init(request):
         for e in ActivityTimeline.objects.order_by("-timestamp")[:200]
     ]
 
+    product_reviews = list(
+        Review.objects.values("review_id", "product_id", "user_id", "order_id", "rating")
+    )
+    serialized_reviews = [
+        {
+            "reviewId":  r["review_id"],
+            "productId": r["product_id"],
+            "userId":    r["user_id"],
+            "orderId":   r["order_id"],
+            "rating":    r["rating"],
+        }
+        for r in product_reviews
+    ]
+
     return Response({
         "users": users,
+        "products": products,
+        "productReviews": serialized_reviews,
         "orders": orders,
         "returns": returns,
         "loginAttempts": login_attempts,
@@ -720,6 +804,49 @@ def store_init(request):
         "monitoringFlags": monitoring_flags,
         "activityTimeline": activity_timeline,
     })
+
+
+@api_view(["POST"])
+def submit_review(request):
+    """POST { productId, userId, orderId, rating } → save a 1-5 star review."""
+    data = request.data
+    product_id = data.get("productId")
+    user_id    = data.get("userId")
+    order_id   = data.get("orderId", "")
+    rating     = data.get("rating")
+
+    if not product_id or not user_id or rating is None:
+        return Response({"error": "productId, userId, and rating are required"}, status=400)
+
+    try:
+        rating = int(rating)
+        if not (1 <= rating <= 5):
+            raise ValueError
+    except (ValueError, TypeError):
+        return Response({"error": "rating must be an integer 1–5"}, status=400)
+
+    try:
+        product = Product.objects.get(product_id=product_id)
+    except Product.DoesNotExist:
+        return Response({"error": "Product not found"}, status=404)
+
+    review_id = f"REV-{uuid.uuid4().hex[:8].upper()}"
+    review, created = Review.objects.update_or_create(
+        product=product,
+        user_id=user_id,
+        order_id=order_id,
+        defaults={"rating": rating, "review_id": review_id},
+    )
+    if not created:
+        review.rating = rating
+        review.save(update_fields=["rating"])
+
+    product_with_stats = (
+        Product.objects.filter(product_id=product_id)
+        .annotate(avg_rating=Avg("product_reviews__rating"), review_count=Count("product_reviews"))
+        .first()
+    )
+    return Response({"ok": True, "product": _serialize_product(product_with_stats)}, status=200)
 
 
 def _dt(val):

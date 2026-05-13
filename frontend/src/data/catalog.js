@@ -14,11 +14,11 @@ export const SHOP_CATEGORIES = [
     img: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=600&h=450&q=80",
   },
   {
-    id: "haircare",
-    name: "Haircare",
-    label: "Care",
-    desc: "Scalp, strands & styling support",
-    img: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&h=450&q=80",
+    id: "tools",
+    name: "Tools",
+    label: "Tools",
+    desc: "Brushes, sponges & skincare devices",
+    img: "https://images.unsplash.com/photo-1522335789-8b3af9c8f853?auto=format&fit=crop&w=600&h=450&q=80",
   },
   {
     id: "bodycare",
@@ -59,8 +59,8 @@ const CATEGORY_MAP = {
     "Primer",
     "Setting Spray",
   ],
-  Haircare: ["Haircare", "Shampoo", "Conditioner", "Hair Mask", "Hair Oil", "Hair Serum"],
-  "Body Care": ["Body Care", "Body Wash", "Body Lotion", "Body Scrub", "Tools", "Tools & Accessories"],
+  Tools: ["Tools", "Makeup Tools", "Tools & Accessories"],
+  "Body Care": ["Body Care", "Body Wash", "Body Lotion", "Body Scrub"],
 };
 
 export function getMainCategory(categoryName) {

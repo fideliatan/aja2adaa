@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2 } from "lucide-react";
-import { PRODUCTS } from "../data/products.js";
 import "./index.css";
 import jsQR from "jsqr";
 import { useOrders } from "../customer/context/OrderContext";
@@ -315,7 +314,7 @@ function Avatar({ name, size = 32 }) {
    SECTION: DASHBOARD
    ═══════════════════════════════════════════════════════════ */
 function Dashboard({ setActive }) {
-  const { mockStore } = useMockData();
+  const { mockStore, products } = useMockData();
   const todayLabel = new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "short",
@@ -329,12 +328,12 @@ function Dashboard({ setActive }) {
   const stats = [
     { label: "Total Pendapatan",  value: fmt(totalRevenue), sub: "+18% bulan ini",  icon: <IcRevenue />,   color: "rose"   },
     { label: "Total Pesanan",    value: totalOrders,        sub: "+4 hari ini",     icon: <IcOrders />,    color: "violet" },
-    { label: "Total Produk",     value: PRODUCTS.length,    sub: "20 aktif",        icon: <IcProducts />,  color: "blue"   },
+    { label: "Total Produk",     value: products.length,    sub: `${products.filter(p => p.isActive !== false).length} aktif`, icon: <IcProducts />,  color: "blue"   },
     { label: "Total Pelanggan",  value: totalCustomers,     sub: "+2 minggu ini",   icon: <IcCustomers />, color: "green"  },
   ];
 
   const recentOrders = mockStore.orders.slice(0, 5);
-  const topProducts  = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 4);
+  const topProducts  = [...products].sort((a, b) => b.reviews - a.reviews).slice(0, 4);
   const pendingCount = mockStore.orders.filter((order) => order.status === "pending").length;
 
   return (
@@ -391,7 +390,7 @@ function Dashboard({ setActive }) {
               <span className="adm-alert-dot adm-alert-dot--green" />
               <div>
                 <p className="adm-alert-title">Stok Produk Normal</p>
-                <p className="adm-alert-sub">Semua {PRODUCTS.length} produk tersedia</p>
+                <p className="adm-alert-sub">Semua {products.length} produk tersedia</p>
               </div>
             </div>
           </div>
@@ -684,13 +683,17 @@ function downloadQrAsPng(token, filename) {
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
-  const [products, setProducts] = useState(PRODUCTS);
+  const { products: apiProducts } = useMockData();
+  const [localProducts, setLocalProducts] = useState([]);
   const [query, setQuery]       = useState("");
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
 
-  const cats = ["all", ...Array.from(new Set(PRODUCTS.map(p => p.category)))];
+  useEffect(() => { setLocalProducts(apiProducts); }, [apiProducts]);
+
+  const products = localProducts;
+  const cats = ["all", ...Array.from(new Set(products.map(p => p.category)))];
   const filtered = products.filter(p => {
     const matchCat = catFilter === "all" || p.category === catFilter;
     const q = query.toLowerCase();
@@ -698,13 +701,13 @@ function Products() {
     return matchCat && matchQ;
   });
 
-  const remove = (id) => setProducts(prev => prev.filter(p => p.id !== id));
+  const remove = (id) => setLocalProducts(prev => prev.filter(p => p.id !== id));
 
   const handleAdd = (e) => {
     e.preventDefault();
     if (!newProd.name || !newProd.category || !newProd.price) return;
-    const id = Date.now();
-    setProducts(prev => [...prev, {
+    const id = `LOCAL-${Date.now()}`;
+    setLocalProducts(prev => [...prev, {
       id,
       name: newProd.name,
       category: newProd.category,
@@ -1110,11 +1113,11 @@ function Notifications() {
    SECTION: RETURNS — QR-Based Return Verification
    ═══════════════════════════════════════════════════════════ */
 const RETURN_STATUS_META = {
-  pending:    { label: "Menunggu Persetujuan", color: "#e09a3a", bg: "rgba(224,154,58,0.12)"  },
-  flagged:    { label: "Perlu Ditinjau",       color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
-  processing: { label: "Sedang Diproses",      color: "#4a9fd4", bg: "rgba(74,159,212,0.12)"  },
-  completed:  { label: "Return Selesai",       color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
-  rejected:   { label: "Ditolak",              color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
+  pending:       { label: "Menunggu Persetujuan", color: "#e09a3a", bg: "rgba(224,154,58,0.12)"  },
+  approved:      { label: "Disetujui",            color: "#4a9fd4", bg: "rgba(74,159,212,0.12)"  },
+  item_received: { label: "Barang Diterima",      color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
+  completed:     { label: "Return Selesai",       color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  rejected:      { label: "Ditolak",              color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
 };
 
 function buildAllReturns(ctxReturns) {
@@ -1303,7 +1306,7 @@ function Returns({ goToReturnDetail }) {
   const { mockStore } = useMockData();
   const allReturns = buildAllReturns(ctxReturns);
   const [tab, setTab] = useState("all");
-  const tabs = ["all", "pending", "flagged", "processing", "completed", "rejected"];
+  const tabs = ["all", "pending", "approved", "item_received", "completed", "rejected"];
   const filtered = tab === "all" ? allReturns : allReturns.filter(r => r.status === tab);
 
   return (
@@ -1312,7 +1315,7 @@ function Returns({ goToReturnDetail }) {
         <div>
           <h2 className="adm-section-title">Return Paket</h2>
           <p className="adm-section-sub">
-            {allReturns.length} total · {allReturns.filter(r => r.status === "pending").length} menunggu · {allReturns.filter(r => r.status === "flagged").length} perlu ditinjau · klik baris untuk review
+            {allReturns.length} total · {allReturns.filter(r => r.status === "pending").length} menunggu · {allReturns.filter(r => r.status === "approved").length} disetujui · klik baris untuk review
           </p>
         </div>
       </div>
@@ -1447,6 +1450,15 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
   }, [mockStore.monitoringFlags, mockStore.activityTimeline]);
 
+  // Auto-transition approved → item_received when all units are scanned valid
+  useEffect(() => {
+    if (!ret?.id || curStatus !== "approved" || returnUnits.length === 0) return;
+    const scans = unitScans[ret.id] ?? {};
+    if (returnUnits.every(u => scans[u.key]?.status === "valid")) {
+      patchReturn(ret.id, { status: "item_received", qrStatus: "valid" });
+    }
+  }, [unitScans]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const patchReturn = (id, patch) => {
     if (ret?.fromCtx) updateReturn(id, patch);
     if (patch.status) setLocalStatuses(p => ({ ...p, [id]: patch.status }));
@@ -1546,10 +1558,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
           metadata: { entityType: "return", entityId: ret.id, orderId: ret.orderId ?? null, unitKey, resultCode: finalCode },
         });
         if (!matched) {
-          patchReturn(ret.id, {
-            status: curStatus === "pending" ? "flagged" : curStatus,
-            qrStatus: "invalid",
-          });
+          patchReturn(ret.id, { qrStatus: "invalid" });
         }
       })
       .catch(err => {
@@ -1832,10 +1841,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                               metadata: { entityType: "return", entityId: ret.id, orderId: ret.orderId, valid: isValid },
                             });
                             if (!isValid) {
-                              patchReturn(ret.id, {
-                                status: curStatus === "pending" ? "flagged" : curStatus,
-                                monitoringFlag: "E-receipt tidak cocok",
-                              });
+                              patchReturn(ret.id, { monitoringFlag: "E-receipt tidak cocok" });
                             }
                           } catch {
                             setReceiptVerify(null);
@@ -1899,10 +1905,13 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
               <RiskScoreCard summary={riskSummary} compact />
             </div>
 
+            {(curStatus === "approved" || curStatus === "item_received") && (
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Verifikasi QR Produk</p>
               <p style={{ fontSize: 12.5, color: "#888", marginBottom: 12 }}>
-                Scan QR code tiap produk yang dikembalikan. {returnUnits.length} unit perlu diverifikasi.
+                {curStatus === "approved"
+                  ? `Scan QR code tiap produk ketika barang tiba. ${returnUnits.length} unit perlu diverifikasi.`
+                  : `Barang telah diterima. ${validCount} / ${returnUnits.length} unit terverifikasi.`}
               </p>
 
               {returnUnits.length === 0 ? (
@@ -1914,7 +1923,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     const isLoading = scan?.status === "loading";
                     const isValid   = scan?.status === "valid";
                     const isInvalid = scan?.status === "invalid";
-                    const locked    = curStatus === "completed" || curStatus === "rejected";
+                    const locked    = curStatus === "completed" || curStatus === "rejected" || curStatus === "item_received";
                     return (
                       <div key={unit.key} className={`adm-unit-qr-row${isValid ? " adm-unit-qr-row--generated" : ""}`}>
                         <div className="adm-unit-qr-row-left">
@@ -1975,6 +1984,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                 </p>
               )}
             </div>
+            )}
 
             <div className="adm-pa-block adm-pa-block--last">
               <p className="adm-pa-block-label">Keputusan Admin</p>
@@ -1983,7 +1993,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                   <span style={{ fontSize: 20 }}>{curStatus === "completed" ? <CheckCircle size={20} /> : <Ban size={20} />}</span>
                   <p>Return ini sudah {curStatus === "completed" ? "selesai diproses" : "ditolak"}.</p>
                 </div>
-              ) : curStatus === "processing" ? (
+              ) : curStatus === "item_received" ? (
                 <div className="adm-pa-actions">
                   {curQr === "invalid" ? (
                     <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#ef4444", lineHeight: 1.5, border: "1px solid rgba(239,68,68,0.2)" }}>
@@ -1993,7 +2003,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                   ) : (
                     <>
                       <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
-                        <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Return sedang diproses. Tandai selesai setelah refund dilakukan.
+                        <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Barang telah diterima. Tandai selesai setelah refund dilakukan.
                       </div>
                       <button className="adm-pa-approve-btn" onClick={async () => {
                         const unitIds = returnUnits
@@ -2035,42 +2045,40 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                     ✕ Tolak Return
                   </button>
                 </div>
+              ) : curStatus === "approved" ? (
+                <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.08)", borderRadius: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
+                  <Package size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                  Menunggu barang dari customer. Scan QR di atas ketika barang tiba.
+                </div>
               ) : (
                 <div className="adm-pa-actions">
                   <p style={{ fontSize: 12.5, color: "#888", marginBottom: 10 }}>
-                    {curQr === "valid" ? "✓ QR terverifikasi — siap diputuskan." : curQr === "invalid" ? "" : "Scan QR dulu untuk verifikasi, atau putuskan langsung."}
+                    Tinjau e-receipt dan monitoring sebelum mengambil keputusan.
                   </p>
-                  {curQr === "invalid" ? (
-                    <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#ef4444", lineHeight: 1.5, border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-                      QR tidak cocok — return tidak dapat disetujui sebelum verifikasi produk berhasil.
-                    </div>
-                  ) : (
-                    <button
-                      className="adm-pa-approve-btn"
-                      onClick={() => requestStepUp({
-                        actionKey: "approveReturn",
-                        actionLabel: "Setujui Pengembalian",
-                        onVerified: () => {
-                          setRiskSummary((prev) => ({
-                            ...prev,
-                            timeline: [
-                              ...prev.timeline,
-                              createSecurityTimelineEvent(
-                                ret.id.toLowerCase(),
-                                "action",
-                                "Aksi sensitif dikonfirmasi: Setujui Pengembalian",
-                                "success"
-                              ),
-                            ],
-                          }));
-                          patchReturn(ret.id, { status: "processing" });
-                        },
-                      })}
-                    >
-                      <IcCheck /> Setujui Return
-                    </button>
-                  )}
+                  <button
+                    className="adm-pa-approve-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "approveReturn",
+                      actionLabel: "Setujui Pengembalian",
+                      onVerified: () => {
+                        setRiskSummary((prev) => ({
+                          ...prev,
+                          timeline: [
+                            ...prev.timeline,
+                            createSecurityTimelineEvent(
+                              ret.id.toLowerCase(),
+                              "action",
+                              "Aksi sensitif dikonfirmasi: Setujui Pengembalian",
+                              "success"
+                            ),
+                          ],
+                        }));
+                        patchReturn(ret.id, { status: "approved" });
+                      },
+                    })}
+                  >
+                    <IcCheck /> Setujui Return
+                  </button>
                   <button
                     className="adm-pa-reject-btn"
                     onClick={() => requestStepUp({
@@ -3522,7 +3530,7 @@ export default function AdminPage() {
   const pendingOrders = mockStore.orders.filter((order) => order.status === "pending").length;
   const unreadNotifs = adminNotifications.filter((notif) => !notif.read).length;
   const pendingReturns = mockStore.returns.filter(
-    (ret) => ret.status === "pending" || ret.status === "flagged"
+    (ret) => ret.status === "pending" || ret.status === "approved"
   ).length;
 
   const goToOrderDetail  = (id) => { setSelectedOrderId(id);  setActive("payment-approval"); };

@@ -39,7 +39,7 @@ export default function Footer() {
           <p className="footer-col-title">Belanja</p>
           <span onClick={() => navigate("/products")}>Skincare</span>
           <span onClick={() => navigate("/products")}>Makeup</span>
-          <span onClick={() => navigate("/products")}>Haircare</span>
+          <span onClick={() => navigate("/products")}>Tools</span>
           <span onClick={() => navigate("/products")}>Body Care</span>
         </div>
         <div className="footer-col">

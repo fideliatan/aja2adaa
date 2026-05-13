@@ -7,24 +7,16 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
-import { PRODUCTS, FALLBACK_IMG } from "../../data/products.js";
+import { FALLBACK_IMG } from "../../data/products.js";
 import {
   MAIN_PRODUCT_CATEGORIES,
   PRODUCT_PAGE_LIMIT,
   getMainCategory,
 } from "../../data/catalog.js";
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 const ALL_CATEGORY = "Semua";
 const CATEGORY_TABS = [ALL_CATEGORY, ...MAIN_PRODUCT_CATEGORIES];
-
-const PRODUCT_GROUPS = MAIN_PRODUCT_CATEGORIES.map((category) => ({
-  name: category,
-  products: PRODUCTS.filter((product) => getMainCategory(product.category) === category)
-    .sort((a, b) => b.reviews - a.reviews)
-    .slice(0, PRODUCT_PAGE_LIMIT),
-}));
-
-const PRODUCT_PAGE_PRODUCTS = PRODUCT_GROUPS.flatMap((group) => group.products);
 
 function formatRupiah(number) {
   return "Rp " + number.toLocaleString("id-ID");
@@ -52,10 +44,20 @@ export default function ProductPage() {
   const { addToCart } = useCart();
   const { favorites, toggleFavorite, addToWishlist } = useWishlist();
   const { searchQuery, shouldOpenSearch, closeSearchPanel, clearSearch } = useSearch();
+  const { products } = useMockData();
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickView, setQuickView] = useState(null);
   const categoryParam = new URLSearchParams(location.search).get("category");
   const activeCategory = MAIN_PRODUCT_CATEGORIES.includes(categoryParam) ? categoryParam : ALL_CATEGORY;
+
+  const productGroups = MAIN_PRODUCT_CATEGORIES.map((category) => ({
+    name: category,
+    products: products
+      .filter((product) => getMainCategory(product.category) === category)
+      .sort((a, b) => b.reviews - a.reviews)
+      .slice(0, PRODUCT_PAGE_LIMIT),
+  }));
+  const productPageProducts = productGroups.flatMap((group) => group.products);
 
   useEffect(() => {
     if (shouldOpenSearch) {
@@ -65,12 +67,12 @@ export default function ProductPage() {
   }, [shouldOpenSearch, closeSearchPanel]);
 
   const filteredProducts = searchQuery.trim()
-    ? PRODUCT_PAGE_PRODUCTS.filter((product) => matchesSearch(product, searchQuery))
+    ? productPageProducts.filter((product) => matchesSearch(product, searchQuery))
     : activeCategory === ALL_CATEGORY
-    ? PRODUCT_PAGE_PRODUCTS
+    ? productPageProducts
     : activeCategory
-    ? PRODUCT_GROUPS.find((group) => group.name === activeCategory)?.products ?? []
-    : PRODUCT_PAGE_PRODUCTS;
+    ? productGroups.find((group) => group.name === activeCategory)?.products ?? []
+    : productPageProducts;
 
   const handleToggleFavorite = (product) => {
     if (favorites.has(product.id)) {
@@ -156,7 +158,7 @@ export default function ProductPage() {
     <div className="product-page">
       <Navbar
         activePage="products"
-        allProducts={PRODUCT_PAGE_PRODUCTS}
+        allProducts={productPageProducts}
         searchOpen={searchOpen}
         setSearchOpen={setSearchOpen}
         onHomeClick={() => navigate("/")}
@@ -178,7 +180,7 @@ export default function ProductPage() {
           </p>
           <div className="product-stats">
             <div className="product-stat">
-              <strong>{searchQuery.trim() ? resultCount : PRODUCT_PAGE_PRODUCTS.length}</strong>
+              <strong>{searchQuery.trim() ? resultCount : productPageProducts.length}</strong>
               <span>{searchQuery.trim() ? "produk ditemukan" : "produk tersedia"}</span>
             </div>
             <div className="product-stat">

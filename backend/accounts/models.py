@@ -27,6 +27,8 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20, blank=True, default="")
+    location = models.CharField(max_length=100, blank=True, default="Indonesia")
+    postal_code = models.CharField(max_length=10, blank=True, default="")
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="customer")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
     two_factor_enabled = models.BooleanField(default=False)
@@ -65,6 +67,41 @@ class User(AbstractBaseUser):
 
 
 # ── Store models ───────────────────────────────────────────────
+
+class Product(models.Model):
+    product_id = models.CharField(max_length=30, unique=True)
+    brand      = models.CharField(max_length=100)
+    name       = models.CharField(max_length=200)
+    category   = models.CharField(max_length=50)
+    price      = models.BigIntegerField(default=0)
+    image      = models.TextField(blank=True, default="")
+    desc       = models.TextField(blank=True, default="")
+    qr_code    = models.CharField(max_length=50, blank=True, default="")
+    bestseller = models.BooleanField(default=False)
+    is_active  = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "products"
+
+    def __str__(self):
+        return f"{self.brand} — {self.name}"
+
+
+class Review(models.Model):
+    review_id  = models.CharField(max_length=30, unique=True)
+    product    = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="product_reviews", to_field="product_id")
+    user_id    = models.CharField(max_length=30)
+    order_id   = models.CharField(max_length=30, blank=True, default="")
+    rating     = models.IntegerField()  # 1–5
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "reviews"
+        unique_together = [("product", "user_id", "order_id")]
+
+    def __str__(self):
+        return f"{self.user_id} → {self.product_id} ({self.rating}★)"
+
 
 class Order(models.Model):
     order_id   = models.CharField(max_length=30, unique=True)

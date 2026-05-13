@@ -6,7 +6,6 @@ import "./index.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
-import { PRODUCTS } from "../../data/products.js";
 import { useMockData } from "../../context/MockDataContext.jsx";
 
 /* ─── Helper ───────────────────────────────────────────────── */
@@ -551,7 +550,7 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { getOrder, cancelOrder, addReturn, returns } = useOrders();
-  const { session } = useMockData();
+  const { session, products, productReviews, submitReview } = useMockData();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
   const [previewOpen, setPreviewOpen]     = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -570,6 +569,10 @@ export default function OrderDetailPage() {
   const [returnPhotoB64, setReturnPhotoB64]       = useState(null);
   const receiptInputRef = useState(() => ({ current: null }))[0];
   const photoInputRef   = useState(() => ({ current: null }))[0];
+
+  const [ratingMap, setRatingMap]             = useState({});
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingDone, setRatingDone]           = useState(false);
 
   const orderId = location.state?.orderId ?? ORDER.id;
   const liveOrder = getOrder(orderId) ?? ORDER;
@@ -644,6 +647,23 @@ export default function OrderDetailPage() {
     reader.readAsDataURL(file);
   };
 
+  const handleSubmitRatings = async () => {
+    setRatingSubmitting(true);
+    try {
+      const entries = Object.entries(ratingMap).filter(([, v]) => v > 0);
+      await Promise.all(
+        entries.map(([productId, rating]) =>
+          submitReview(productId, liveOrder.id, rating)
+        )
+      );
+      setRatingDone(true);
+    } catch (_) {
+      // ignore — ratings are best-effort
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
+
   const submitReturn = () => {
     const selectedItems = (liveOrder.items ?? [])
       .filter(item => (returnQtys[item.name] ?? 0) > 0)
@@ -681,7 +701,7 @@ export default function OrderDetailPage() {
     <div className="od-root">
       <Navbar
         activePage=""
-        allProducts={PRODUCTS}
+        allProducts={products}
         onHomeClick={() => navigate("/")}
         onProductsClick={() => navigate("/products")}
       />
@@ -944,6 +964,68 @@ export default function OrderDetailPage() {
               </div>
             )}
 
+            {/* ── Star rating card (delivered) ── */}
+            {liveOrder.status === "delivered" && session && (() => {
+              const userId = session.userId;
+              const items = liveOrder.items ?? [];
+              const alreadyRated = items.every((item) => {
+                const prod = products.find((p) => p.name === item.name);
+                if (!prod) return true;
+                return (productReviews ?? []).some(
+                  (r) => r.productId === prod.id && r.userId === userId && r.orderId === liveOrder.id
+                );
+              });
+              if (alreadyRated && !ratingDone) return null;
+              return (
+                <div className="od-card od-rating-card">
+                  <h2 className="od-card-title" style={{ marginBottom: 4 }}>Nilai Produk Kamu</h2>
+                  <p style={{ fontSize: 12, color: "#aaa", marginBottom: 14 }}>
+                    Beri bintang 1–5 untuk setiap produk yang kamu terima
+                  </p>
+                  {ratingDone || alreadyRated ? (
+                    <div style={{ textAlign: "center", padding: "12px 0", color: "#22c55e", fontWeight: 700, fontSize: 14 }}>
+                      ✓ Terima kasih sudah memberi penilaian!
+                    </div>
+                  ) : (
+                    <>
+                      {items.map((item) => {
+                        const prod = products.find((p) => p.name === item.name);
+                        if (!prod) return null;
+                        const existing = (productReviews ?? []).find(
+                          (r) => r.productId === prod.id && r.userId === userId && r.orderId === liveOrder.id
+                        );
+                        const current = ratingMap[prod.id] ?? existing?.rating ?? 0;
+                        return (
+                          <div key={prod.id} className="od-rating-row">
+                            <p className="od-rating-item-name">{item.name}</p>
+                            <div className="od-stars">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  className={`od-star-btn${current >= star ? " od-star-btn--filled" : ""}`}
+                                  onClick={() => setRatingMap((prev) => ({ ...prev, [prod.id]: star }))}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <button
+                        className="od-return-btn"
+                        style={{ marginTop: 14, background: "#c97269", color: "white", border: "none" }}
+                        disabled={ratingSubmitting || Object.keys(ratingMap).length === 0}
+                        onClick={handleSubmitRatings}
+                      >
+                        {ratingSubmitting ? "Menyimpan…" : "Kirim Penilaian"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ── Rejection detail card ── */}
             {liveOrder.status === "rejected" && (
               <div className="od-card od-rejection-card">
@@ -968,11 +1050,11 @@ export default function OrderDetailPage() {
               const myReturn = (returns ?? []).find(r => r.orderId === liveOrder.id);
               if (!myReturn) return null;
               const RETURN_STATUS = {
-                pending:    { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: <Clock size={20} /> },
-                flagged:    { label: "Sedang Ditinjau",            color: "#f97316", bg: "rgba(249,115,22,0.1)",  icon: <Search size={20} /> },
-                processing: { label: "Return Sedang Diproses",     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)",  icon: <Package size={20} /> },
-                completed:  { label: "Return Selesai",             color: "#22c55e", bg: "rgba(34,197,94,0.1)",   icon: <CheckCircle size={20} /> },
-                rejected:   { label: "Return Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.1)",   icon: <XCircle size={20} /> },
+                pending:       { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: <Clock size={20} /> },
+                approved:      { label: "Disetujui — Kirim Barang",   color: "#4a9fd4", bg: "rgba(74,159,212,0.1)",  icon: <Package size={20} /> },
+                item_received: { label: "Barang Sudah Diterima",      color: "#8b5cf6", bg: "rgba(139,92,246,0.1)",  icon: <CheckCircle size={20} /> },
+                completed:     { label: "Return Selesai",             color: "#22c55e", bg: "rgba(34,197,94,0.1)",   icon: <CheckCircle size={20} /> },
+                rejected:      { label: "Return Ditolak",             color: "#ef4444", bg: "rgba(239,68,68,0.1)",   icon: <XCircle size={20} /> },
               };
               const rs = RETURN_STATUS[myReturn.status] ?? { label: myReturn.status, color: "#aaa", bg: "rgba(170,170,170,0.1)", icon: <ClipboardList size={20} /> };
               return (
@@ -1005,8 +1087,11 @@ export default function OrderDetailPage() {
                   {myReturn.status === "pending" && (
                     <p className="od-return-status-note">Tim kami sedang meninjau pengajuan returnmu. Proses biasanya 1–3 hari kerja.</p>
                   )}
-                  {myReturn.status === "processing" && (
-                    <p className="od-return-status-note" style={{ color: "#4a9fd4" }}>Return kamu sudah disetujui dan sedang diproses. Refund akan masuk dalam 3–5 hari kerja.</p>
+                  {myReturn.status === "approved" && (
+                    <p className="od-return-status-note" style={{ color: "#4a9fd4" }}>Return kamu disetujui! Silakan kirim barang kembali ke alamat kami sesuai instruksi yang diberikan.</p>
+                  )}
+                  {myReturn.status === "item_received" && (
+                    <p className="od-return-status-note" style={{ color: "#8b5cf6" }}>Barang sudah kami terima. Sedang dalam proses pengecekan akhir sebelum refund diproses.</p>
                   )}
                   {myReturn.status === "completed" && (
                     <p className="od-return-status-note" style={{ color: "#22c55e" }}>Return selesai diproses. Refund sudah dikirimkan. Terima kasih!</p>

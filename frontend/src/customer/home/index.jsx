@@ -7,11 +7,9 @@ import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useSearch } from "../context/SearchContext";
-import { PRODUCTS, FALLBACK_IMG } from "../../data/products.js";
+import { FALLBACK_IMG } from "../../data/products.js";
 import { MAIN_PRODUCT_CATEGORIES, SHOP_CATEGORIES } from "../../data/catalog.js";
-
-// Top 3 by review count (most reviews = best seller)
-const TOP3 = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
+import { useMockData } from "../../context/MockDataContext.jsx";
 
 const TRUST_ITEMS = [
   { icon: "Original", title: "Produk Original", sub: "Pilihan aman untuk beauty routine harian" },
@@ -78,10 +76,12 @@ export default function HomePage() {
   const { addToCart, cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
   const { favorites, toggleFavorite, addToWishlist } = useWishlist();
   const { clearSearch } = useSearch();
+  const { products } = useMockData();
   const [quickView, setQuickView] = useState(null);
 
+  const top3 = [...products].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
   const categoryCount = MAIN_PRODUCT_CATEGORIES.length;
-  const budgetCount = PRODUCTS.filter((product) => product.price <= 100000).length;
+  const budgetCount = products.filter((product) => product.price <= 100000).length;
 
   const handleToggleFavorite = (product) => {
     if (favorites.has(product.id)) {
@@ -101,7 +101,7 @@ export default function HomePage() {
     <div className="home-root">
       <Navbar
         activePage="home"
-        allProducts={PRODUCTS}
+        allProducts={products}
         onHomeClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         onProductsClick={goToProducts}
       />
@@ -137,7 +137,7 @@ export default function HomePage() {
 
           <div className="hero-stat-grid">
             <div className="hero-stat-card">
-              <strong>{PRODUCTS.length}+</strong>
+              <strong>{products.length}+</strong>
               <span>pilihan siap beli</span>
             </div>
             <div className="hero-stat-card">
@@ -317,10 +317,11 @@ export default function HomePage() {
         </div>
         <div className="top3-grid">
           {/* Display order: rank2 left, rank1 center (most prominent), rank3 right */}
-          {[1, 0, 2].map((topIdx) => {
-            const product = TOP3[topIdx];
+          {top3.length > 0 && [1, 0, 2].map((topIdx) => {
+            const product = top3[topIdx];
+            if (!product) return null;
             const rank = topIdx + 1;
-            const maxReviews = TOP3[0].reviews;
+            const maxReviews = top3[0].reviews;
             const medalColor = rank === 1 ? "#FFD700" : rank === 2 ? "#C0C0C0" : "#CD7F32";
             const rankMedal = <Trophy size={14} color={medalColor} />;
             const rankNum = rank === 1 ? "ke-1" : rank === 2 ? "ke-2" : "ke-3";
@@ -380,7 +381,7 @@ export default function HomePage() {
         </div>
         <div className="hscroll-track-wrap">
           <div className="hscroll-track">
-            {PRODUCTS.map(product => (
+            {products.map(product => (
               <div
                 key={product.id}
                 className="hscroll-card"

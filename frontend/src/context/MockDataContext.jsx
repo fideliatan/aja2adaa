@@ -55,7 +55,7 @@ function buildReturnRiskSummary(store, ret) {
 // ── Normalize raw API data ────────────────────────────────────
 
 const EMPTY_STORE = {
-  users: [], orders: [], returns: [],
+  users: [], products: [], productReviews: [], orders: [], returns: [],
   loginAttempts: [], trustedDevices: [],
   monitoringFlags: [], activityTimeline: [],
   otpRecords: [], session: null, meta: {},
@@ -67,6 +67,8 @@ function normalizeStore(data) {
   const base = {
     ...EMPTY_STORE,
     users: data.users ?? [],
+    products: data.products ?? [],
+    productReviews: data.productReviews ?? [],
     orders: data.orders ?? [],
     returns: data.returns ?? [],
     loginAttempts: data.loginAttempts ?? [],
@@ -363,6 +365,32 @@ export function MockDataProvider({ children }) {
     }
   }, [refresh]);
 
+  // ── Reviews ───────────────────────────────────────────────────
+
+  const submitReview = useCallback(async (productId, orderId, rating) => {
+    const userId = sessionRef.current?.userId;
+    if (!userId) throw new Error("Not logged in");
+    const { data } = await api.post("/api/store/reviews/", { productId, userId, orderId, rating });
+    setStoreData((prev) => {
+      const filtered = prev.productReviews.filter(
+        (r) => !(r.productId === productId && r.userId === userId && r.orderId === orderId)
+      );
+      const updatedProduct = data.product;
+      const updatedProducts = prev.products.map((p) =>
+        p.id === updatedProduct.id ? updatedProduct : p
+      );
+      return {
+        ...prev,
+        productReviews: [
+          ...filtered,
+          { productId, userId, orderId, rating, reviewId: data.product?.id ?? "" },
+        ],
+        products: updatedProducts,
+      };
+    });
+    return data;
+  }, []);
+
   // ── Admin reset (just refreshes from DB) ─────────────────────
 
   const resetAllMockData = useCallback(async () => {
@@ -396,6 +424,9 @@ export function MockDataProvider({ children }) {
       value={{
         mockStore,
         users: storeData.users,
+        products: storeData.products,
+        productReviews: storeData.productReviews,
+        submitReview,
         session,
         currentUser,
         otpRecords: [],
