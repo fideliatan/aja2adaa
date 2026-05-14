@@ -40,6 +40,10 @@ store_urlpatterns = [
     path("addresses/", mutation_views.address_list, name="address_list"),
     path("addresses/<str:address_id>/", mutation_views.address_detail, name="address_detail"),
     path("addresses/<str:address_id>/set-primary/", mutation_views.address_set_primary, name="address_set_primary"),
+    # Products
+    path("products/", mutation_views.create_product, name="product_create"),
+    path("products/<str:product_id>/", mutation_views.update_product, name="product_update"),
+    path("products/<str:product_id>/delete/", mutation_views.delete_product, name="product_delete"),
 ]
 
 qr_urlpatterns = [

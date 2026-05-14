@@ -650,16 +650,96 @@ function downloadQrAsPng(token, filename) {
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
 }
 
+/* ── Image drop/upload input ─────────────────────────────── */
+function resizeToBase64(file, maxPx = 500, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function ImageDropInput({ value, onChange }) {
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef();
+
+  const handleFiles = async (files) => {
+    const file = files[0];
+    if (!file || !file.type.match(/^image\/(png|jpe?g|webp)$/)) return;
+    try {
+      const b64 = await resizeToBase64(file);
+      onChange(b64);
+    } catch (_) {}
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
+  if (value) {
+    return (
+      <div className="adm-img-preview-wrap">
+        <img src={value} alt="preview" className="adm-img-preview" />
+        <button type="button" className="adm-img-remove" onClick={() => onChange("")}>✕ Hapus</button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`adm-img-drop${dragging ? " adm-img-drop--over" : ""}`}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        style={{ display: "none" }}
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      <span className="adm-img-drop-icon">🖼</span>
+      <span className="adm-img-drop-label">Drop gambar di sini atau <u>klik untuk pilih</u></span>
+      <span className="adm-img-drop-hint">PNG · JPG · WebP — maks 500×500px (otomatis resize)</span>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
-  const { products: apiProducts } = useMockData();
+  const { products: apiProducts, refresh } = useMockData();
   const [localProducts, setLocalProducts] = useState([]);
   const [query, setQuery]       = useState("");
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
+  const [addLoading, setAddLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // product being edited
+  const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", image: "" });
+  const [editLoading, setEditLoading] = useState(false);
+
+  const _base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   useEffect(() => { setLocalProducts(apiProducts); }, [apiProducts]);
 
@@ -672,23 +752,66 @@ function Products() {
     return matchCat && matchQ;
   });
 
-  const remove = (id) => setLocalProducts(prev => prev.filter(p => p.id !== id));
+  const remove = async (id) => {
+    setLocalProducts(prev => prev.filter(p => p.id !== id));
+    try {
+      await fetch(`${_base}/api/store/products/${id}/delete/`, { method: "DELETE" });
+    } catch (_) {}
+  };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!newProd.name || !newProd.category || !newProd.price) return;
-    const id = `LOCAL-${Date.now()}`;
-    setLocalProducts(prev => [...prev, {
-      id,
-      name: newProd.name,
-      category: newProd.category,
-      price: Number(newProd.price),
-      image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
-      rating: 0,
-      reviews: 0,
-    }]);
+    setAddLoading(true);
+    try {
+      const res = await fetch(`${_base}/api/store/products/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProd.name,
+          brand: newProd.brand || "",
+          category: newProd.category,
+          price: Number(newProd.price),
+          image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.product) {
+        setLocalProducts(prev => [...prev, { ...json.product, rating: 0, reviews: 0 }]);
+      }
+    } catch (_) {}
+    setAddLoading(false);
     setNewProd({ name: "", category: "", price: "", image: "" });
     setShowAdd(false);
+  };
+
+  const openEdit = (p) => {
+    setEditTarget(p);
+    setEditProd({ name: p.name, category: p.category, price: String(p.price), image: p.image });
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${_base}/api/store/products/${editTarget.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editProd.name,
+          category: editProd.category,
+          price: Number(editProd.price),
+          image: editProd.image,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.product) {
+        setLocalProducts(prev => prev.map(p => p.id === editTarget.id ? { ...p, ...json.product } : p));
+      }
+    } catch (_) {}
+    setEditLoading(false);
+    setEditTarget(null);
   };
 
   return (
@@ -725,12 +848,12 @@ function Products() {
                   <input type="number" placeholder="e.g. 150000" value={newProd.price} onChange={e => setNewProd(p => ({ ...p, price: e.target.value }))} className="adm-input" />
                 </div>
                 <div className="adm-form-group">
-                  <label>URL Gambar</label>
-                  <input placeholder="https://..." value={newProd.image} onChange={e => setNewProd(p => ({ ...p, image: e.target.value }))} className="adm-input" />
+                  <label>Foto Produk</label>
+                  <ImageDropInput value={newProd.image} onChange={v => setNewProd(p => ({ ...p, image: v }))} />
                 </div>
               </div>
               <div className="adm-form-actions">
-                <button type="submit" className="adm-primary-btn">Simpan Produk</button>
+                <button type="submit" className="adm-primary-btn" disabled={addLoading}>{addLoading ? "Menyimpan…" : "Simpan Produk"}</button>
                 <button type="button" className="adm-ghost-btn" onClick={() => setShowAdd(false)}>Batal</button>
               </div>
             </form>
@@ -783,7 +906,7 @@ function Products() {
                   <td className="adm-date-cell">{p.reviews}</td>
                   <td>
                     <div className="adm-action-btns">
-                      <button className="adm-act-btn adm-act-btn--edit" title="Edit"><IcEdit /></button>
+                      <button className="adm-act-btn adm-act-btn--edit" title="Edit" onClick={() => openEdit(p)}><IcEdit /></button>
                       <button className="adm-act-btn adm-act-btn--danger" title="Hapus" onClick={() => remove(p.id)}><IcTrash /></button>
                     </div>
                   </td>
@@ -794,6 +917,47 @@ function Products() {
         </div>
       </div>
 
+      {/* Edit Product Modal */}
+      {editTarget && (
+        <div className="adm-modal-overlay" onClick={() => setEditTarget(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Edit Produk</h3>
+              <button className="adm-modal-close" onClick={() => setEditTarget(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <form className="adm-add-form" onSubmit={handleEditSave}>
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label>Nama Produk *</label>
+                    <input className="adm-input" value={editProd.name} onChange={e => setEditProd(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="adm-form-group">
+                    <label>Kategori *</label>
+                    <input className="adm-input" value={editProd.category} onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label>Harga (Rp) *</label>
+                    <input type="number" className="adm-input" value={editProd.price} onChange={e => setEditProd(p => ({ ...p, price: e.target.value }))} />
+                  </div>
+                  <div className="adm-form-group">
+                    <label>Foto Produk</label>
+                    <ImageDropInput value={editProd.image} onChange={v => setEditProd(p => ({ ...p, image: v }))} />
+                  </div>
+                </div>
+                <div className="adm-modal-footer" style={{ padding: "16px 0 0" }}>
+                  <button type="submit" className="adm-primary-btn" disabled={editLoading}>
+                    {editLoading ? "Menyimpan…" : "Simpan Perubahan"}
+                  </button>
+                  <button type="button" className="adm-ghost-btn" onClick={() => setEditTarget(null)}>Batal</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1371,6 +1535,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
   const [receiptVerify, setReceiptVerify] = useState(null); // null | "verifying" | "valid" | "invalid"
+  const [receiptVerifyData, setReceiptVerifyData] = useState(null);
   const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary(mockStore, "return", initialReturnId));
   const [stepUpState,   setStepUpState]   = useState({
     open: false,
@@ -1405,6 +1570,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     if (!ret?.id) return;
     setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
     setReceiptVerify(null);
+    setReceiptVerifyData(null);
     setStepUpState({
       open: false,
       actionKey: "",
@@ -1803,6 +1969,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: form });
                             const data = await res.json();
                             const isValid = data.valid === true;
+                            setReceiptVerifyData(data);
                             setReceiptVerify(isValid ? "valid" : "invalid");
                             addTimelineEvent({
                               actorId: currentUser?.id ?? "admin",
@@ -1828,13 +1995,86 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                         <Loader2 size={12} className="adm-spin" /> Memverifikasi...
                       </span>
                     )}
-                    {receiptVerify === "valid" && (
-                      <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✓ Receipt valid</span>
-                    )}
-                    {receiptVerify === "invalid" && (
-                      <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>✗ Receipt tidak cocok</span>
+                    {(receiptVerify === "valid" || receiptVerify === "invalid") && (
+                      <button
+                        style={{ fontSize: 11, background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "3px 8px", color: "#888", cursor: "pointer", fontFamily: "inherit" }}
+                        onClick={() => { setReceiptVerify(null); setReceiptVerifyData(null); }}
+                      >
+                        Periksa Ulang
+                      </button>
                     )}
                   </div>
+
+                  {receiptVerify === "valid" && (
+                    <div className="adm-rv-result" style={{ marginTop: 14 }}>
+                      <div className="adm-rv-banner adm-rv-banner--valid">
+                        <div className="adm-rv-banner-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div>
+                          <h2 className="adm-rv-result-title">E-Receipt VALID ✓</h2>
+                          <p className="adm-rv-result-sub">Tanda tangan digital berhasil diverifikasi</p>
+                        </div>
+                      </div>
+                      <div className="adm-card adm-rv-detail-card">
+                        <h3 className="adm-card-title" style={{ marginBottom: 16 }}>Informasi Terverifikasi</h3>
+                        {[
+                          ["Order ID",           receiptVerifyData?.order_id || "—"],
+                          ["Nama Pelanggan",      receiptVerifyData?.customer_name || "—"],
+                          ["Total Pembayaran",    receiptVerifyData?.total ? fmt(receiptVerifyData.total) : "—"],
+                          ["Email Pelanggan",     receiptVerifyData?.customer_email || "—"],
+                          ["Dibuat Pada",         receiptVerifyData?.generated_at ? new Date(receiptVerifyData.generated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "—"],
+                          ["Status Tanda Tangan", "Cocok dengan database ✓"],
+                        ].map(([label, val]) => (
+                          <div key={label} className="adm-rv-detail-row">
+                            <span className="adm-rv-detail-label">{label}</span>
+                            <span className="adm-rv-detail-val">{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="adm-rv-footer-text adm-rv-footer--valid">
+                        ✓ Receipt ini asli dan dikeluarkan oleh sistem careofyou
+                      </p>
+                    </div>
+                  )}
+
+                  {receiptVerify === "invalid" && (
+                    <div className="adm-rv-result" style={{ marginTop: 14 }}>
+                      <div className="adm-rv-banner adm-rv-banner--invalid">
+                        <div className="adm-rv-banner-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </div>
+                        <div>
+                          <h2 className="adm-rv-result-title">E-Receipt INVALID ✗</h2>
+                          <p className="adm-rv-result-sub">Tanda tangan digital tidak ditemukan atau tidak cocok</p>
+                        </div>
+                      </div>
+                      <div className="adm-card adm-rv-detail-card">
+                        <h3 className="adm-card-title" style={{ marginBottom: 16 }}>Detail Pemeriksaan</h3>
+                        <div className="adm-rv-detail-row">
+                          <span className="adm-rv-detail-label">Status</span>
+                          <span className="adm-rv-detail-val" style={{ color: "#ef4444", fontWeight: 700 }}>
+                            {receiptVerifyData?.failure_reason || "Signature tidak ditemukan dalam file"}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 16 }}>
+                          <p className="adm-rv-causes-title">Kemungkinan penyebab:</p>
+                          <ul className="adm-rv-causes-list">
+                            <li>Receipt telah dimodifikasi atau diedit</li>
+                            <li>Receipt bukan berasal dari sistem careofyou</li>
+                            <li>File PDF telah dikompresi atau dikonversi ulang</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <p className="adm-rv-footer-text adm-rv-footer--invalid">
+                        ✗ Receipt ini tidak dapat dipercaya — lakukan investigasi manual
+                      </p>
+                      <button className="adm-rv-report-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Laporkan ke Log
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p style={{ fontSize: 13, color: "#bbb" }}>Tidak ada e-receipt dilampirkan.</p>
@@ -2194,7 +2434,8 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const [rejectModal,  setRejectModal]  = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [shipModal,    setShipModal]    = useState(false);
-  const [courierInput, setCourierInput] = useState("");
+  const [courierInput,    setCourierInput]    = useState("");
+  const [courierIsCustom, setCourierIsCustom] = useState(false);
   const [trackingInput, setTrackingInput] = useState("");
   const [deliverModal,  setDeliverModal] = useState(false);
   const [deliverFile,   setDeliverFile]  = useState(null);
@@ -2452,12 +2693,32 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     setRejectReason("");
   };
 
+  const COURIER_BY_DELIVERY = {
+    instant: ["GoSend", "GrabExpress"],
+    sameday: ["Anteraja Same Day", "SiCepat BEST", "GoSend", "GrabExpress"],
+    regular: ["JNE Reguler", "JNE YES", "SiCepat HALU", "J&T Express", "Anteraja", "Pos Indonesia", "TIKI", "Lion Parcel", "Ninja Xpress"],
+    economy: ["JNE OKE", "J&T Cargo", "Pos Indonesia", "TIKI"],
+  };
+  const _deliveryId = order?.deliveryId ?? "regular";
+  const COURIER_OPTIONS = COURIER_BY_DELIVERY[_deliveryId] ?? COURIER_BY_DELIVERY.regular;
+
+  const handleCourierSelect = (val) => {
+    if (val === "__other__") {
+      setCourierIsCustom(true);
+      setCourierInput("");
+    } else {
+      setCourierIsCustom(false);
+      setCourierInput(val);
+    }
+  };
+
   const handleShipConfirm = () => {
     if (!trackingInput.trim()) return;
-    if (order.fromCtx) shipOrder(order.id, courierInput.trim() || "JNE Regular", trackingInput.trim());
+    const finalCourier = courierInput.trim() || COURIER_OPTIONS[0] || "JNE Reguler";
+    if (order.fromCtx) shipOrder(order.id, finalCourier, trackingInput.trim());
     else {
       setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
-      setLocalShip(p => ({ ...p, [order.id]: { courier: courierInput.trim() || "JNE Regular", trackingNumber: trackingInput.trim() } }));
+      setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
     }
     setShipModal(false);
   };
@@ -2819,7 +3080,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                     className="adm-pa-approve-btn"
                     disabled={!allQrsGenerated}
                     title={!allQrsGenerated ? "Generate semua QR produk terlebih dahulu" : undefined}
-                    onClick={() => { setShipModal(true); setCourierInput(""); setTrackingInput(""); }}
+                    onClick={() => { setShipModal(true); setCourierInput(""); setCourierIsCustom(false); setTrackingInput(""); }}
                     style={{ opacity: allQrsGenerated ? 1 : 0.5, cursor: allQrsGenerated ? "pointer" : "not-allowed" }}
                   >
                     <IcTruck /> Input Pengiriman
@@ -3040,10 +3301,34 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>KURIR</label>
-                  <input className="adm-modal-textarea" style={{ minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
-                    placeholder="JNE Regular, SiCepat HALU, J&T Express…"
-                    value={courierInput} onChange={e => setCourierInput(e.target.value)} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 4 }}>KURIR</label>
+                  {order?.delivery && (
+                    <span style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 6 }}>
+                      Opsi disesuaikan dengan metode pengiriman pelanggan:{" "}
+                      <strong style={{ color: "#555" }}>{order.delivery}</strong>
+                    </span>
+                  )}
+                  <select
+                    className="adm-modal-select"
+                    value={courierIsCustom ? "__other__" : (courierInput || "")}
+                    onChange={e => handleCourierSelect(e.target.value)}
+                  >
+                    <option value="">— Pilih kurir —</option>
+                    {COURIER_OPTIONS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__other__">Lainnya (input manual)…</option>
+                  </select>
+                  {courierIsCustom && (
+                    <input
+                      className="adm-modal-textarea"
+                      style={{ marginTop: 8, minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
+                      placeholder="Nama kurir..."
+                      autoFocus
+                      value={courierInput}
+                      onChange={e => setCourierInput(e.target.value)}
+                    />
+                  )}
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>NOMOR RESI *</label>
@@ -3121,208 +3406,6 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 /* Keep legacy alias in case anything references PaymentApproval */
 const PaymentApproval = OrderDetail;
 
-/* ═══════════════════════════════════════════════════════════
-   SECTION: RECEIPT VERIFY  ← HALAMAN PALING PENTING
-   Admin upload PDF receipt → sistem ekstrak hidden signature
-   → tampilkan hasil VALID atau INVALID
-   ═══════════════════════════════════════════════════════════ */
-function ReceiptVerify() {
-  const [file,       setFile]       = useState(null);
-  const [dragOver,   setDragOver]   = useState(false);
-  const [verifying,  setVerifying]  = useState(false);
-  const [result,     setResult]     = useState(null); // null | "valid" | "invalid"
-  const [verifyData, setVerifyData] = useState(null);
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) { setFile(f); setResult(null); setVerifyData(null); }
-  };
-
-  const handleFileInput = (e) => {
-    const f = e.target.files[0];
-    if (f) { setFile(f); setResult(null); setVerifyData(null); }
-  };
-
-  const handleVerify = async () => {
-    if (!file) return;
-    setVerifying(true);
-    setResult(null);
-    setVerifyData(null);
-    const formData = new FormData();
-    formData.append("pdf_file", file);
-    try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: formData });
-      const data = await res.json();
-      setVerifyData(data);
-      setResult(data.valid ? "valid" : "invalid");
-    } catch {
-      setVerifyData({ valid: false, failure_reason: "Tidak dapat terhubung ke server" });
-      setResult("invalid");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  return (
-    <div className="adm-section">
-      <div className="adm-section-header">
-        <div>
-          <h2 className="adm-section-title">Verifikasi Keaslian E-Receipt</h2>
-          <p className="adm-section-sub">Upload e-receipt untuk memverifikasi keaslian tanda tangan digital</p>
-        </div>
-      </div>
-
-      <div className="adm-rv-layout">
-
-        {/* ── Upload area ── */}
-        <div className="adm-card adm-rv-upload-card">
-          <h3 className="adm-card-title" style={{marginBottom:20}}>Upload E-Receipt</h3>
-
-          {/* Drag & drop zone */}
-          <div
-            className={`adm-rv-dropzone${dragOver ? " adm-rv-dropzone--over" : ""}`}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById("rv-file-input").click()}
-          >
-            <div className="adm-rv-drop-icon">
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-            </div>
-            <p className="adm-rv-drop-text">Drag &amp; drop file PDF di sini</p>
-            <p className="adm-rv-drop-sub">atau klik untuk pilih file</p>
-            <button className="adm-rv-browse-btn" type="button" onClick={e => { e.stopPropagation(); document.getElementById("rv-file-input").click(); }}>
-              Pilih File
-            </button>
-            <p className="adm-rv-drop-hint">Hanya file PDF yang diterima</p>
-          </div>
-          <input
-            id="rv-file-input"
-            type="file"
-            accept=".pdf"
-            style={{ display: "none" }}
-            onChange={handleFileInput}
-          />
-
-          {/* File terpilih */}
-          {file && !verifying && (
-            <div className="adm-rv-file-preview">
-              <IcReceipt />
-              <span className="adm-rv-file-name">{file.name}</span>
-              <button className="adm-rv-file-remove" onClick={() => { setFile(null); setResult(null); setVerifyData(null); }}>✕</button>
-            </div>
-          )}
-
-          {/* Tombol verifikasi */}
-          {file && !verifying && !result && (
-            <button className="adm-rv-verify-btn" onClick={handleVerify}>
-              Verifikasi Sekarang
-            </button>
-          )}
-
-          {/* Loading state */}
-          {verifying && (
-            <div className="adm-rv-verifying">
-              <div className="adm-modal-spinner" />
-              <span>Mengekstrak digital signature…</span>
-            </div>
-          )}
-
-
-        </div>
-
-        {/* ── Hasil Verifikasi ── */}
-        {result && (
-          <div className="adm-rv-result">
-
-            {result === "valid" ? (
-              <>
-                {/* Banner VALID */}
-                <div className="adm-rv-banner adm-rv-banner--valid">
-                  <div className="adm-rv-banner-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div>
-                    <h2 className="adm-rv-result-title">E-Receipt VALID ✓</h2>
-                    <p className="adm-rv-result-sub">Tanda tangan digital berhasil diverifikasi</p>
-                  </div>
-                </div>
-
-                {/* Detail terverifikasi */}
-                <div className="adm-card adm-rv-detail-card">
-                  <h3 className="adm-card-title" style={{marginBottom:16}}>Informasi Terverifikasi</h3>
-                  {[
-                    ["Order ID",           verifyData?.order_id || "—"],
-                    ["Nama Pelanggan",      verifyData?.customer_name || "—"],
-                    ["Total Pembayaran",    verifyData?.total ? fmt(verifyData.total) : "—"],
-                    ["Email Pelanggan",     verifyData?.customer_email || "—"],
-                    ["Dibuat Pada",         verifyData?.generated_at ? new Date(verifyData.generated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "—"],
-                    ["Status Tanda Tangan", "Cocok dengan database ✓"],
-                  ].map(([label, val]) => (
-                    <div key={label} className="adm-rv-detail-row">
-                      <span className="adm-rv-detail-label">{label}</span>
-                      <span className="adm-rv-detail-val">{val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="adm-rv-footer-text adm-rv-footer--valid">
-                  ✓ Receipt ini asli dan dikeluarkan oleh sistem careofyou
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Banner INVALID */}
-                <div className="adm-rv-banner adm-rv-banner--invalid">
-                  <div className="adm-rv-banner-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </div>
-                  <div>
-                    <h2 className="adm-rv-result-title">E-Receipt INVALID ✗</h2>
-                    <p className="adm-rv-result-sub">Tanda tangan digital tidak ditemukan atau tidak cocok</p>
-                  </div>
-                </div>
-
-                {/* Detail pemeriksaan */}
-                <div className="adm-card adm-rv-detail-card">
-                  <h3 className="adm-card-title" style={{marginBottom:16}}>Detail Pemeriksaan</h3>
-                  <div className="adm-rv-detail-row">
-                    <span className="adm-rv-detail-label">Status</span>
-                    <span className="adm-rv-detail-val" style={{color:"#ef4444",fontWeight:700}}>
-                      {verifyData?.failure_reason || "Signature tidak ditemukan dalam file"}
-                    </span>
-                  </div>
-                  <div style={{marginTop:16}}>
-                    <p className="adm-rv-causes-title">Kemungkinan penyebab:</p>
-                    <ul className="adm-rv-causes-list">
-                      <li>Receipt telah dimodifikasi atau diedit</li>
-                      <li>Receipt bukan berasal dari sistem careofyou</li>
-                      <li>File PDF telah dikompresi atau dikonversi ulang</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <p className="adm-rv-footer-text adm-rv-footer--invalid">
-                  ✗ Receipt ini tidak dapat dipercaya — lakukan investigasi manual
-                </p>
-
-                <button className="adm-rv-report-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  Laporkan ke Log
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════
    SECTION: VERIFY HISTORY
@@ -3490,7 +3573,6 @@ const NAV_ITEMS = [
   { id: "products",        label: "Produk",            icon: <IcProducts />   },
   { id: "customers",       label: "Pelanggan",         icon: <IcCustomers />  },
   { id: "returns",         label: "Return Paket",      icon: <IcReturn />     },
-  { id: "receipt-verify",  label: "Verifikasi Receipt",icon: <IcShield />     },
   { id: "verify-history",  label: "Riwayat Verifikasi",icon: <IcHistory />    },
   { id: "notifications",   label: "Notifikasi",        icon: <IcNotif />      },
   { id: "settings",        label: "Pengaturan",        icon: <IcSettings />   },
@@ -3524,7 +3606,6 @@ export default function AdminPage() {
       case "products":  return <Products />;
       case "customers": return <Customers />;
       case "payment-approval": return <OrderDetail selectedOrderId={selectedOrderId} setSelectedOrderId={setSelectedOrderId} setActive={setActive} />;
-      case "receipt-verify":   return <ReceiptVerify />;
       case "verify-history":   return <VerifyHistory />;
       case "returns":          return <Returns goToReturnDetail={goToReturnDetail} />;
       case "return-detail":    return <ReturnDetail selectedReturnId={selectedReturnId} setSelectedReturnId={setSelectedReturnId} setActive={setActive} />;

@@ -35,12 +35,11 @@ function OdProofFile({ label, src, caption }) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <button className="od-proof-file-btn" onClick={() => setOpen(true)}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        {label}
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
-      </button>
-      {caption && <p className="od-proof-file-caption">{caption}</p>}
+      <div className="od-delivery-proof-img-wrap" onClick={() => setOpen(true)}>
+        <img src={src} alt={label} className="od-delivery-proof-img" />
+        <div className="od-delivery-proof-zoom-hint">Klik untuk perbesar</div>
+      </div>
+      {caption && <p className="od-delivery-proof-caption">{caption}</p>}
       {open && (
         <div className="od-proof-zoom-overlay" onClick={() => setOpen(false)}>
           <img src={src} alt={label} className="od-proof-zoom-img" />

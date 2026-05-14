@@ -8,6 +8,7 @@ from .models import (
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     MonitoringFlag, ActivityTimeline, TrustedDevice, Address,
+    Product,
 )
 from .views import (
     _log_activity, _dt, _now,
@@ -589,3 +590,70 @@ def address_set_primary(request, address_id):
     addr.is_primary = True
     addr.save(update_fields=["is_primary"])
     return Response({"address": _serialize_address(addr)})
+
+
+# ── Products ───────────────────────────────────────────────────
+
+def _serialize_product_simple(p):
+    return {
+        "id":         p.product_id,
+        "brand":      p.brand,
+        "name":       p.name,
+        "category":   p.category,
+        "price":      p.price,
+        "image":      p.image,
+        "desc":       p.desc,
+        "bestseller": p.bestseller,
+        "isActive":   p.is_active,
+    }
+
+
+@api_view(["POST"])
+def create_product(request):
+    data = request.data
+    if not data.get("name") or not data.get("category") or not data.get("price"):
+        return Response({"error": "name, category, dan price wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
+    import uuid as _uuid
+    product_id = f"PROD-{_uuid.uuid4().hex[:8].upper()}"
+    product = Product.objects.create(
+        product_id=product_id,
+        brand=data.get("brand", ""),
+        name=data["name"],
+        category=data["category"],
+        price=int(data["price"]),
+        image=data.get("image", ""),
+        desc=data.get("desc", ""),
+        bestseller=bool(data.get("bestseller", False)),
+        is_active=True,
+    )
+    return Response({"product": _serialize_product_simple(product)}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["PATCH"])
+def update_product(request, product_id):
+    try:
+        product = Product.objects.get(product_id=product_id)
+    except Product.DoesNotExist:
+        return Response({"error": "Produk tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+    data = request.data
+    fields = []
+    if "name"       in data: product.name       = data["name"];       fields.append("name")
+    if "brand"      in data: product.brand      = data["brand"];      fields.append("brand")
+    if "category"   in data: product.category   = data["category"];   fields.append("category")
+    if "price"      in data: product.price      = int(data["price"]); fields.append("price")
+    if "image"      in data: product.image      = data["image"];      fields.append("image")
+    if "desc"       in data: product.desc       = data["desc"];       fields.append("desc")
+    if "bestseller" in data: product.bestseller = bool(data["bestseller"]); fields.append("bestseller")
+    if fields:
+        product.save(update_fields=fields)
+    return Response({"product": _serialize_product_simple(product)})
+
+
+@api_view(["DELETE"])
+def delete_product(request, product_id):
+    try:
+        product = Product.objects.get(product_id=product_id)
+    except Product.DoesNotExist:
+        return Response({"error": "Produk tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+    product.delete()
+    return Response({"ok": True})
