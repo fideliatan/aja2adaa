@@ -655,16 +655,96 @@ function downloadQrAsPng(token, filename) {
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
 }
 
+/* ── Image drop/upload input ─────────────────────────────── */
+function resizeToBase64(file, maxPx = 500, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function ImageDropInput({ value, onChange }) {
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef();
+
+  const handleFiles = async (files) => {
+    const file = files[0];
+    if (!file || !file.type.match(/^image\/(png|jpe?g|webp)$/)) return;
+    try {
+      const b64 = await resizeToBase64(file);
+      onChange(b64);
+    } catch (_) {}
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
+  if (value) {
+    return (
+      <div className="adm-img-preview-wrap">
+        <img src={value} alt="preview" className="adm-img-preview" />
+        <button type="button" className="adm-img-remove" onClick={() => onChange("")}>✕ Hapus</button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`adm-img-drop${dragging ? " adm-img-drop--over" : ""}`}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        style={{ display: "none" }}
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      <span className="adm-img-drop-icon">🖼</span>
+      <span className="adm-img-drop-label">Drop gambar di sini atau <u>klik untuk pilih</u></span>
+      <span className="adm-img-drop-hint">PNG · JPG · WebP — maks 500×500px (otomatis resize)</span>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
-  const { products: apiProducts } = useMockData();
+  const { products: apiProducts, refresh } = useMockData();
   const [localProducts, setLocalProducts] = useState([]);
   const [query, setQuery]       = useState("");
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
+  const [addLoading, setAddLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // product being edited
+  const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", image: "" });
+  const [editLoading, setEditLoading] = useState(false);
+
+  const _base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   useEffect(() => { setLocalProducts(apiProducts); }, [apiProducts]);
 
@@ -677,23 +757,66 @@ function Products() {
     return matchCat && matchQ;
   });
 
-  const remove = (id) => setLocalProducts(prev => prev.filter(p => p.id !== id));
+  const remove = async (id) => {
+    setLocalProducts(prev => prev.filter(p => p.id !== id));
+    try {
+      await fetch(`${_base}/api/store/products/${id}/delete/`, { method: "DELETE" });
+    } catch (_) {}
+  };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!newProd.name || !newProd.category || !newProd.price) return;
-    const id = `LOCAL-${Date.now()}`;
-    setLocalProducts(prev => [...prev, {
-      id,
-      name: newProd.name,
-      category: newProd.category,
-      price: Number(newProd.price),
-      image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
-      rating: 0,
-      reviews: 0,
-    }]);
+    setAddLoading(true);
+    try {
+      const res = await fetch(`${_base}/api/store/products/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProd.name,
+          brand: newProd.brand || "",
+          category: newProd.category,
+          price: Number(newProd.price),
+          image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.product) {
+        setLocalProducts(prev => [...prev, { ...json.product, rating: 0, reviews: 0 }]);
+      }
+    } catch (_) {}
+    setAddLoading(false);
     setNewProd({ name: "", category: "", price: "", image: "" });
     setShowAdd(false);
+  };
+
+  const openEdit = (p) => {
+    setEditTarget(p);
+    setEditProd({ name: p.name, category: p.category, price: String(p.price), image: p.image });
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${_base}/api/store/products/${editTarget.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editProd.name,
+          category: editProd.category,
+          price: Number(editProd.price),
+          image: editProd.image,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.product) {
+        setLocalProducts(prev => prev.map(p => p.id === editTarget.id ? { ...p, ...json.product } : p));
+      }
+    } catch (_) {}
+    setEditLoading(false);
+    setEditTarget(null);
   };
 
   return (
@@ -730,12 +853,12 @@ function Products() {
                   <input type="number" placeholder="e.g. 150000" value={newProd.price} onChange={e => setNewProd(p => ({ ...p, price: e.target.value }))} className="adm-input" />
                 </div>
                 <div className="adm-form-group">
-                  <label>URL Gambar</label>
-                  <input placeholder="https://..." value={newProd.image} onChange={e => setNewProd(p => ({ ...p, image: e.target.value }))} className="adm-input" />
+                  <label>Foto Produk</label>
+                  <ImageDropInput value={newProd.image} onChange={v => setNewProd(p => ({ ...p, image: v }))} />
                 </div>
               </div>
               <div className="adm-form-actions">
-                <button type="submit" className="adm-primary-btn">Simpan Produk</button>
+                <button type="submit" className="adm-primary-btn" disabled={addLoading}>{addLoading ? "Menyimpan…" : "Simpan Produk"}</button>
                 <button type="button" className="adm-ghost-btn" onClick={() => setShowAdd(false)}>Batal</button>
               </div>
             </form>
@@ -788,7 +911,7 @@ function Products() {
                   <td className="adm-date-cell">{p.reviews}</td>
                   <td>
                     <div className="adm-action-btns">
-                      <button className="adm-act-btn adm-act-btn--edit" title="Edit"><IcEdit /></button>
+                      <button className="adm-act-btn adm-act-btn--edit" title="Edit" onClick={() => openEdit(p)}><IcEdit /></button>
                       <button className="adm-act-btn adm-act-btn--danger" title="Hapus" onClick={() => remove(p.id)}><IcTrash /></button>
                     </div>
                   </td>
@@ -799,6 +922,47 @@ function Products() {
         </div>
       </div>
 
+      {/* Edit Product Modal */}
+      {editTarget && (
+        <div className="adm-modal-overlay" onClick={() => setEditTarget(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3>Edit Produk</h3>
+              <button className="adm-modal-close" onClick={() => setEditTarget(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body">
+              <form className="adm-add-form" onSubmit={handleEditSave}>
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label>Nama Produk *</label>
+                    <input className="adm-input" value={editProd.name} onChange={e => setEditProd(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="adm-form-group">
+                    <label>Kategori *</label>
+                    <input className="adm-input" value={editProd.category} onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="adm-form-row">
+                  <div className="adm-form-group">
+                    <label>Harga (Rp) *</label>
+                    <input type="number" className="adm-input" value={editProd.price} onChange={e => setEditProd(p => ({ ...p, price: e.target.value }))} />
+                  </div>
+                  <div className="adm-form-group">
+                    <label>Foto Produk</label>
+                    <ImageDropInput value={editProd.image} onChange={v => setEditProd(p => ({ ...p, image: v }))} />
+                  </div>
+                </div>
+                <div className="adm-modal-footer" style={{ padding: "16px 0 0" }}>
+                  <button type="submit" className="adm-primary-btn" disabled={editLoading}>
+                    {editLoading ? "Menyimpan…" : "Simpan Perubahan"}
+                  </button>
+                  <button type="button" className="adm-ghost-btn" onClick={() => setEditTarget(null)}>Batal</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
