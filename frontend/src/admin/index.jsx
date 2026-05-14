@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { ShoppingBag, CreditCard, Truck, RotateCcw, Star, CheckCircle, Ban, Package, Clock, AlertTriangle, Loader2, PackagePlus } from "lucide-react";
 import "./index.css";
 import jsQR from "jsqr";
 import { useOrders } from "../customer/context/OrderContext";
@@ -831,7 +831,7 @@ function Products() {
             <p className="adm-section-sub">{products.length} produk terdaftar</p>
           </div>
           <button className="adm-primary-btn" onClick={() => setShowAdd(v => !v)}>
-            <IcPlus /> Tambah Produk
+            <PackagePlus size={17} style={{ marginRight: 6, verticalAlign: "middle" }} /> Tambah Produk
           </button>
         </div>
 

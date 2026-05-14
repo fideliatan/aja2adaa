@@ -324,7 +324,6 @@ export default function ProductPage() {
                 <div className="qv-divider" />
                 <div className="qv-price-row">
                   <span className="qv-price">Rp {quickView.price.toLocaleString("id-ID")}</span>
-                  <span className="qv-price-note">Free ongkir</span>
                 </div>
                 <div className="qv-actions">
                   <button className="qv-add-btn" onClick={() => { addToCart(quickView); setQuickView(null); }}>

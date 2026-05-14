@@ -475,7 +475,6 @@ export default function HomePage() {
 
                 <div className="qv-price-row">
                   <span className="qv-price">Rp {quickView.price.toLocaleString("id-ID")}</span>
-                  <span className="qv-price-note">Free ongkir</span>
                 </div>
 
                 <div className="qv-actions">
