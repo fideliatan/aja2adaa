@@ -231,7 +231,7 @@ export default function CheckoutPage() {
     addOrder({
       id: newOrderId,
       status: "pending",
-      customer: addr?.name ?? "Customer",
+      customer: currentUser?.name ?? session?.name ?? "Customer",
       customerId: session?.userId ?? null,
       email: currentUser?.email ?? session?.email ?? "",
       date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),

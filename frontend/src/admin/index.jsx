@@ -399,8 +399,7 @@ function Dashboard({ setActive }) {
                     <td><span className="adm-order-id">{o.id}</span></td>
                     <td>
                       <div className="adm-customer-cell">
-                        <Avatar name={o.customer} size={28} />
-                        <span>{o.customer}</span>
+                        {(() => { const u = mockStore.users.find(u => u.id === o.customerId); const n = u?.name ?? o.customer; return <><Avatar name={n} size={28} /><span>{n}</span></>; })()}
                       </div>
                     </td>
                     <td><strong>{fmt(o.total)}</strong></td>
@@ -519,11 +518,7 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
                   </td>
                   <td>
                     <div className="adm-customer-cell">
-                      <Avatar name={o.customer} size={28} />
-                      <div>
-                        <p className="adm-customer-name">{o.customer}</p>
-                        <p className="adm-customer-email">{o.payment}</p>
-                      </div>
+                      {(() => { const u = mockStore.users.find(u => u.id === o.customerId); const n = u?.name ?? o.customer; return <><Avatar name={n} size={28} /><div><p className="adm-customer-name">{n}</p><p className="adm-customer-email">{o.payment}</p></div></>; })()}
                     </div>
                   </td>
                   <td><strong>{fmt(o.total)}</strong></td>
@@ -2552,12 +2547,20 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Informasi Pelanggan</p>
               <div className="adm-pa-customer">
-                <Avatar name={order.customer} size={48} />
-                <div>
-                  <p className="adm-pa-customer-name">{order.customer}</p>
-                  {order.email && <p className="adm-pa-customer-sub">{order.email}</p>}
-                  {order.phone && <p className="adm-pa-customer-sub">{order.phone}</p>}
-                </div>
+                {(() => {
+                  const customerUser = mockStore.users.find(u => u.id === order.customerId);
+                  const customerName = customerUser?.name ?? order.customer;
+                  return (
+                    <>
+                      <Avatar name={customerName} size={48} />
+                      <div>
+                        <p className="adm-pa-customer-name">{customerName}</p>
+                        {order.email && <p className="adm-pa-customer-sub">{order.email}</p>}
+                        {order.phone && <p className="adm-pa-customer-sub">{order.phone}</p>}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2675,6 +2678,8 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Alamat Pengiriman</p>
+              {order.recipient && <p className="adm-pa-customer-name" style={{ marginBottom: 2 }}>{order.recipient}</p>}
+              {order.phone && <p className="adm-pa-customer-sub" style={{ marginBottom: 4 }}>{order.phone}</p>}
               <p className="adm-pa-shipping-val">{order.address || "—"}</p>
             </div>
 
