@@ -729,6 +729,7 @@ def _serialize_product(p):
         "reviews":     cnt,
         "desc":        p.desc,
         "qrCode":      p.qr_code,
+        "stock":       p.stock,
         "bestseller":  p.bestseller,
         "isActive":    p.is_active,
     }

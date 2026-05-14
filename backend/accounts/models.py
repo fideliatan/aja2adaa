@@ -94,6 +94,7 @@ class Product(models.Model):
     image      = models.TextField(blank=True, default="")
     desc       = models.TextField(blank=True, default="")
     qr_code    = models.CharField(max_length=50, blank=True, default="")
+    stock      = models.IntegerField(default=0)
     bestseller = models.BooleanField(default=False)
     is_active  = models.BooleanField(default=True)
 
