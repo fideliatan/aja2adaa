@@ -607,12 +607,15 @@ export default function OrderDetailPage() {
 
   const handleReturnReceiptFile = (file) => {
     if (!file) return;
+    if (file.type !== "application/pdf") {
+      alert("E-receipt harus berupa file PDF. Silakan upload ulang dengan format PDF.");
+      return;
+    }
     setReturnReceiptFile(file);
     setReturnReceiptB64(null);
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const result = await compressImage(e.target.result);
-      setReturnReceiptB64(result);
+    reader.onload = (e) => {
+      setReturnReceiptB64(e.target.result);
     };
     reader.readAsDataURL(file);
   };
@@ -1252,7 +1255,7 @@ export default function OrderDetailPage() {
                 <div className="od-modal-body">
                   {/* Receipt upload */}
                   <p className="od-return-section-label">Upload E-Receipt / Bukti Pembelian</p>
-                  <input ref={r => receiptInputRef.current = r} type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+                  <input ref={r => receiptInputRef.current = r} type="file" accept="application/pdf" style={{ display: "none" }}
                     onChange={e => handleReturnReceiptFile(e.target.files?.[0])} />
                   <div
                     className={`od-return-dropzone${returnReceiptB64 ? " od-return-dropzone--filled" : ""}`}
@@ -1262,11 +1265,7 @@ export default function OrderDetailPage() {
                   >
                     {returnReceiptB64 ? (
                       <div className="od-return-file-preview">
-                        {returnReceiptB64.startsWith("data:image") ? (
-                          <img src={returnReceiptB64} alt="receipt" style={{ maxHeight: 120, borderRadius: 8, objectFit: "contain" }} />
-                        ) : (
-                          <div className="od-return-pdf-chip"><FileText size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {returnReceiptFile?.name}</div>
-                        )}
+                        <div className="od-return-pdf-chip"><FileText size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {returnReceiptFile?.name}</div>
                         <p className="od-return-file-ok">✓ File berhasil diupload</p>
                         <p style={{ fontSize: 11, color: "#aaa" }}>Klik untuk ganti file</p>
                       </div>
@@ -1274,7 +1273,7 @@ export default function OrderDetailPage() {
                       <div className="od-return-dropzone-empty">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c97269" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <p>Drag & drop atau <span style={{ color: "#c97269", fontWeight: 700 }}>pilih file</span></p>
-                        <p style={{ fontSize: 11, color: "#bbb" }}>JPG, PNG, PDF — maks 5 MB</p>
+                        <p style={{ fontSize: 11, color: "#bbb" }}>PDF saja — maks 5 MB</p>
                       </div>
                     )}
                   </div>

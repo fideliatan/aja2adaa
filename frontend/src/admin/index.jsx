@@ -734,6 +734,7 @@ function Products() {
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
+  const [newCatCustom, setNewCatCustom] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // product being edited
   const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", stock: "", image: "" });
@@ -763,7 +764,8 @@ function Products() {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!newProd.name || !newProd.category || !newProd.price) return;
+    const finalCategory = newProd.category === "Lainnya" ? newCatCustom.trim() : newProd.category;
+    if (!newProd.name || !finalCategory || !newProd.price) return;
     setAddLoading(true);
     try {
       const res = await fetch(`${_base}/api/store/products/`, {
@@ -772,7 +774,7 @@ function Products() {
         body: JSON.stringify({
           name: newProd.name,
           brand: newProd.brand || "",
-          category: newProd.category,
+          category: finalCategory,
           price: Number(newProd.price),
           stock: Number(newProd.stock) || 0,
           image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
@@ -786,6 +788,7 @@ function Products() {
     } catch (_) {}
     setAddLoading(false);
     setNewProd({ name: "", category: "", price: "", image: "" });
+    setNewCatCustom("");
     setShowAdd(false);
   };
 
@@ -844,7 +847,27 @@ function Products() {
                 </div>
                 <div className="adm-form-group">
                   <label>Kategori *</label>
-                  <input placeholder="e.g. Serum" value={newProd.category} onChange={e => setNewProd(p => ({ ...p, category: e.target.value }))} className="adm-input" />
+                  <select
+                    value={newProd.category}
+                    onChange={e => { setNewProd(p => ({ ...p, category: e.target.value })); setNewCatCustom(""); }}
+                    className="adm-input"
+                  >
+                    <option value="">-- Pilih Kategori --</option>
+                    <option value="Skincare">Skincare</option>
+                    <option value="Makeup">Makeup</option>
+                    <option value="Tools">Tools</option>
+                    <option value="Bodycare">Bodycare</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                  {newProd.category === "Lainnya" && (
+                    <input
+                      placeholder="Tulis kategori..."
+                      value={newCatCustom}
+                      onChange={e => setNewCatCustom(e.target.value)}
+                      className="adm-input"
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
                 </div>
               </div>
               <div className="adm-form-row">
