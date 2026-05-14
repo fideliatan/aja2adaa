@@ -40,7 +40,6 @@
   min-height: 100vh;
   font-family: 'DM Sans', sans-serif;
   color: var(--adm-text);
-  /* Modern mesh-gradient — multi-directional blobs on warm base */
   background-color: #fef8f6;
   background-image:
     radial-gradient(ellipse 90% 55% at 100% 0%,    rgba(214,134,124,0.30) 0%, transparent 55%),
@@ -70,6 +69,7 @@
   box-shadow: 2px 0 20px rgba(214,134,124,0.06);
   overflow: hidden;
 }
+
 
 /* Logo */
 .adm-sidebar-logo {
@@ -207,6 +207,7 @@
   flex-direction: column;
 }
 
+
 /* Topbar */
 .adm-topbar {
   height: var(--adm-topbar-h);
@@ -333,6 +334,16 @@
   flex: 1;
   padding: 28px;
   overflow-y: auto;
+  background-color: #fef8f6;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 100% 0%,    rgba(214,134,124,0.30) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 70% at 0%   100%,  rgba(244,165,138,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 50% at 100% 90%,   rgba(249,212,207,0.28) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 45% at 15%  15%,   rgba(253,232,226,0.45) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 40% at 60%  55%,   rgba(240,213,210,0.18) 0%, transparent 45%),
+    radial-gradient(circle, rgba(201,114,105,0.028) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 30px 30px;
+  background-attachment: fixed;
 }
 
 /* ════════════════════════════════════════════════════════
@@ -1161,6 +1172,7 @@
 @media (max-width: 720px) {
   .adm-sidebar { transform: translateX(-100%); }
   .adm-main    { margin-left: 0; }
+
   .adm-content { padding: 16px; }
   .adm-stat-grid { grid-template-columns: 1fr 1fr; }
   .adm-form-row  { grid-template-columns: 1fr; }

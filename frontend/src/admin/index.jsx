@@ -399,8 +399,7 @@ function Dashboard({ setActive }) {
                     <td><span className="adm-order-id">{o.id}</span></td>
                     <td>
                       <div className="adm-customer-cell">
-                        <Avatar name={o.customer} size={28} />
-                        <span>{o.customer}</span>
+                        {(() => { const u = mockStore.users.find(u => u.id === o.customerId); const n = u?.name ?? o.customer; return <><Avatar name={n} size={28} /><span>{n}</span></>; })()}
                       </div>
                     </td>
                     <td><strong>{fmt(o.total)}</strong></td>
@@ -519,11 +518,7 @@ function Orders({ setActive, setSelectedOrderId, goToOrderDetail }) {
                   </td>
                   <td>
                     <div className="adm-customer-cell">
-                      <Avatar name={o.customer} size={28} />
-                      <div>
-                        <p className="adm-customer-name">{o.customer}</p>
-                        <p className="adm-customer-email">{o.payment}</p>
-                      </div>
+                      {(() => { const u = mockStore.users.find(u => u.id === o.customerId); const n = u?.name ?? o.customer; return <><Avatar name={n} size={28} /><div><p className="adm-customer-name">{n}</p><p className="adm-customer-email">{o.payment}</p></div></>; })()}
                     </div>
                   </td>
                   <td><strong>{fmt(o.total)}</strong></td>
@@ -1566,6 +1561,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
   const [receiptZoom,   setReceiptZoom]   = useState(false);
   const [photoZoom,     setPhotoZoom]     = useState(null);
   const [receiptVerify, setReceiptVerify] = useState(null); // null | "verifying" | "valid" | "invalid"
+  const [receiptVerifyData, setReceiptVerifyData] = useState(null);
   const [riskSummary,   setRiskSummary]   = useState(() => getCaseRiskSummary(mockStore, "return", initialReturnId));
   const [stepUpState,   setStepUpState]   = useState({
     open: false,
@@ -1600,6 +1596,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     if (!ret?.id) return;
     setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
     setReceiptVerify(null);
+    setReceiptVerifyData(null);
     setStepUpState({
       open: false,
       actionKey: "",
@@ -1998,6 +1995,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: form });
                             const data = await res.json();
                             const isValid = data.valid === true;
+                            setReceiptVerifyData(data);
                             setReceiptVerify(isValid ? "valid" : "invalid");
                             addTimelineEvent({
                               actorId: currentUser?.id ?? "admin",
@@ -2023,13 +2021,86 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                         <Loader2 size={12} className="adm-spin" /> Memverifikasi...
                       </span>
                     )}
-                    {receiptVerify === "valid" && (
-                      <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✓ Receipt valid</span>
-                    )}
-                    {receiptVerify === "invalid" && (
-                      <span style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>✗ Receipt tidak cocok</span>
+                    {(receiptVerify === "valid" || receiptVerify === "invalid") && (
+                      <button
+                        style={{ fontSize: 11, background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "3px 8px", color: "#888", cursor: "pointer", fontFamily: "inherit" }}
+                        onClick={() => { setReceiptVerify(null); setReceiptVerifyData(null); }}
+                      >
+                        Periksa Ulang
+                      </button>
                     )}
                   </div>
+
+                  {receiptVerify === "valid" && (
+                    <div className="adm-rv-result" style={{ marginTop: 14 }}>
+                      <div className="adm-rv-banner adm-rv-banner--valid">
+                        <div className="adm-rv-banner-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div>
+                          <h2 className="adm-rv-result-title">E-Receipt VALID ✓</h2>
+                          <p className="adm-rv-result-sub">Tanda tangan digital berhasil diverifikasi</p>
+                        </div>
+                      </div>
+                      <div className="adm-card adm-rv-detail-card">
+                        <h3 className="adm-card-title" style={{ marginBottom: 16 }}>Informasi Terverifikasi</h3>
+                        {[
+                          ["Order ID",           receiptVerifyData?.order_id || "—"],
+                          ["Nama Pelanggan",      receiptVerifyData?.customer_name || "—"],
+                          ["Total Pembayaran",    receiptVerifyData?.total ? fmt(receiptVerifyData.total) : "—"],
+                          ["Email Pelanggan",     receiptVerifyData?.customer_email || "—"],
+                          ["Dibuat Pada",         receiptVerifyData?.generated_at ? new Date(receiptVerifyData.generated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "—"],
+                          ["Status Tanda Tangan", "Cocok dengan database ✓"],
+                        ].map(([label, val]) => (
+                          <div key={label} className="adm-rv-detail-row">
+                            <span className="adm-rv-detail-label">{label}</span>
+                            <span className="adm-rv-detail-val">{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="adm-rv-footer-text adm-rv-footer--valid">
+                        ✓ Receipt ini asli dan dikeluarkan oleh sistem careofyou
+                      </p>
+                    </div>
+                  )}
+
+                  {receiptVerify === "invalid" && (
+                    <div className="adm-rv-result" style={{ marginTop: 14 }}>
+                      <div className="adm-rv-banner adm-rv-banner--invalid">
+                        <div className="adm-rv-banner-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </div>
+                        <div>
+                          <h2 className="adm-rv-result-title">E-Receipt INVALID ✗</h2>
+                          <p className="adm-rv-result-sub">Tanda tangan digital tidak ditemukan atau tidak cocok</p>
+                        </div>
+                      </div>
+                      <div className="adm-card adm-rv-detail-card">
+                        <h3 className="adm-card-title" style={{ marginBottom: 16 }}>Detail Pemeriksaan</h3>
+                        <div className="adm-rv-detail-row">
+                          <span className="adm-rv-detail-label">Status</span>
+                          <span className="adm-rv-detail-val" style={{ color: "#ef4444", fontWeight: 700 }}>
+                            {receiptVerifyData?.failure_reason || "Signature tidak ditemukan dalam file"}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 16 }}>
+                          <p className="adm-rv-causes-title">Kemungkinan penyebab:</p>
+                          <ul className="adm-rv-causes-list">
+                            <li>Receipt telah dimodifikasi atau diedit</li>
+                            <li>Receipt bukan berasal dari sistem careofyou</li>
+                            <li>File PDF telah dikompresi atau dikonversi ulang</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <p className="adm-rv-footer-text adm-rv-footer--invalid">
+                        ✗ Receipt ini tidak dapat dipercaya — lakukan investigasi manual
+                      </p>
+                      <button className="adm-rv-report-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Laporkan ke Log
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p style={{ fontSize: 13, color: "#bbb" }}>Tidak ada e-receipt dilampirkan.</p>
@@ -2763,12 +2834,20 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Informasi Pelanggan</p>
               <div className="adm-pa-customer">
-                <Avatar name={order.customer} size={48} />
-                <div>
-                  <p className="adm-pa-customer-name">{order.customer}</p>
-                  {order.email && <p className="adm-pa-customer-sub">{order.email}</p>}
-                  {order.phone && <p className="adm-pa-customer-sub">{order.phone}</p>}
-                </div>
+                {(() => {
+                  const customerUser = mockStore.users.find(u => u.id === order.customerId);
+                  const customerName = customerUser?.name ?? order.customer;
+                  return (
+                    <>
+                      <Avatar name={customerName} size={48} />
+                      <div>
+                        <p className="adm-pa-customer-name">{customerName}</p>
+                        {order.email && <p className="adm-pa-customer-sub">{order.email}</p>}
+                        {order.phone && <p className="adm-pa-customer-sub">{order.phone}</p>}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2886,6 +2965,8 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Alamat Pengiriman</p>
+              {order.recipient && <p className="adm-pa-customer-name" style={{ marginBottom: 2 }}>{order.recipient}</p>}
+              {order.phone && <p className="adm-pa-customer-sub" style={{ marginBottom: 4 }}>{order.phone}</p>}
               <p className="adm-pa-shipping-val">{order.address || "—"}</p>
             </div>
 
@@ -3351,208 +3432,6 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 /* Keep legacy alias in case anything references PaymentApproval */
 const PaymentApproval = OrderDetail;
 
-/* ═══════════════════════════════════════════════════════════
-   SECTION: RECEIPT VERIFY  ← HALAMAN PALING PENTING
-   Admin upload PDF receipt → sistem ekstrak hidden signature
-   → tampilkan hasil VALID atau INVALID
-   ═══════════════════════════════════════════════════════════ */
-function ReceiptVerify() {
-  const [file,       setFile]       = useState(null);
-  const [dragOver,   setDragOver]   = useState(false);
-  const [verifying,  setVerifying]  = useState(false);
-  const [result,     setResult]     = useState(null); // null | "valid" | "invalid"
-  const [verifyData, setVerifyData] = useState(null);
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) { setFile(f); setResult(null); setVerifyData(null); }
-  };
-
-  const handleFileInput = (e) => {
-    const f = e.target.files[0];
-    if (f) { setFile(f); setResult(null); setVerifyData(null); }
-  };
-
-  const handleVerify = async () => {
-    if (!file) return;
-    setVerifying(true);
-    setResult(null);
-    setVerifyData(null);
-    const formData = new FormData();
-    formData.append("pdf_file", file);
-    try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: formData });
-      const data = await res.json();
-      setVerifyData(data);
-      setResult(data.valid ? "valid" : "invalid");
-    } catch {
-      setVerifyData({ valid: false, failure_reason: "Tidak dapat terhubung ke server" });
-      setResult("invalid");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  return (
-    <div className="adm-section">
-      <div className="adm-section-header">
-        <div>
-          <h2 className="adm-section-title">Verifikasi Keaslian E-Receipt</h2>
-          <p className="adm-section-sub">Upload e-receipt untuk memverifikasi keaslian tanda tangan digital</p>
-        </div>
-      </div>
-
-      <div className="adm-rv-layout">
-
-        {/* ── Upload area ── */}
-        <div className="adm-card adm-rv-upload-card">
-          <h3 className="adm-card-title" style={{marginBottom:20}}>Upload E-Receipt</h3>
-
-          {/* Drag & drop zone */}
-          <div
-            className={`adm-rv-dropzone${dragOver ? " adm-rv-dropzone--over" : ""}`}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById("rv-file-input").click()}
-          >
-            <div className="adm-rv-drop-icon">
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-            </div>
-            <p className="adm-rv-drop-text">Drag &amp; drop file PDF di sini</p>
-            <p className="adm-rv-drop-sub">atau klik untuk pilih file</p>
-            <button className="adm-rv-browse-btn" type="button" onClick={e => { e.stopPropagation(); document.getElementById("rv-file-input").click(); }}>
-              Pilih File
-            </button>
-            <p className="adm-rv-drop-hint">Hanya file PDF yang diterima</p>
-          </div>
-          <input
-            id="rv-file-input"
-            type="file"
-            accept=".pdf"
-            style={{ display: "none" }}
-            onChange={handleFileInput}
-          />
-
-          {/* File terpilih */}
-          {file && !verifying && (
-            <div className="adm-rv-file-preview">
-              <IcReceipt />
-              <span className="adm-rv-file-name">{file.name}</span>
-              <button className="adm-rv-file-remove" onClick={() => { setFile(null); setResult(null); setVerifyData(null); }}>✕</button>
-            </div>
-          )}
-
-          {/* Tombol verifikasi */}
-          {file && !verifying && !result && (
-            <button className="adm-rv-verify-btn" onClick={handleVerify}>
-              Verifikasi Sekarang
-            </button>
-          )}
-
-          {/* Loading state */}
-          {verifying && (
-            <div className="adm-rv-verifying">
-              <div className="adm-modal-spinner" />
-              <span>Mengekstrak digital signature…</span>
-            </div>
-          )}
-
-
-        </div>
-
-        {/* ── Hasil Verifikasi ── */}
-        {result && (
-          <div className="adm-rv-result">
-
-            {result === "valid" ? (
-              <>
-                {/* Banner VALID */}
-                <div className="adm-rv-banner adm-rv-banner--valid">
-                  <div className="adm-rv-banner-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div>
-                    <h2 className="adm-rv-result-title">E-Receipt VALID ✓</h2>
-                    <p className="adm-rv-result-sub">Tanda tangan digital berhasil diverifikasi</p>
-                  </div>
-                </div>
-
-                {/* Detail terverifikasi */}
-                <div className="adm-card adm-rv-detail-card">
-                  <h3 className="adm-card-title" style={{marginBottom:16}}>Informasi Terverifikasi</h3>
-                  {[
-                    ["Order ID",           verifyData?.order_id || "—"],
-                    ["Nama Pelanggan",      verifyData?.customer_name || "—"],
-                    ["Total Pembayaran",    verifyData?.total ? fmt(verifyData.total) : "—"],
-                    ["Email Pelanggan",     verifyData?.customer_email || "—"],
-                    ["Dibuat Pada",         verifyData?.generated_at ? new Date(verifyData.generated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "—"],
-                    ["Status Tanda Tangan", "Cocok dengan database ✓"],
-                  ].map(([label, val]) => (
-                    <div key={label} className="adm-rv-detail-row">
-                      <span className="adm-rv-detail-label">{label}</span>
-                      <span className="adm-rv-detail-val">{val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="adm-rv-footer-text adm-rv-footer--valid">
-                  ✓ Receipt ini asli dan dikeluarkan oleh sistem careofyou
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Banner INVALID */}
-                <div className="adm-rv-banner adm-rv-banner--invalid">
-                  <div className="adm-rv-banner-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </div>
-                  <div>
-                    <h2 className="adm-rv-result-title">E-Receipt INVALID ✗</h2>
-                    <p className="adm-rv-result-sub">Tanda tangan digital tidak ditemukan atau tidak cocok</p>
-                  </div>
-                </div>
-
-                {/* Detail pemeriksaan */}
-                <div className="adm-card adm-rv-detail-card">
-                  <h3 className="adm-card-title" style={{marginBottom:16}}>Detail Pemeriksaan</h3>
-                  <div className="adm-rv-detail-row">
-                    <span className="adm-rv-detail-label">Status</span>
-                    <span className="adm-rv-detail-val" style={{color:"#ef4444",fontWeight:700}}>
-                      {verifyData?.failure_reason || "Signature tidak ditemukan dalam file"}
-                    </span>
-                  </div>
-                  <div style={{marginTop:16}}>
-                    <p className="adm-rv-causes-title">Kemungkinan penyebab:</p>
-                    <ul className="adm-rv-causes-list">
-                      <li>Receipt telah dimodifikasi atau diedit</li>
-                      <li>Receipt bukan berasal dari sistem careofyou</li>
-                      <li>File PDF telah dikompresi atau dikonversi ulang</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <p className="adm-rv-footer-text adm-rv-footer--invalid">
-                  ✗ Receipt ini tidak dapat dipercaya — lakukan investigasi manual
-                </p>
-
-                <button className="adm-rv-report-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  Laporkan ke Log
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════
    SECTION: VERIFY HISTORY
@@ -3720,7 +3599,6 @@ const NAV_ITEMS = [
   { id: "products",        label: "Produk",            icon: <IcProducts />   },
   { id: "customers",       label: "Pelanggan",         icon: <IcCustomers />  },
   { id: "returns",         label: "Return Paket",      icon: <IcReturn />     },
-  { id: "receipt-verify",  label: "Verifikasi Receipt",icon: <IcShield />     },
   { id: "verify-history",  label: "Riwayat Verifikasi",icon: <IcHistory />    },
   { id: "notifications",   label: "Notifikasi",        icon: <IcNotif />      },
   { id: "settings",        label: "Pengaturan",        icon: <IcSettings />   },
@@ -3754,7 +3632,6 @@ export default function AdminPage() {
       case "products":  return <Products />;
       case "customers": return <Customers />;
       case "payment-approval": return <OrderDetail selectedOrderId={selectedOrderId} setSelectedOrderId={setSelectedOrderId} setActive={setActive} />;
-      case "receipt-verify":   return <ReceiptVerify />;
       case "verify-history":   return <VerifyHistory />;
       case "returns":          return <Returns goToReturnDetail={goToReturnDetail} />;
       case "return-detail":    return <ReturnDetail selectedReturnId={selectedReturnId} setSelectedReturnId={setSelectedReturnId} setActive={setActive} />;

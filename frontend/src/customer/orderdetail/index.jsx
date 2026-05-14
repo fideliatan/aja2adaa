@@ -30,26 +30,6 @@ function compressImage(dataUrl, maxDim = 1200, quality = 0.75) {
   });
 }
 
-/* ─── Click-to-view proof file badge ──────────────────────── */
-function OdProofFile({ label, src, caption }) {
-  const [open, setOpen] = React.useState(false);
-  return (
-    <>
-      <button className="od-proof-file-btn" onClick={() => setOpen(true)}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        {label}
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
-      </button>
-      {caption && <p className="od-proof-file-caption">{caption}</p>}
-      {open && (
-        <div className="od-proof-zoom-overlay" onClick={() => setOpen(false)}>
-          <img src={src} alt={label} className="od-proof-zoom-img" />
-          <button className="od-proof-zoom-close" onClick={() => setOpen(false)}>✕</button>
-        </div>
-      )}
-    </>
-  );
-}
 
 /* ─── Dummy Order Data ─────────────────────────────────────── */
 const ORDER = {
@@ -552,8 +532,9 @@ export default function OrderDetailPage() {
   const { getOrder, cancelOrder, addReturn, returns } = useOrders();
   const { session, products, productReviews, submitReview } = useMockData();
   const { cart, cartOpen, setCartOpen, updateQty, removeItem, cartTotal } = useCart();
-  const [previewOpen, setPreviewOpen]     = useState(false);
-  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [previewOpen, setPreviewOpen]         = useState(false);
+  const [deliverProofZoom, setDeliverProofZoom] = useState(false);
+  const [cancelConfirm, setCancelConfirm]     = useState(false);
   const [cancelReason, setCancelReason]   = useState("");
   const [cancelCustom, setCancelCustom]   = useState("");
   const [timeLeft, setTimeLeft]           = useState(null);
@@ -949,11 +930,14 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
                 {liveOrder.deliveryProof && liveOrder.deliveryProof.startsWith("data:") ? (
-                  <OdProofFile
-                    label="bukti-pengiriman.jpg"
-                    src={liveOrder.deliveryProof}
-                    caption="Foto bukti pengiriman dari kurir"
-                  />
+                  <>
+                    <button className="od-proof-file-btn" onClick={() => setDeliverProofZoom(true)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      bukti-pengiriman-{liveOrder.id}.jpg
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><path d="M10 14L21 3"/></svg>
+                    </button>
+                    <p className="od-proof-file-caption">Foto bukti pengiriman dari kurir</p>
+                  </>
                 ) : (
                   <p className="od-delivery-proof-note">Kurir telah mengkonfirmasi pengiriman paket.</p>
                 )}
@@ -1436,6 +1420,14 @@ export default function OrderDetailPage() {
             )}
 
           </div>
+        </div>
+      )}
+
+      {/* ── Delivery proof zoom overlay ── */}
+      {deliverProofZoom && liveOrder.deliveryProof?.startsWith("data:") && (
+        <div className="od-proof-zoom-overlay" onClick={() => setDeliverProofZoom(false)}>
+          <img src={liveOrder.deliveryProof} alt="Bukti Pengiriman" className="od-proof-zoom-img" />
+          <button className="od-proof-zoom-close" onClick={() => setDeliverProofZoom(false)}>✕</button>
         </div>
       )}
 
