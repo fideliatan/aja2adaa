@@ -8,7 +8,7 @@ from .models import (
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     MonitoringFlag, ActivityTimeline, TrustedDevice, Address,
-    Product,
+    Product, Category,
 )
 from .views import (
     _log_activity, _dt, _now,
@@ -625,6 +625,10 @@ def create_product(request):
         desc=data.get("desc", ""),
         bestseller=bool(data.get("bestseller", False)),
         is_active=True,
+    )
+    Category.objects.get_or_create(
+        name=data["category"],
+        defaults={"label": data["category"], "is_active": True, "display_order": 999},
     )
     return Response({"product": _serialize_product_simple(product)}, status=status.HTTP_201_CREATED)
 

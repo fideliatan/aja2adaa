@@ -99,7 +99,7 @@ export default function WishlistPage() {
                     onClick={() => addToBag(item.id)}
                     disabled={addedIds.includes(item.id)}
                   >
-                    {addedIds.includes(item.id) ? "Ditambahkan ✓" : "Tambah ke Keranjang"}
+                    {addedIds.includes(item.id) ? "✓" : "+"}
                   </button>
                 </div>
 

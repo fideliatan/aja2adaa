@@ -728,12 +728,13 @@ function ImageDropInput({ value, onChange }) {
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
-  const { products: apiProducts, refresh } = useMockData();
+  const { products: apiProducts, categories: apiCategories, refresh } = useMockData();
   const [localProducts, setLocalProducts] = useState([]);
   const [query, setQuery]       = useState("");
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
   const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
+  const [catIsCustom, setCatIsCustom] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // product being edited
   const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", image: "" });
@@ -745,6 +746,8 @@ function Products() {
 
   const products = localProducts;
   const cats = ["all", ...Array.from(new Set(products.map(p => p.category)))];
+  const dbCatNames = (apiCategories ?? []).map(c => c.name);
+  const allCatOptions = Array.from(new Set([...dbCatNames, ...products.map(p => p.category).filter(Boolean)]));
   const filtered = products.filter(p => {
     const matchCat = catFilter === "all" || p.category === catFilter;
     const q = query.toLowerCase();
@@ -778,10 +781,12 @@ function Products() {
       const json = await res.json();
       if (res.ok && json.product) {
         setLocalProducts(prev => [...prev, { ...json.product, rating: 0, reviews: 0 }]);
+        refresh();
       }
     } catch (_) {}
     setAddLoading(false);
     setNewProd({ name: "", category: "", price: "", image: "" });
+    setCatIsCustom(false);
     setShowAdd(false);
   };
 
@@ -839,7 +844,34 @@ function Products() {
                 </div>
                 <div className="adm-form-group">
                   <label>Kategori *</label>
-                  <input placeholder="e.g. Serum" value={newProd.category} onChange={e => setNewProd(p => ({ ...p, category: e.target.value }))} className="adm-input" />
+                  <select
+                    className="adm-input"
+                    value={catIsCustom ? "lainnya" : (newProd.category || "")}
+                    onChange={e => {
+                      if (e.target.value === "lainnya") {
+                        setCatIsCustom(true);
+                        setNewProd(p => ({ ...p, category: "" }));
+                      } else {
+                        setCatIsCustom(false);
+                        setNewProd(p => ({ ...p, category: e.target.value }));
+                      }
+                    }}
+                  >
+                    <option value="">-- Pilih Kategori --</option>
+                    {allCatOptions.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="lainnya">Lainnya...</option>
+                  </select>
+                  {catIsCustom && (
+                    <input
+                      className="adm-input"
+                      style={{ marginTop: 6 }}
+                      placeholder="Tulis kategori..."
+                      value={newProd.category}
+                      onChange={e => setNewProd(p => ({ ...p, category: e.target.value }))}
+                    />
+                  )}
                 </div>
               </div>
               <div className="adm-form-row">
@@ -2656,7 +2688,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     setApproveStep("loading");
     setTimeout(() => {
       if (order.fromCtx) approveOrder(order.id);
-      else setLocalStatuses(p => ({ ...p, [order.id]: "packing" }));
+      setLocalStatuses(p => ({ ...p, [order.id]: "packing" }));
       setRiskSummary((prev) => ({
         ...prev,
         timeline: [
@@ -2676,7 +2708,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const handleRejectConfirm = () => {
     if (!rejectReason.trim()) return;
     if (order.fromCtx) rejectOrder(order.id, rejectReason.trim());
-    else setLocalStatuses(p => ({ ...p, [order.id]: "rejected" }));
+    setLocalStatuses(p => ({ ...p, [order.id]: "rejected" }));
     setRiskSummary((prev) => ({
       ...prev,
       timeline: [
@@ -2716,10 +2748,8 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     if (!trackingInput.trim()) return;
     const finalCourier = courierInput.trim() || COURIER_OPTIONS[0] || "JNE Reguler";
     if (order.fromCtx) shipOrder(order.id, finalCourier, trackingInput.trim());
-    else {
-      setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
-      setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
-    }
+    setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
+    setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
     setShipModal(false);
   };
 
@@ -2736,7 +2766,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
 
   const handleDeliverConfirm = () => {
     if (order.fromCtx) deliverOrder(order.id, deliverPreview ?? null);
-    else setLocalStatuses(p => ({ ...p, [order.id]: "delivered" }));
+    setLocalStatuses(p => ({ ...p, [order.id]: "delivered" }));
     setDeliverModal(false);
     setDeliverFile(null); setDeliverPreview(null);
   };

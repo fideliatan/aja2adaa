@@ -582,6 +582,7 @@ export default function OrderDetailPage() {
   const canCancel = liveOrder.status === "pending" &&
     liveOrder.cancelDeadlineTs && liveOrder.cancelDeadlineTs > Date.now();
 
+  const myReturn     = (returns ?? []).find(r => r.orderId === liveOrder.id);
   const status       = STATUS_CONFIG[liveOrder.status] ?? STATUS_CONFIG.pending;
   const subtotal     = liveOrder.subtotal ?? liveOrder.items?.reduce((s, i) => s + i.price * i.qty, 0) ?? 0;
   const receiptReady = isReceiptAvailable(liveOrder.status);
@@ -645,7 +646,7 @@ export default function OrderDetailPage() {
     }
   };
 
-  const submitReturn = () => {
+  const submitReturn = async () => {
     const selectedItems = (liveOrder.items ?? [])
       .filter(item => (returnQtys[item.name] ?? 0) > 0)
       .map(item => ({ ...item, qty: returnQtys[item.name] }));
@@ -674,7 +675,7 @@ export default function OrderDetailPage() {
         deviceInfo: session?.deviceInfo ?? liveOrder.sessionSnapshot?.deviceInfo ?? {},
       },
     };
-    addReturn(ret);
+    await addReturn(ret);
     setReturnStep(4);
   };
 
@@ -941,10 +942,12 @@ export default function OrderDetailPage() {
                 ) : (
                   <p className="od-delivery-proof-note">Kurir telah mengkonfirmasi pengiriman paket.</p>
                 )}
-                <button className="od-return-btn" onClick={openReturnPopup}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                  Ajukan Return / Pengembalian
-                </button>
+                {!myReturn && (
+                  <button className="od-return-btn" onClick={openReturnPopup}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Ajukan Return / Pengembalian
+                  </button>
+                )}
               </div>
             )}
 
@@ -1031,7 +1034,6 @@ export default function OrderDetailPage() {
 
             {/* ── Return status card (if customer submitted a return) ── */}
             {(() => {
-              const myReturn = (returns ?? []).find(r => r.orderId === liveOrder.id);
               if (!myReturn) return null;
               const RETURN_STATUS = {
                 pending:       { label: "Menunggu Persetujuan Admin", color: "#e09a3a", bg: "rgba(224,154,58,0.1)",  icon: <Clock size={20} /> },
