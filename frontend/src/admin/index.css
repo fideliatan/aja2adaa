@@ -881,6 +881,57 @@
 
 .adm-form-actions { display: flex; gap: 10px; }
 
+/* Image drop input */
+.adm-img-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 16px;
+  border: 2px dashed var(--adm-brand-border);
+  border-radius: 12px;
+  background: var(--adm-bg);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  text-align: center;
+  min-height: 100px;
+  user-select: none;
+}
+.adm-img-drop:hover,
+.adm-img-drop--over {
+  border-color: var(--adm-brand);
+  background: rgba(201,114,105,0.05);
+}
+.adm-img-drop-icon  { font-size: 22px; line-height: 1; }
+.adm-img-drop-label { font-size: 13px; color: var(--adm-text); }
+.adm-img-drop-hint  { font-size: 11px; color: #aaa; }
+
+.adm-img-preview-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.adm-img-preview {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1.5px solid var(--adm-brand-border);
+}
+.adm-img-remove {
+  font-size: 12px;
+  color: #e05252;
+  background: none;
+  border: 1px solid #e05252;
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.adm-img-remove:hover { background: rgba(224,82,82,0.08); }
+
 /* Buttons */
 .adm-primary-btn {
   display: inline-flex;
