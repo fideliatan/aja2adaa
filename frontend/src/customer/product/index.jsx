@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShoppingCart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../home/index.css";
 import "./index.css";
@@ -139,7 +140,8 @@ export default function ProductPage() {
               event.stopPropagation();
               addToCart(product);
             }}
-          >+</button>
+            title="Tambah ke keranjang"
+          ><ShoppingCart size={15} /></button>
         </div>
       </div>
     </div>
@@ -327,7 +329,7 @@ export default function ProductPage() {
                 </div>
                 <div className="qv-actions">
                   <button className="qv-add-btn" onClick={() => { addToCart(quickView); setQuickView(null); }}>
-                    +
+                    <ShoppingCart size={15} /> Tambah ke Keranjang
                   </button>
                   <button
                     className={`qv-fav-btn${favorites.has(quickView.id) ? " qv-fav-btn--active" : ""}`}

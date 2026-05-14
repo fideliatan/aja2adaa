@@ -5,36 +5,45 @@ export default function Footer() {
   const navigate = useNavigate();
   return (
     <footer className="footer">
-      <div className="footer-top">
-        <div className="footer-brand">
-          <img src="/logo-careofyou.png" alt="Careofyou" className="footer-logo" />
-          <span className="footer-name">careofyou</span>
-        </div>
-        <p className="footer-tagline">Toko beauty product pilihan di Tondano. Produk original & terpercaya.</p>
-        <div className="footer-socials">
-          <span className="footer-social-btn" title="@careofyou.tondano">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="5"/>
-              <circle cx="12" cy="12" r="4"/>
-              <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
-            </svg>
-          </span>
-          <span className="footer-social-btn" title="TikTok">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.67a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1.01-.04z"/>
-            </svg>
-          </span>
-          <span className="footer-social-btn" title="YouTube">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58A2.78 2.78 0 003.41 19.6C5.12 20.05 12 20.05 12 20.05s6.88 0 8.59-.45a2.78 2.78 0 001.95-1.95A29 29 0 0023 12a29 29 0 00-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/>
-            </svg>
-          </span>
-        </div>
-      </div>
+      {/* top gradient accent bar */}
+      <div className="footer-accent-bar" />
 
-      <div className="footer-divider" />
+      <div className="footer-inner">
 
-      <div className="footer-links-row">
+        {/* ── Brand Column ── */}
+        <div className="footer-brand-col">
+          <div className="footer-brand">
+            <div className="footer-logo-wrap">
+              <img src="/logo-careofyou.png" alt="Careofyou" className="footer-logo" />
+            </div>
+            <span className="footer-name">careofyou</span>
+          </div>
+          <p className="footer-tagline">
+            Toko beauty product pilihan di Tondano.<br />
+            Produk original &amp; terpercaya.
+          </p>
+          <div className="footer-socials">
+            <span className="footer-social-btn" title="@careofyou.tondano">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+              </svg>
+            </span>
+            <span className="footer-social-btn" title="TikTok">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.67a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1.01-.04z"/>
+              </svg>
+            </span>
+            <span className="footer-social-btn" title="YouTube">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58A2.78 2.78 0 003.41 19.6C5.12 20.05 12 20.05 12 20.05s6.88 0 8.59-.45a2.78 2.78 0 001.95-1.95A29 29 0 0023 12a29 29 0 00-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        {/* ── Links ── */}
         <div className="footer-col">
           <p className="footer-col-title">Belanja</p>
           <span onClick={() => navigate("/products")}>Skincare</span>
@@ -42,18 +51,23 @@ export default function Footer() {
           <span onClick={() => navigate("/products")}>Tools</span>
           <span onClick={() => navigate("/products")}>Body Care</span>
         </div>
+
         <div className="footer-col">
           <p className="footer-col-title">Bantuan</p>
           <span onClick={() => navigate("/contact")}>Kebijakan Pengembalian</span>
           <span onClick={() => navigate("/contact")}>Hubungi Kami</span>
         </div>
+
       </div>
 
+      {/* ── Bottom Bar ── */}
       <div className="footer-bottom">
-        <p>© 2025 Careofyou. Semua hak dilindungi.</p>
-        <div className="footer-legal">
-          <span>Kebijakan Privasi</span>
-          <span>Syarat Layanan</span>
+        <div className="footer-bottom-inner">
+          <p>© 2025 Careofyou. Semua hak dilindungi.</p>
+          <div className="footer-legal">
+            <span>Kebijakan Privasi</span>
+            <span>Syarat Layanan</span>
+          </div>
         </div>
       </div>
     </footer>

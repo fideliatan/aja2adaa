@@ -359,8 +359,9 @@ export default function HomePage() {
                     <button
                       className="top3-add-btn"
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
+                      title="Tambah ke keranjang"
                     >
-                      +
+                      <ShoppingCart size={15} />
                     </button>
                   </div>
                 </div>
@@ -403,7 +404,7 @@ export default function HomePage() {
                       className="hscroll-cart-btn"
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
                       title="Tambah ke keranjang"
-                    >+</button>
+                    ><ShoppingCart size={15} /></button>
                   </div>
                 </div>
               </div>
@@ -482,7 +483,7 @@ export default function HomePage() {
                     className="qv-add-btn"
                     onClick={() => { addToCart(quickView); setQuickView(null); }}
                   >
-                    +
+                    <ShoppingCart size={15} /> Tambah ke Keranjang
                   </button>
                   <button
                     className={`qv-fav-btn${favorites.has(quickView.id) ? " qv-fav-btn--active" : ""}`}
