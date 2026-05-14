@@ -733,15 +733,15 @@ function ImageDropInput({ value, onChange }) {
    SECTION: PRODUCTS
    ═══════════════════════════════════════════════════════════ */
 function Products() {
-  const { products: apiProducts, refresh } = useMockData();
+  const { products: apiProducts, categories: apiCategories, refresh } = useMockData();
   const [localProducts, setLocalProducts] = useState([]);
   const [query, setQuery]       = useState("");
   const [catFilter, setCat]     = useState("all");
   const [showAdd, setShowAdd]   = useState(false);
-  const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", image: "" });
+  const [newProd, setNewProd]   = useState({ name: "", category: "", price: "", stock: "", image: "" });
   const [addLoading, setAddLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null); // product being edited
-  const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", image: "" });
+  const [editProd, setEditProd]     = useState({ name: "", category: "", price: "", stock: "", image: "" });
   const [editLoading, setEditLoading] = useState(false);
 
   const _base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -777,6 +777,7 @@ function Products() {
           brand: newProd.brand || "",
           category: newProd.category,
           price: Number(newProd.price),
+          stock: Number(newProd.stock) || 0,
           image: newProd.image || `https://placehold.co/300x300/f9f0ef/c87a74?text=${encodeURIComponent(newProd.name)}`,
         }),
       });
@@ -786,13 +787,13 @@ function Products() {
       }
     } catch (_) {}
     setAddLoading(false);
-    setNewProd({ name: "", category: "", price: "", image: "" });
+    setNewProd({ name: "", category: "", price: "", stock: "", image: "" });
     setShowAdd(false);
   };
 
   const openEdit = (p) => {
     setEditTarget(p);
-    setEditProd({ name: p.name, category: p.category, price: String(p.price), image: p.image });
+    setEditProd({ name: p.name, category: p.category, price: String(p.price), stock: String(p.stock ?? 0), image: p.image });
   };
 
   const handleEditSave = async (e) => {
@@ -807,6 +808,7 @@ function Products() {
           name: editProd.name,
           category: editProd.category,
           price: Number(editProd.price),
+          stock: Number(editProd.stock) || 0,
           image: editProd.image,
         }),
       });
@@ -844,15 +846,26 @@ function Products() {
                 </div>
                 <div className="adm-form-group">
                   <label>Kategori *</label>
-                  <input placeholder="e.g. Serum" value={newProd.category} onChange={e => setNewProd(p => ({ ...p, category: e.target.value }))} className="adm-input" />
+                  <select className="adm-input" value={newProd.category} onChange={e => setNewProd(p => ({ ...p, category: e.target.value }))}>
+                    <option value="">— Pilih kategori —</option>
+                    {apiCategories.map(c => (
+                      <option key={c.id} value={c.name}>{c.label || c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="adm-form-row">
                 <div className="adm-form-group">
-                  <label>Harga (Rp) *</label>
+                  <label>Harga per Pcs (Rp) *</label>
                   <input type="number" placeholder="e.g. 150000" value={newProd.price} onChange={e => setNewProd(p => ({ ...p, price: e.target.value }))} className="adm-input" />
                 </div>
                 <div className="adm-form-group">
+                  <label>Stok (pcs)</label>
+                  <input type="number" placeholder="e.g. 50" min="0" value={newProd.stock} onChange={e => setNewProd(p => ({ ...p, stock: e.target.value }))} className="adm-input" />
+                </div>
+              </div>
+              <div className="adm-form-row">
+                <div className="adm-form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>Foto Produk</label>
                   <ImageDropInput value={newProd.image} onChange={v => setNewProd(p => ({ ...p, image: v }))} />
                 </div>
@@ -888,7 +901,8 @@ function Products() {
               <tr>
                 <th>Produk</th>
                 <th>Kategori</th>
-                <th>Harga</th>
+                <th>Harga / Pcs</th>
+                <th>Stok</th>
                 <th>Rating</th>
                 <th>Ulasan</th>
                 <th>Aksi</th>
@@ -905,6 +919,7 @@ function Products() {
                   </td>
                   <td><span className="adm-cat-badge">{p.category}</span></td>
                   <td><strong>{fmt(p.price)}</strong></td>
+                  <td>{p.stock ?? 0} pcs</td>
                   <td>
                     <span className="adm-rating-cell"><IcStar /> {p.rating}</span>
                   </td>
@@ -939,15 +954,26 @@ function Products() {
                   </div>
                   <div className="adm-form-group">
                     <label>Kategori *</label>
-                    <input className="adm-input" value={editProd.category} onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))} />
+                    <select className="adm-input" value={editProd.category} onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))}>
+                      <option value="">— Pilih kategori —</option>
+                      {apiCategories.map(c => (
+                        <option key={c.id} value={c.name}>{c.label || c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="adm-form-row">
                   <div className="adm-form-group">
-                    <label>Harga (Rp) *</label>
+                    <label>Harga per Pcs (Rp) *</label>
                     <input type="number" className="adm-input" value={editProd.price} onChange={e => setEditProd(p => ({ ...p, price: e.target.value }))} />
                   </div>
                   <div className="adm-form-group">
+                    <label>Stok (pcs)</label>
+                    <input type="number" min="0" className="adm-input" value={editProd.stock} onChange={e => setEditProd(p => ({ ...p, stock: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="adm-form-row">
+                  <div className="adm-form-group" style={{ gridColumn: "1 / -1" }}>
                     <label>Foto Produk</label>
                     <ImageDropInput value={editProd.image} onChange={v => setEditProd(p => ({ ...p, image: v }))} />
                   </div>

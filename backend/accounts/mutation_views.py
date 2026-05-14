@@ -603,6 +603,7 @@ def _serialize_product_simple(p):
         "price":      p.price,
         "image":      p.image,
         "desc":       p.desc,
+        "stock":      p.stock,
         "bestseller": p.bestseller,
         "isActive":   p.is_active,
     }
@@ -623,6 +624,7 @@ def create_product(request):
         price=int(data["price"]),
         image=data.get("image", ""),
         desc=data.get("desc", ""),
+        stock=int(data.get("stock", 0)),
         bestseller=bool(data.get("bestseller", False)),
         is_active=True,
     )
@@ -643,6 +645,7 @@ def update_product(request, product_id):
     if "price"      in data: product.price      = int(data["price"]); fields.append("price")
     if "image"      in data: product.image      = data["image"];      fields.append("image")
     if "desc"       in data: product.desc       = data["desc"];       fields.append("desc")
+    if "stock"      in data: product.stock      = int(data["stock"]);  fields.append("stock")
     if "bestseller" in data: product.bestseller = bool(data["bestseller"]); fields.append("bestseller")
     if fields:
         product.save(update_fields=fields)
