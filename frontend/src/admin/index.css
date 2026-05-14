@@ -2391,7 +2391,7 @@
 .adm-modal-footer {
   display: flex;
   gap: 10px;
-  padding: 0 24px 22px;
+  padding: 22px 24px 22px;
 }
 .adm-modal-textarea {
   width: 100%;
@@ -2407,6 +2407,23 @@
   box-sizing: border-box;
 }
 .adm-modal-textarea:focus { border-color: var(--adm-brand); }
+.adm-modal-select {
+  width: 100%;
+  height: 40px;
+  border: 1.5px solid var(--adm-brand-border);
+  border-radius: 10px;
+  padding: 0 13px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--adm-text);
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.18s;
+  box-sizing: border-box;
+  appearance: auto;
+}
+.adm-modal-select:focus { border-color: var(--adm-brand); }
 
 /* Modal center (loading + success) */
 .adm-modal-center {
@@ -4062,6 +4079,7 @@
   margin: 12px 0 0;
   font-size: 12.5px;
   color: #b91c1c;
+  padding-bottom: 4px;
 }
 
 @media (max-width: 1024px) {

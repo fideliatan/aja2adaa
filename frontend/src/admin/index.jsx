@@ -2199,7 +2199,8 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
   const [rejectModal,  setRejectModal]  = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [shipModal,    setShipModal]    = useState(false);
-  const [courierInput, setCourierInput] = useState("");
+  const [courierInput,    setCourierInput]    = useState("");
+  const [courierIsCustom, setCourierIsCustom] = useState(false);
   const [trackingInput, setTrackingInput] = useState("");
   const [deliverModal,  setDeliverModal] = useState(false);
   const [deliverFile,   setDeliverFile]  = useState(null);
@@ -2457,12 +2458,32 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
     setRejectReason("");
   };
 
+  const COURIER_BY_DELIVERY = {
+    instant: ["GoSend", "GrabExpress"],
+    sameday: ["Anteraja Same Day", "SiCepat BEST", "GoSend", "GrabExpress"],
+    regular: ["JNE Reguler", "JNE YES", "SiCepat HALU", "J&T Express", "Anteraja", "Pos Indonesia", "TIKI", "Lion Parcel", "Ninja Xpress"],
+    economy: ["JNE OKE", "J&T Cargo", "Pos Indonesia", "TIKI"],
+  };
+  const _deliveryId = order?.deliveryId ?? "regular";
+  const COURIER_OPTIONS = COURIER_BY_DELIVERY[_deliveryId] ?? COURIER_BY_DELIVERY.regular;
+
+  const handleCourierSelect = (val) => {
+    if (val === "__other__") {
+      setCourierIsCustom(true);
+      setCourierInput("");
+    } else {
+      setCourierIsCustom(false);
+      setCourierInput(val);
+    }
+  };
+
   const handleShipConfirm = () => {
     if (!trackingInput.trim()) return;
-    if (order.fromCtx) shipOrder(order.id, courierInput.trim() || "JNE Regular", trackingInput.trim());
+    const finalCourier = courierInput.trim() || COURIER_OPTIONS[0] || "JNE Reguler";
+    if (order.fromCtx) shipOrder(order.id, finalCourier, trackingInput.trim());
     else {
       setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
-      setLocalShip(p => ({ ...p, [order.id]: { courier: courierInput.trim() || "JNE Regular", trackingNumber: trackingInput.trim() } }));
+      setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
     }
     setShipModal(false);
   };
@@ -2814,7 +2835,7 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
                     className="adm-pa-approve-btn"
                     disabled={!allQrsGenerated}
                     title={!allQrsGenerated ? "Generate semua QR produk terlebih dahulu" : undefined}
-                    onClick={() => { setShipModal(true); setCourierInput(""); setTrackingInput(""); }}
+                    onClick={() => { setShipModal(true); setCourierInput(""); setCourierIsCustom(false); setTrackingInput(""); }}
                     style={{ opacity: allQrsGenerated ? 1 : 0.5, cursor: allQrsGenerated ? "pointer" : "not-allowed" }}
                   >
                     <IcTruck /> Input Pengiriman
@@ -3035,10 +3056,34 @@ function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>KURIR</label>
-                  <input className="adm-modal-textarea" style={{ minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
-                    placeholder="JNE Regular, SiCepat HALU, J&T Express…"
-                    value={courierInput} onChange={e => setCourierInput(e.target.value)} />
+                  <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 4 }}>KURIR</label>
+                  {order?.delivery && (
+                    <span style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 6 }}>
+                      Opsi disesuaikan dengan metode pengiriman pelanggan:{" "}
+                      <strong style={{ color: "#555" }}>{order.delivery}</strong>
+                    </span>
+                  )}
+                  <select
+                    className="adm-modal-select"
+                    value={courierIsCustom ? "__other__" : (courierInput || "")}
+                    onChange={e => handleCourierSelect(e.target.value)}
+                  >
+                    <option value="">— Pilih kurir —</option>
+                    {COURIER_OPTIONS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__other__">Lainnya (input manual)…</option>
+                  </select>
+                  {courierIsCustom && (
+                    <input
+                      className="adm-modal-textarea"
+                      style={{ marginTop: 8, minHeight: "unset", height: 40, resize: "none", borderRadius: 10 }}
+                      placeholder="Nama kurir..."
+                      autoFocus
+                      value={courierInput}
+                      onChange={e => setCourierInput(e.target.value)}
+                    />
+                  )}
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: "#888", display: "block", marginBottom: 6 }}>NOMOR RESI *</label>
