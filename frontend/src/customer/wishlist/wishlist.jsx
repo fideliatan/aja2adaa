@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ShoppingCart, Check } from "lucide-react";
 import "./wishlist.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -99,7 +100,10 @@ export default function WishlistPage() {
                     onClick={() => addToBag(item.id)}
                     disabled={addedIds.includes(item.id)}
                   >
-                    {addedIds.includes(item.id) ? "✓" : "+"}
+                    {addedIds.includes(item.id)
+                      ? <><Check size={14} /> Ditambahkan</>
+                      : <><ShoppingCart size={14} /> Tambah ke Keranjang</>
+                    }
                   </button>
                 </div>
 

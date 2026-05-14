@@ -278,7 +278,6 @@ export default function HomePage() {
               <div className="cat-card-img-wrap" style={{ backgroundImage: `url(${cat.image})` }}>
                 <div className="cat-card-dim" />
                 <span className="cat-card-label">{cat.label}</span>
-                <div className="cat-card-overlay">Lihat Sekarang</div>
               </div>
               <div className="cat-card-footer">
                 <p className="cat-card-name">{cat.name}</p>
