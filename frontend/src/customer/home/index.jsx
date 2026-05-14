@@ -256,8 +256,9 @@ export default function HomePage() {
           </div>
 
           <div className="home-story-grid">
-            {STORE_HIGHLIGHTS.map((item) => (
+            {STORE_HIGHLIGHTS.map((item, i) => (
               <article key={item.title} className="home-story-card">
+                <span className="home-story-card-num">{String(i + 1).padStart(2, "0")}</span>
                 <span className="home-story-card-label">{item.label}</span>
                 <h3 className="home-story-card-title">{item.title}</h3>
                 <p className="home-story-card-desc">{item.desc}</p>

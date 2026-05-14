@@ -1,6 +1,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
-body { font-family: Inter, sans-serif; }
+body { font-family: var(--font-body); }
 
 .auth-page {
   --auth-primary: #d6867c;

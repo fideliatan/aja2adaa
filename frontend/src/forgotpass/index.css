@@ -1,6 +1,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
-body { font-family: Inter, sans-serif; }
+body { font-family: var(--font-body); }
 
 /* ══════════════════════════════════════════
    PAGE SHELL
@@ -449,7 +449,7 @@ body { font-family: Inter, sans-serif; }
   font-weight: 700;
   color: #1a1a1a;
   background: #fdf6f5;
-  font-family: Inter, sans-serif;
+  font-family: var(--font-body);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, transform 0.15s;
   cursor: text;

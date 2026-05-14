@@ -10,7 +10,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  font-family: Inter, sans-serif;
+  font-family: var(--font-body);
   background: #fdf6f5;
   color: #2d2d2d;
   color: #d6867c;
