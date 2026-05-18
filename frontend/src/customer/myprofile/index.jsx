@@ -96,12 +96,7 @@ const IconSettings = () => (
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 );
-const IconBell = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
+
 const IconLogOut = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -116,7 +111,6 @@ const navItems = [
   { id: "myaddress",    label: "Alamat Saya",    icon: <IconMapPin /> },
   { id: "orderstatus",  label: "Status Orderan", icon: <IconWallet /> },
   { id: "setting",      label: "Pengaturan",     icon: <IconSettings /> },
-  { id: "notifications",label: "Notifikasi",     icon: <IconBell /> },
 ];
 
 /* ── Sections ───────────────────────────────────────────── */
@@ -1038,109 +1032,6 @@ function OrderStatusSection() {
   );
 }
 
-/* ── Notifications Section ──────────────────────────────── */
-const MOCK_NOTIFICATIONS = [
-  { id: 1,  type: "order",    title: "Pesanan dibuat",                   body: "ORD-011 dikonfirmasi. Rp 362.000 via Transfer BCA.",                   time: "Baru saja",     read: false },
-  { id: 2,  type: "order",    title: "Pesanan dibuat",                   body: "ORD-012 dikonfirmasi. Rp 205.000 via GoPay.",                          time: "5 menit lalu",  read: false },
-  { id: 3,  type: "payment",  title: "Pembayaran disetujui",             body: "Admin telah memverifikasi Transfer BNI untuk ORD-013.",                time: "30 menit lalu", read: false },
-  { id: 4,  type: "payment",  title: "Pembayaran disetujui",             body: "Admin telah memverifikasi pembayaran OVO untuk ORD-014.",              time: "1 jam lalu",    read: false },
-  { id: 5,  type: "packing",  title: "Pesanan sedang dikemas",           body: "ORD-013 sedang disiapkan oleh tim kami. Est. kirim: 16 Apr.",          time: "2 jam lalu",    read: false },
-  { id: 6,  type: "packing",  title: "Pesanan sedang dikemas",           body: "ORD-014 sedang dikemas. Est. kirim: 15 Apr.",                          time: "3 jam lalu",    read: true  },
-  { id: 7,  type: "shipped",  title: "Pesanan dalam perjalanan!",        body: "ORD-015 dikirim via JNE Regular. No. Resi: JNE20250412005123.",        time: "Kemarin",       read: true  },
-  { id: 8,  type: "shipped",  title: "Pesanan dalam perjalanan!",        body: "ORD-016 dikirim via SiCepat HALU. Est. tiba: 14 Apr.",                 time: "2 hari lalu",   read: true  },
-  { id: 9,  type: "promo",    title: "Penawaran spesial untukmu",        body: "Dapatkan diskon 15% untuk pembelian berikutnya. Gunakan kode CARE15.", time: "3 hari lalu",   read: true  },
-  { id: 10, type: "delivered", title: "Pesanan terkirim",                body: "ORD-007 telah tiba. Bagaimana pengalamanmu? Berikan ulasan!",          time: "8 hari lalu",   read: true  },
-];
-
-const NOTIF_META = {
-  order:     { icon: <ShoppingBag size={16} />, color: "#e09a3a", bg: "rgba(224,154,58,0.1)"  },
-  payment:   { icon: <CheckCircle size={16} />, color: "#22c55e", bg: "rgba(34,197,94,0.1)"   },
-  packing:   { icon: <Package size={16} />,     color: "#4a9fd4", bg: "rgba(74,159,212,0.1)"  },
-  shipped:   { icon: <Truck size={16} />,       color: "#8b5cf6", bg: "rgba(139,92,246,0.1)"  },
-  delivered: { icon: <PartyPopper size={16} />, color: "#5aab6d", bg: "rgba(90,171,109,0.1)"  },
-  promo:     { icon: <Tag size={16} />,         color: "#d6867c", bg: "rgba(214,134,124,0.1)" },
-};
-
-function NotificationsSection() {
-  const [notifs, setNotifs] = useState(MOCK_NOTIFICATIONS);
-  const [filter, setFilter] = useState("all");
-
-  const unread   = notifs.filter(n => !n.read).length;
-  const filters  = ["all", "order", "payment", "packing", "shipped", "promo"];
-  const filtered = filter === "all" ? notifs : notifs.filter(n => n.type === filter);
-
-  const markRead    = (id) => setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = ()   => setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-  const dismiss     = (id) => setNotifs(prev => prev.filter(n => n.id !== id));
-
-  return (
-    <div className="pr-order-section">
-      <div className="pr-order-header">
-        <div>
-          <h2 className="pr-section-title">Notifikasi</h2>
-          <p className="pr-section-sub">{unread} belum dibaca · {notifs.length} total</p>
-        </div>
-        {unread > 0 && (
-          <button className="pr-notif-markall" onClick={markAllRead}>Tandai semua telah dibaca</button>
-        )}
-      </div>
-
-      {/* Filter pills */}
-      <div className="pr-notif-filters">
-        {filters.map(f => (
-          <button
-            key={f}
-            className={`pr-notif-pill${filter === f ? " pr-notif-pill--active" : ""}`}
-            onClick={() => setFilter(f)}
-          >
-            {f === "all" ? "Semua" : f === "order" ? "Pesanan" : f === "payment" ? "Pembayaran" : f === "packing" ? "Pengemasan" : f === "shipped" ? "Dikirim" : "Promo"}
-            <span className="pr-notif-pill-count">
-              {f === "all" ? notifs.length : notifs.filter(n => n.type === f).length}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* List */}
-      <div className="pr-notif-list">
-        {filtered.length === 0 ? (
-          <div className="pr-placeholder">
-            <p className="pr-placeholder-title">Tidak ada notifikasi</p>
-            <p className="pr-placeholder-sub">Belum ada di kategori ini.</p>
-          </div>
-        ) : filtered.map(n => {
-          const meta = NOTIF_META[n.type] ?? NOTIF_META.order;
-          return (
-            <div
-              key={n.id}
-              className={`pr-notif-item${n.read ? "" : " pr-notif-item--unread"}`}
-              onClick={() => markRead(n.id)}
-            >
-              <div className="pr-notif-icon" style={{ background: meta.bg }}>
-                <span>{meta.icon}</span>
-              </div>
-              <div className="pr-notif-body">
-                <div className="pr-notif-top">
-                  <span className="pr-notif-title">{n.title}</span>
-                  <span className="pr-notif-time">{n.time}</span>
-                </div>
-                <p className="pr-notif-desc">{n.body}</p>
-              </div>
-              <div className="pr-notif-actions">
-                {!n.read && <span className="pr-notif-dot" />}
-                <button
-                  className="pr-notif-dismiss"
-                  onClick={e => { e.stopPropagation(); dismiss(n.id); }}
-                >✕</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /* ── Rate Order Section ─────────────────────────────────── */
 function RateOrderSection() {
   const [query, setQuery]       = useState("");
@@ -1730,7 +1621,6 @@ export default function MyProfile() {
       case "myaddress":    return <MyAddressSection />;
       case "orderstatus":  return <OrderStatusSection />;
       case "setting":      return <SettingSection />;
-      case "notifications":return <NotificationsSection />;
       default:             return null;
     }
   };

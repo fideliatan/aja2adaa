@@ -3461,6 +3461,7 @@ function VerifyHistory() {
   const [query,          setQuery]          = useState("");
   const [historyData,    setHistoryData]    = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [viewDetail,     setViewDetail]     = useState(null);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -3599,12 +3600,51 @@ function VerifyHistory() {
                 : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Invalid</>
               }
             </div>
-            <button className="adm-act-btn adm-act-btn--edit" title="Lihat Detail">
+            <button className="adm-act-btn adm-act-btn--edit" title="Lihat Detail" onClick={() => setViewDetail(v)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
         ))}
       </div>
+
+      {/* ── Detail Modal ── */}
+      {viewDetail && (
+        <div className="adm-modal-overlay" onClick={() => setViewDetail(null)}>
+          <div className="adm-modal" style={{maxWidth:480}} onClick={e => e.stopPropagation()}>
+            <div className="adm-modal-header">
+              <h3 className="adm-modal-title">Detail Verifikasi</h3>
+              <button className="adm-modal-close" onClick={() => setViewDetail(null)}>✕</button>
+            </div>
+            <div className="adm-modal-body" style={{display:"flex",flexDirection:"column",gap:14}}>
+              {/* Status badge */}
+              <div style={{display:"flex",justifyContent:"center",marginBottom:4}}>
+                <span className={`adm-vh-result-badge adm-vh-result-badge--${viewDetail.result}`} style={{fontSize:14,padding:"6px 20px"}}>
+                  {viewDetail.result === "valid"
+                    ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Valid</>
+                    : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Invalid</>
+                  }
+                </span>
+              </div>
+              {[
+                ["Order ID",     viewDetail.orderId],
+                ["Customer",     viewDetail.customer],
+                ["Email",        viewDetail.email],
+                ["File",         viewDetail.file],
+                ["Diverifikasi", viewDetail.date],
+                ["Oleh",         viewDetail.verifiedBy || "admin"],
+                ...(viewDetail.result === "invalid" && viewDetail.failureReason
+                  ? [["Alasan Gagal", viewDetail.failureReason]]
+                  : []),
+              ].map(([label, val]) => (
+                <div key={label} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <span style={{minWidth:110,fontSize:12,color:"var(--adm-text-3)",fontWeight:600,paddingTop:1}}>{label}</span>
+                  <span style={{fontSize:13,color:"var(--adm-text-1)",wordBreak:"break-all"}}>{val || "—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
