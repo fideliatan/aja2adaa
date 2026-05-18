@@ -634,19 +634,32 @@ const STATUS_LABEL = {
 
 const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
 
+const STATUS_KEY_MAP = {
+  adminapproval: "pending",
+  packing:       "packing",
+  shipped:       "shipped",
+  rateorder:     "delivered",
+};
+
 function OrderSection({ sectionKey, title }) {
-  const [query, setQuery]     = useState("");
+  const [query, setQuery]       = useState("");
   const [selected, setSelected] = useState(null);
-  const orders = MOCK_ORDERS[sectionKey] ?? [];
+  const { mockStore, session }  = useMockData();
+
+  const myId   = session?.userId;
   const status = STATUS_LABEL[sectionKey];
-  const q      = query.toLowerCase();
-  const filtered = orders.filter(o =>
-    o.id.toLowerCase().includes(q) ||
-    o.products.some(p => p.name.toLowerCase().includes(q))
+
+  const orders = (mockStore.orders ?? []).filter(o =>
+    o.customerId === myId && o.status === STATUS_KEY_MAP[sectionKey]
   );
 
-  const orderTotal = (order) =>
-    order.products.reduce((s, p) => s + p.price * p.qty, 0) + order.deliveryFee;
+  const q = query.toLowerCase();
+  const filtered = orders.filter(o =>
+    o.id.toLowerCase().includes(q) ||
+    (o.items ?? []).some(p => p.name.toLowerCase().includes(q))
+  );
+
+  const orderTotal = (order) => order.total ?? 0;
 
   const statusEmoji = sectionKey === "adminapproval" ? <Clock size={14} /> : sectionKey === "packing" ? <Package size={14} /> : <Truck size={14} />;
 
@@ -679,8 +692,9 @@ function OrderSection({ sectionKey, title }) {
       ) : (
         <div className="pr-order-list">
           {filtered.map(order => {
-            const total = orderTotal(order);
-            const itemCount = order.products.reduce((s, p) => s + p.qty, 0);
+            const items     = order.items ?? [];
+            const total     = orderTotal(order);
+            const itemCount = items.reduce((s, p) => s + p.qty, 0);
             return (
               <div
                 key={order.id}
@@ -695,47 +709,38 @@ function OrderSection({ sectionKey, title }) {
                 </div>
 
                 <div className="pr-order-thumbs">
-                  {order.products.slice(0, 3).map((p, i) => (
-                    <img key={i} src={p.image} alt={p.name} className="pr-order-thumb" />
+                  {items.slice(0, 3).map((p, i) => (
+                    <img key={i} src={p.image} alt={p.name} className="pr-order-thumb"
+                      onError={e => { e.target.onerror = null; e.target.src = "https://placehold.co/72x72/fce8e6/c4706a?text=Prod"; }} />
                   ))}
-                  {order.products.length > 3 && (
-                    <span className="pr-order-thumb-more">+{order.products.length - 3}</span>
+                  {items.length > 3 && (
+                    <span className="pr-order-thumb-more">+{items.length - 3}</span>
                   )}
                 </div>
 
-                <p className="pr-order-summary">
-                  {order.products[0].name}
-                  {order.products.length > 1 && (
-                    <span className="pr-order-summary-more"> &amp; {order.products.length - 1} produk lainnya</span>
-                  )}
-                </p>
+                {items[0] && (
+                  <p className="pr-order-summary">
+                    {items[0].name}
+                    {items.length > 1 && (
+                      <span className="pr-order-summary-more"> &amp; {items.length - 1} produk lainnya</span>
+                    )}
+                  </p>
+                )}
 
                 {sectionKey === "adminapproval" && (
                   <div className="pr-order-info-row">
                     <span className="pr-order-info-label">Pembayaran</span>
-                    <span className="pr-order-info-value">{order.payment.method} · {order.payment.account}</span>
-                  </div>
-                )}
-                {sectionKey === "packing" && (
-                  <div className="pr-order-info-row">
-                    <span className="pr-order-info-label">Est. tanggal kirim</span>
-                    <span className="pr-order-info-value">{order.estimatedShip}</span>
+                    <span className="pr-order-info-value">{order.payment}{order.paymentAccount ? ` · ${order.paymentAccount}` : ""}</span>
                   </div>
                 )}
                 {sectionKey === "shipped" && (
                   <>
-                    <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">Kurir</span>
-                      <span className="pr-order-info-value">{order.courier}</span>
-                    </div>
-                    <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">No. Resi</span>
-                      <span className="pr-order-info-value pr-order-tracking">{order.tracking}</span>
-                    </div>
-                    <div className="pr-order-info-row">
-                      <span className="pr-order-info-label">Est. tiba</span>
-                      <span className="pr-order-info-value" style={{ color: "#5aab6d", fontWeight: 600 }}>{order.estimatedArrival}</span>
-                    </div>
+                    {order.trackingNumber && (
+                      <div className="pr-order-info-row">
+                        <span className="pr-order-info-label">No. Resi</span>
+                        <span className="pr-order-info-value pr-order-tracking">{order.trackingNumber}</span>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -783,12 +788,13 @@ function OrderSection({ sectionKey, title }) {
               <div className="pr-modal-section">
                 <p className="pr-modal-section-title">Produk Dipesan</p>
                 <div className="pr-modal-products">
-                  {selected.products.map((p, i) => (
+                  {(selected.items ?? []).map((p, i) => (
                     <div key={i} className="pr-modal-product">
-                      <img src={p.image} alt={p.name} className="pr-modal-product-img" />
+                      <img src={p.image} alt={p.name} className="pr-modal-product-img"
+                        onError={e => { e.target.onerror = null; e.target.src = "https://placehold.co/72x72/fce8e6/c4706a?text=Prod"; }} />
                       <div className="pr-modal-product-info">
                         <p className="pr-modal-product-name">{p.name}</p>
-                        <p className="pr-modal-product-meta">{p.size} · Jml {p.qty}</p>
+                        <p className="pr-modal-product-meta">Jml {p.qty}</p>
                       </div>
                       <span className="pr-modal-product-price">{fmt(p.price * p.qty)}</span>
                     </div>
@@ -796,7 +802,7 @@ function OrderSection({ sectionKey, title }) {
                 </div>
                 <div className="pr-modal-cost-rows">
                   <div className="pr-modal-cost-row">
-                    <span>Biaya pengiriman</span><span>{fmt(selected.deliveryFee)}</span>
+                    <span>Biaya pengiriman</span><span>{fmt(selected.deliveryFee ?? 0)}</span>
                   </div>
                   <div className="pr-modal-cost-row pr-modal-cost-row--total">
                     <span>Total</span><span>{fmt(orderTotal(selected))}</span>
@@ -821,13 +827,9 @@ function OrderSection({ sectionKey, title }) {
                 <div className="pr-modal-section">
                   <p className="pr-modal-section-title">Informasi Pengemasan</p>
                   <div className="pr-modal-info-grid">
-                    <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Dikemas oleh</span>
-                      <span className="pr-modal-info-value">{selected.packedBy}</span>
-                    </div>
-                    <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Est. tanggal kirim</span>
-                      <span className="pr-modal-info-value">{selected.estimatedShip}</span>
+                    <div className="pr-modal-info-item pr-modal-info-item--full">
+                      <span className="pr-modal-info-label">Status</span>
+                      <span className="pr-modal-info-value">Pesanan kamu sedang dikemas oleh tim kami.</span>
                     </div>
                   </div>
                 </div>
@@ -837,18 +839,12 @@ function OrderSection({ sectionKey, title }) {
                 <div className="pr-modal-section">
                   <p className="pr-modal-section-title">Informasi Pengiriman</p>
                   <div className="pr-modal-info-grid">
-                    <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Kurir</span>
-                      <span className="pr-modal-info-value">{selected.courier}</span>
-                    </div>
-                    <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">No. Resi</span>
-                      <span className="pr-modal-info-value pr-modal-info-track">{selected.tracking}</span>
-                    </div>
-                    <div className="pr-modal-info-item">
-                      <span className="pr-modal-info-label">Est. tiba</span>
-                      <span className="pr-modal-info-value">{selected.estimatedArrival}</span>
-                    </div>
+                    {selected.trackingNumber && (
+                      <div className="pr-modal-info-item pr-modal-info-item--full">
+                        <span className="pr-modal-info-label">No. Resi</span>
+                        <span className="pr-modal-info-value pr-modal-info-track">{selected.trackingNumber}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -857,13 +853,12 @@ function OrderSection({ sectionKey, title }) {
               <div className="pr-modal-section">
                 <p className="pr-modal-section-title">Metode Pembayaran</p>
                 <div className="pr-modal-payment">
-                  <div className="pr-modal-payment-badge">{selected.payment.method}</div>
-                  <div>
-                    <p className="pr-modal-payment-account">{selected.payment.account}</p>
-                    <p className="pr-modal-payment-holder">
-                      {selected.payment.holder ? `a.n. ${selected.payment.holder}` : "Akun pembayaran yang digunakan untuk pesanan ini"}
-                    </p>
-                  </div>
+                  <div className="pr-modal-payment-badge">{selected.payment ?? "—"}</div>
+                  {selected.paymentAccount && (
+                    <div>
+                      <p className="pr-modal-payment-account">{selected.paymentAccount}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1414,6 +1409,8 @@ function RateOrderSection() {
 /* ── Settings Section ───────────────────────────────────── */
 function SettingSection() {
   const navigate = useNavigate();
+  const { session, currentUser } = useMockData();
+  const userEmail = currentUser?.email || session?.email || "—";
 
   // Password
   const [showPw, setShowPw]   = useState(false);
@@ -1479,7 +1476,7 @@ function SettingSection() {
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
             <span className="pr-setting-row-title">Kata Sandi</span>
-            <span className="pr-setting-row-sub">Terakhir diubah 3 bulan lalu</span>
+            <span className="pr-setting-row-sub">Gunakan kata sandi yang kuat dan unik</span>
           </div>
           <button
             className="pr-setting-action-btn"
@@ -1528,7 +1525,7 @@ function SettingSection() {
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
             <span className="pr-setting-row-title">Akun Terhubung</span>
-            <span className="pr-setting-row-sub">sara.tancredi@gmail.com</span>
+            <span className="pr-setting-row-sub">{userEmail}</span>
           </div>
           <span className="pr-setting-chip pr-setting-chip--green">Terverifikasi</span>
         </div>
@@ -1581,7 +1578,7 @@ function SettingSection() {
             <span className="pr-setting-row-title">Zona Waktu</span>
             <span className="pr-setting-row-sub">Semua waktu ditampilkan dalam zona lokal kamu</span>
           </div>
-          <span className="pr-setting-chip">WITA (UTC+8)</span>
+          <span className="pr-setting-chip">{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
         </div>
       </div>
 

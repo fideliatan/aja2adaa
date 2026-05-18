@@ -1,27 +1,33 @@
 .footer {
   position: relative;
   background:
-    radial-gradient(ellipse at top left,     rgba(251,182,206,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(201,114,105,0.18) 0%, transparent 48%),
-    radial-gradient(ellipse at top right,    rgba(244,114,182,0.08) 0%, transparent 40%),
-    linear-gradient(160deg, #1a0d12 0%, #14090e 50%, #1a0d12 100%);
+    radial-gradient(ellipse at 10% 0%,    rgba(232,140,180,0.30) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 0%,    rgba(220,150,100,0.25) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 100%,  rgba(180,80,130,0.22)  0%, transparent 50%),
+    radial-gradient(ellipse at 30% 60%,   rgba(200,120,80,0.12)  0%, transparent 45%),
+    radial-gradient(ellipse at 75% 40%,   rgba(210,110,160,0.10) 0%, transparent 42%),
+    linear-gradient(155deg, #180b12 0%, #110810 48%, #1a0c10 100%);
   margin-top: 64px;
 }
 
 /* ── Top gradient accent bar ── */
 .footer-accent-bar {
-  height: 3px;
+  height: 4px;
   background: linear-gradient(
     90deg,
-    transparent   0%,
-    #c97269       15%,
-    #f9a8d4       40%,
-    #fce7f3       50%,
-    #f9a8d4       60%,
-    #c97269       85%,
-    transparent   100%
+    transparent 0%,
+    #8a3060     8%,
+    #c47898     22%,
+    #e8a0b8     32%,
+    #f5c8a0     42%,
+    #fdd8b8     50%,
+    #f5c8a0     58%,
+    #e8a0b8     68%,
+    #c47898     78%,
+    #8a3060     92%,
+    transparent 100%
   );
-  opacity: 0.9;
+  opacity: 1;
 }
 
 /* ── Main inner grid ── */
@@ -53,10 +59,11 @@
   height: 44px;
   border-radius: 14px;
   overflow: hidden;
-  border: 1.5px solid rgba(201,114,105,0.35);
+  border: 1.5px solid rgba(232,150,180,0.40);
   box-shadow:
-    0 0 0 4px rgba(201,114,105,0.1),
-    0 8px 20px rgba(0,0,0,0.3);
+    0 0 0 4px rgba(220,120,160,0.10),
+    0 0 22px rgba(200,110,140,0.18),
+    0 8px 28px rgba(0,0,0,0.50);
   flex-shrink: 0;
 }
 
@@ -71,7 +78,7 @@
   font-weight: 700;
   font-family: var(--font-body);
   letter-spacing: -0.3px;
-  background: linear-gradient(135deg, #ffffff 0%, #fce7f3 50%, #f9a8d4 100%);
+  background: linear-gradient(135deg, #fff4f0 0%, #fdd8c0 30%, #eeaaba 60%, #d480a0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -79,7 +86,7 @@
 
 .footer-tagline {
   font-size: 13px;
-  color: rgba(255,255,255,0.42);
+  color: rgba(245,205,220,0.40);
   margin: 0;
   line-height: 1.75;
   max-width: 260px;
@@ -95,9 +102,9 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.09);
-  color: rgba(255,255,255,0.4);
+  background: rgba(220,130,160,0.07);
+  border: 1px solid rgba(220,130,160,0.18);
+  color: rgba(245,205,220,0.42);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,11 +113,11 @@
 }
 
 .footer-social-btn:hover {
-  background: linear-gradient(135deg, #e8907f, #c97269);
+  background: linear-gradient(135deg, #e8a0b8, #c47850);
   color: #fff;
   border-color: transparent;
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(201,114,105,0.4);
+  box-shadow: 0 8px 24px rgba(200,100,140,0.50);
 }
 
 /* ── Link columns ── */
@@ -124,7 +131,7 @@
 .footer-col-title {
   font-size: 10px;
   font-weight: 700;
-  color: #f9a8d4;
+  color: #d48898;
   text-transform: uppercase;
   letter-spacing: 2px;
   margin: 0 0 8px;
@@ -133,7 +140,7 @@
 
 .footer-col span {
   font-size: 13.5px;
-  color: rgba(255,255,255,0.45);
+  color: rgba(245,205,220,0.42);
   cursor: pointer;
   font-family: var(--font-body);
   transition: color 0.2s, transform 0.2s;
@@ -142,14 +149,14 @@
 }
 
 .footer-col span:hover {
-  color: #f9a8d4;
+  color: #f5c0d0;
   transform: translateX(4px);
 }
 
 /* ── Bottom bar ── */
 .footer-bottom {
-  border-top: 1px solid rgba(249,168,212,0.1);
-  background: rgba(0,0,0,0.2);
+  border-top: 1px solid rgba(220,130,160,0.12);
+  background: rgba(0,0,0,0.22);
 }
 
 .footer-bottom-inner {
@@ -165,7 +172,7 @@
 
 .footer-bottom p {
   font-size: 11.5px;
-  color: rgba(255,255,255,0.22);
+  color: rgba(245,205,220,0.22);
   margin: 0;
   font-family: var(--font-body);
 }
@@ -177,14 +184,14 @@
 
 .footer-legal span {
   font-size: 11.5px;
-  color: rgba(255,255,255,0.22);
+  color: rgba(245,205,220,0.22);
   cursor: pointer;
   font-family: var(--font-body);
   transition: color 0.2s;
 }
 
 .footer-legal span:hover {
-  color: #f9a8d4;
+  color: #e8a0b8;
 }
 
 /* ── Responsive ── */
