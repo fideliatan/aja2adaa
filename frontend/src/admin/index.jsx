@@ -674,7 +674,7 @@ function resizeToBase64(file, maxPx = 500, quality = 0.82) {
   });
 }
 
-function ImageDropInput({ value, onChange }) {
+function ImageDropInput({ value, onChange, editMode = false }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef();
 
@@ -692,6 +692,25 @@ function ImageDropInput({ value, onChange }) {
     setDragging(false);
     handleFiles(e.dataTransfer.files);
   };
+
+  if (editMode) {
+    return (
+      <div
+        className={`adm-ep-drop${dragging ? " adm-ep-drop--over" : ""}`}
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+      >
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => handleFiles(e.target.files)} />
+        <div className="adm-ep-drop-inner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>{value ? "Ganti Foto" : "Upload Foto"}</span>
+        </div>
+        {value && <button type="button" className="adm-ep-drop-remove" onClick={e => { e.stopPropagation(); onChange(""); }}>✕ Hapus</button>}
+      </div>
+    );
+  }
 
   if (value) {
     return (
@@ -956,21 +975,57 @@ function Products() {
       {/* Edit Product Modal */}
       {editTarget && (
         <div className="adm-modal-overlay" onClick={() => setEditTarget(null)}>
-          <div className="adm-modal" onClick={e => e.stopPropagation()}>
-            <div className="adm-modal-header">
-              <h3>Edit Produk</h3>
-              <button className="adm-modal-close" onClick={() => setEditTarget(null)}>✕</button>
+          <div className="adm-ep-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Left — image panel */}
+            <div className="adm-ep-img-panel">
+              <div className="adm-ep-img-panel-bg" style={editProd.image ? { backgroundImage: `url(${editProd.image})` } : {}} />
+              <div className="adm-ep-img-panel-overlay" />
+              <div className="adm-ep-img-top">
+                <span className="adm-ep-badge">Edit Produk</span>
+                <button type="button" className="adm-ep-close" onClick={() => setEditTarget(null)}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="adm-ep-img-center">
+                <ImageDropInput value={editProd.image} onChange={v => setEditProd(p => ({ ...p, image: v }))} editMode />
+              </div>
+              <div className="adm-ep-img-bottom">
+                <p className="adm-ep-prod-name">{editProd.name || editTarget.name}</p>
+                <p className="adm-ep-prod-cat">{editProd.category || editTarget.category}</p>
+              </div>
             </div>
-            <div className="adm-modal-body">
-              <form className="adm-add-form" onSubmit={handleEditSave}>
-                <div className="adm-form-row">
-                  <div className="adm-form-group">
-                    <label>Nama Produk *</label>
-                    <input className="adm-input" value={editProd.name} onChange={e => setEditProd(p => ({ ...p, name: e.target.value }))} />
+
+            {/* Right — form panel */}
+            <form className="adm-ep-form" onSubmit={handleEditSave}>
+              <div className="adm-ep-form-header">
+                <h3 className="adm-ep-form-title">Detail Produk</h3>
+                <p className="adm-ep-form-sub">Ubah informasi produk di bawah ini</p>
+              </div>
+
+              <div className="adm-ep-fields">
+                <div className="adm-ep-field">
+                  <label className="adm-ep-label">Nama Produk <span>*</span></label>
+                  <div className="adm-ep-input-wrap">
+                    <svg className="adm-ep-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <input
+                      className="adm-ep-input"
+                      placeholder="Masukkan nama produk"
+                      value={editProd.name}
+                      onChange={e => setEditProd(p => ({ ...p, name: e.target.value }))}
+                    />
                   </div>
-                  <div className="adm-form-group">
-                    <label>Kategori *</label>
-                    <select className="adm-input" value={editProd.category} onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))}>
+                </div>
+
+                <div className="adm-ep-field">
+                  <label className="adm-ep-label">Kategori <span>*</span></label>
+                  <div className="adm-ep-input-wrap">
+                    <svg className="adm-ep-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <select
+                      className="adm-ep-input adm-ep-select"
+                      value={editProd.category}
+                      onChange={e => setEditProd(p => ({ ...p, category: e.target.value }))}
+                    >
                       <option value="">— Pilih kategori —</option>
                       {apiCategories.map(c => (
                         <option key={c.id} value={c.name}>{c.label || c.name}</option>
@@ -978,30 +1033,49 @@ function Products() {
                     </select>
                   </div>
                 </div>
-                <div className="adm-form-row">
-                  <div className="adm-form-group">
-                    <label>Harga per Pcs (Rp) *</label>
-                    <input type="number" className="adm-input" value={editProd.price} onChange={e => setEditProd(p => ({ ...p, price: e.target.value }))} />
+
+                <div className="adm-ep-row">
+                  <div className="adm-ep-field">
+                    <label className="adm-ep-label">Harga (Rp) <span>*</span></label>
+                    <div className="adm-ep-input-wrap">
+                      <svg className="adm-ep-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      <input
+                        type="number"
+                        className="adm-ep-input"
+                        placeholder="0"
+                        value={editProd.price}
+                        onChange={e => setEditProd(p => ({ ...p, price: e.target.value }))}
+                      />
+                    </div>
                   </div>
-                  <div className="adm-form-group">
-                    <label>Stok (pcs)</label>
-                    <input type="number" min="0" className="adm-input" value={editProd.stock} onChange={e => setEditProd(p => ({ ...p, stock: e.target.value }))} />
+                  <div className="adm-ep-field">
+                    <label className="adm-ep-label">Stok (pcs)</label>
+                    <div className="adm-ep-input-wrap">
+                      <svg className="adm-ep-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                      <input
+                        type="number"
+                        min="0"
+                        className="adm-ep-input"
+                        placeholder="0"
+                        value={editProd.stock}
+                        onChange={e => setEditProd(p => ({ ...p, stock: e.target.value }))}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="adm-form-row">
-                  <div className="adm-form-group" style={{ gridColumn: "1 / -1" }}>
-                    <label>Foto Produk</label>
-                    <ImageDropInput value={editProd.image} onChange={v => setEditProd(p => ({ ...p, image: v }))} />
-                  </div>
-                </div>
-                <div className="adm-modal-footer" style={{ padding: "16px 0 0" }}>
-                  <button type="submit" className="adm-primary-btn" disabled={editLoading}>
-                    {editLoading ? "Menyimpan…" : "Simpan Perubahan"}
-                  </button>
-                  <button type="button" className="adm-ghost-btn" onClick={() => setEditTarget(null)}>Batal</button>
-                </div>
-              </form>
-            </div>
+              </div>
+
+              <div className="adm-ep-actions">
+                <button type="button" className="adm-ep-cancel" onClick={() => setEditTarget(null)}>Batal</button>
+                <button type="submit" className="adm-ep-save" disabled={editLoading}>
+                  {editLoading
+                    ? <><span className="adm-ep-spinner" /> Menyimpan…</>
+                    : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Simpan Perubahan</>
+                  }
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
       )}
@@ -3610,37 +3684,89 @@ function VerifyHistory() {
       {/* ── Detail Modal ── */}
       {viewDetail && (
         <div className="adm-modal-overlay" onClick={() => setViewDetail(null)}>
-          <div className="adm-modal" style={{maxWidth:480}} onClick={e => e.stopPropagation()}>
-            <div className="adm-modal-header">
-              <h3 className="adm-modal-title">Detail Verifikasi</h3>
-              <button className="adm-modal-close" onClick={() => setViewDetail(null)}>✕</button>
-            </div>
-            <div className="adm-modal-body" style={{display:"flex",flexDirection:"column",gap:14}}>
-              {/* Status badge */}
-              <div style={{display:"flex",justifyContent:"center",marginBottom:4}}>
-                <span className={`adm-vh-result-badge adm-vh-result-badge--${viewDetail.result}`} style={{fontSize:14,padding:"6px 20px"}}>
-                  {viewDetail.result === "valid"
-                    ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Valid</>
-                    : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Invalid</>
-                  }
-                </span>
+          <div className="adm-vd-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Close */}
+            <button className="adm-vd-close" onClick={() => setViewDetail(null)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
+            {/* Hero */}
+            <div className={`adm-vd-hero adm-vd-hero--${viewDetail.result}`}>
+              <div className="adm-vd-hero-icon">
+                {viewDetail.result === "valid"
+                  ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                }
               </div>
-              {[
-                ["Order ID",     viewDetail.orderId],
-                ["Customer",     viewDetail.customer],
-                ["Email",        viewDetail.email],
-                ["File",         viewDetail.file],
-                ["Diverifikasi", viewDetail.date],
-                ["Oleh",         viewDetail.verifiedBy || "admin"],
-                ...(viewDetail.result === "invalid" && viewDetail.failureReason
-                  ? [["Alasan Gagal", viewDetail.failureReason]]
-                  : []),
-              ].map(([label, val]) => (
-                <div key={label} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                  <span style={{minWidth:110,fontSize:12,color:"var(--adm-text-3)",fontWeight:600,paddingTop:1}}>{label}</span>
-                  <span style={{fontSize:13,color:"var(--adm-text-1)",wordBreak:"break-all"}}>{val || "—"}</span>
+              <p className="adm-vd-hero-status">{viewDetail.result === "valid" ? "Receipt Valid" : "Receipt Invalid"}</p>
+              <p className="adm-vd-hero-id">{viewDetail.orderId || "—"}</p>
+            </div>
+
+            {/* Body */}
+            <div className="adm-vd-body">
+
+              {/* Customer info */}
+              <div className="adm-vd-section">
+                <p className="adm-vd-section-label">Informasi Customer</p>
+                <div className="adm-vd-card">
+                  <div className="adm-vd-row">
+                    <span className="adm-vd-row-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </span>
+                    <span className="adm-vd-row-val">{viewDetail.customer || "—"}</span>
+                  </div>
+                  <div className="adm-vd-divider" />
+                  <div className="adm-vd-row">
+                    <span className="adm-vd-row-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </span>
+                    <span className="adm-vd-row-val adm-vd-row-val--muted">{viewDetail.email || "—"}</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Verifikasi info */}
+              <div className="adm-vd-section">
+                <p className="adm-vd-section-label">Detail Verifikasi</p>
+                <div className="adm-vd-card">
+                  <div className="adm-vd-row">
+                    <span className="adm-vd-row-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </span>
+                    <span className="adm-vd-row-label">File</span>
+                    <span className="adm-vd-row-val adm-vd-row-val--mono">{viewDetail.file || "—"}</span>
+                  </div>
+                  <div className="adm-vd-divider" />
+                  <div className="adm-vd-row">
+                    <span className="adm-vd-row-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </span>
+                    <span className="adm-vd-row-label">Waktu</span>
+                    <span className="adm-vd-row-val">{viewDetail.date || "—"}</span>
+                  </div>
+                  <div className="adm-vd-divider" />
+                  <div className="adm-vd-row">
+                    <span className="adm-vd-row-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </span>
+                    <span className="adm-vd-row-label">Oleh</span>
+                    <span className="adm-vd-row-val">{viewDetail.verifiedBy || "admin"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Failure reason */}
+              {viewDetail.result === "invalid" && viewDetail.failureReason && (
+                <div className="adm-vd-alert">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div>
+                    <p className="adm-vd-alert-title">Alasan Gagal</p>
+                    <p className="adm-vd-alert-body">{viewDetail.failureReason}</p>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
