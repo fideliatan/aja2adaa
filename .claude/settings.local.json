@@ -48,7 +48,10 @@
       "Bash(python manage.py makemigrations accounts --name add_category_page_limit)",
       "Bash(venv\\\\Scripts\\\\python.exe manage.py migrate accounts 0013_reviews_fk_on_delete_cascade)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\lodar\\\\OneDrive\\\\Dokumen\\\\Capstonee\\\\aja2adaa\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "mcp__cc44687d-2251-4736-a8c1-358aab6e6e15__search_files",
+      "mcp__cc44687d-2251-4736-a8c1-358aab6e6e15__read_file_content",
+      "mcp__cc44687d-2251-4736-a8c1-358aab6e6e15__create_file"
     ]
   }
 }
