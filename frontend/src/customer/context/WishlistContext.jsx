@@ -1,15 +1,32 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { useMockData } from "../../context/MockDataContext.jsx";
+import { getWishlist, addWishlistItem, removeWishlistItem } from "../../lib/wishlistService.js";
 
 const WishlistContext = createContext(null);
 
 export function WishlistProvider({ children }) {
+  const { session } = useMockData();
   const [wishlistItems, setWishlistItems] = useState([]);
   const [favorites, setFavorites] = useState(new Set());
 
+  useEffect(() => {
+    if (!session?.userId) {
+      setWishlistItems([]);
+      setFavorites(new Set());
+      return;
+    }
+    getWishlist(session.userId)
+      .then((items) => {
+        setWishlistItems(items);
+        setFavorites(new Set(items.map((i) => i.id)));
+      })
+      .catch(() => {});
+  }, [session?.userId]);
+
   const addToWishlist = (product) => {
     setWishlistItems((prev) => {
-      const exists = prev.find((i) => i.id === product.id);
-      if (exists) return prev;
+      if (prev.find((i) => i.id === product.id)) return prev;
+      if (session?.userId) addWishlistItem(session.userId, product).catch(() => {});
       return [...prev, product];
     });
     setFavorites((prev) => new Set([...prev, product.id]));
@@ -18,22 +35,18 @@ export function WishlistProvider({ children }) {
   const removeFromWishlist = (id) => {
     setWishlistItems((prev) => prev.filter((item) => item.id !== id));
     setFavorites((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(id);
-      return newSet;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
     });
+    if (session?.userId) removeWishlistItem(session.userId, id).catch(() => {});
   };
 
   const toggleFavorite = (id) => {
     if (favorites.has(id)) {
       removeFromWishlist(id);
     } else {
-      // This will need product data, so we handle it differently
-      setFavorites((prev) => {
-        const newSet = new Set(prev);
-        newSet.has(id) ? newSet.delete(id) : newSet.add(id);
-        return newSet;
-      });
+      setFavorites((prev) => new Set([...prev, id]));
     }
   };
 

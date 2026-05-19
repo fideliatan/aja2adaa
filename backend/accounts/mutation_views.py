@@ -8,7 +8,7 @@ from .models import (
     Order, OrderItem, OrderStatusHistory,
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     MonitoringFlag, ActivityTimeline, TrustedDevice, Address,
-    Product, Category,
+    Product, Category, CartItem, WishlistItem,
 )
 from .views import (
     _log_activity, _dt, _now,
@@ -663,4 +663,118 @@ def delete_product(request, product_id):
     except Product.DoesNotExist:
         return Response({"error": "Produk tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
     product.delete()
+    return Response({"ok": True})
+
+
+# ── Cart ────────────────────────────────────────────────────────
+
+def _serialize_cart_item(item):
+    return {
+        "id":        item.product_id,
+        "productId": item.product_id,
+        "name":      item.name,
+        "brand":     item.brand,
+        "category":  item.category,
+        "price":     item.price,
+        "image":     item.image,
+        "qty":       item.qty,
+    }
+
+
+@api_view(["GET", "POST", "DELETE"])
+def cart_list(request):
+    user_id = request.query_params.get("userId") or request.data.get("userId", "")
+    if not user_id:
+        return Response({"error": "userId diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "GET":
+        items = CartItem.objects.filter(user_id=user_id).order_by("created_at")
+        return Response({"items": [_serialize_cart_item(i) for i in items]})
+
+    if request.method == "DELETE":
+        CartItem.objects.filter(user_id=user_id).delete()
+        return Response({"ok": True})
+
+    # POST — upsert item
+    data = request.data
+    product = data.get("product", {})
+    qty = int(data.get("qty", 1))
+    product_id = product.get("id") or product.get("productId", "")
+    if not product_id:
+        return Response({"error": "productId diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    item, created = CartItem.objects.get_or_create(
+        user_id=user_id,
+        product_id=product_id,
+        defaults={
+            "name":     product.get("name", ""),
+            "brand":    product.get("brand", ""),
+            "category": product.get("category", ""),
+            "price":    product.get("price", 0),
+            "image":    product.get("image", ""),
+            "qty":      qty,
+        }
+    )
+    if not created:
+        item.qty = qty
+        item.save(update_fields=["qty"])
+    return Response({"item": _serialize_cart_item(item)}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+def cart_item(request, product_id):
+    user_id = request.query_params.get("userId") or request.data.get("userId", "")
+    CartItem.objects.filter(user_id=user_id, product_id=product_id).delete()
+    return Response({"ok": True})
+
+
+# ── Wishlist ────────────────────────────────────────────────────
+
+def _serialize_wishlist_item(item):
+    return {
+        "id":        item.product_id,
+        "productId": item.product_id,
+        "name":      item.name,
+        "brand":     item.brand,
+        "category":  item.category,
+        "price":     item.price,
+        "image":     item.image,
+    }
+
+
+@api_view(["GET", "POST"])
+def wishlist_list(request):
+    user_id = request.query_params.get("userId") or request.data.get("userId", "")
+    if not user_id:
+        return Response({"error": "userId diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "GET":
+        items = WishlistItem.objects.filter(user_id=user_id).order_by("created_at")
+        return Response({"items": [_serialize_wishlist_item(i) for i in items]})
+
+    # POST — add item (idempotent)
+    data = request.data
+    product = data.get("product", {})
+    product_id = product.get("id") or product.get("productId", "")
+    if not product_id:
+        return Response({"error": "productId diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    item, _ = WishlistItem.objects.get_or_create(
+        user_id=user_id,
+        product_id=product_id,
+        defaults={
+            "name":     product.get("name", ""),
+            "brand":    product.get("brand", ""),
+            "category": product.get("category", ""),
+            "price":    product.get("price", 0),
+            "image":    product.get("image", ""),
+        }
+    )
+    return Response({"item": _serialize_wishlist_item(item)}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+def wishlist_item(request, product_id):
+    user_id = request.query_params.get("userId") or request.data.get("userId", "")
+    WishlistItem.objects.filter(user_id=user_id, product_id=product_id).delete()
     return Response({"ok": True})
