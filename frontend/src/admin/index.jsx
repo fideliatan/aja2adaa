@@ -274,11 +274,16 @@ function RevenueChart() {
 /* ═══════════════════════════════════════════════════════════
    HELPER: Avatar initials
    ═══════════════════════════════════════════════════════════ */
-function Avatar({ name, size = 32 }) {
-  const parts = name.trim().split(" ");
+function Avatar({ name, size = 32, src = null }) {
+  const parts = (name || "?").trim().split(" ");
   const initials = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
   const colors = ["#e07a73","#8b5cf6","#4a9fd4","#22c55e","#f59e0b","#ec4899"];
-  const idx = name.charCodeAt(0) % colors.length;
+  const idx = (name || "?").charCodeAt(0) % colors.length;
+  if (src) {
+    return (
+      <img src={src} alt={name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+    );
+  }
   return (
     <div className="adm-avatar" style={{ width: size, height: size, background: colors[idx], fontSize: size * 0.36 }}>
       {initials.toUpperCase()}
@@ -1694,12 +1699,26 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
     if (!ret?.id) return;
     setRiskSummary(getCaseRiskSummary(mockStore, "return", ret.id));
     // Restore persisted verification result so it survives page reload
-    setReceiptVerify(ret.receiptVerifyStatus ?? null);
-    setReceiptVerifyData(
-      ret.receiptVerifyStatus
-        ? { failure_reason: ret.receiptVerifyReason ?? "" }
-        : null
-    );
+    const savedStatus = ret.receiptVerifyStatus ?? null;
+    setReceiptVerify(savedStatus);
+    if (savedStatus === "valid") {
+      setReceiptVerifyData({
+        valid: true,
+        order_id:       ret.orderId,
+        customer_name:  ret.customer,
+        customer_email: ret.email,
+        total:          ret.total,
+        generated_at:   ret.createdAt ?? null,
+        failure_reason: "",
+      });
+    } else if (savedStatus === "invalid") {
+      setReceiptVerifyData({
+        valid: false,
+        failure_reason: ret.receiptVerifyReason ?? "",
+      });
+    } else {
+      setReceiptVerifyData(null);
+    }
     setStepUpState({
       open: false,
       actionKey: "",
@@ -2095,6 +2114,8 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             form.append("pdf_file", blob, `e-receipt-${ret.orderId}.pdf`);
                             form.append("order_id", ret.orderId);
                             form.append("verified_by", currentUser?.id ?? "admin");
+                            form.append("return_customer_name", ret.customer ?? "");
+                            form.append("return_customer_email", ret.email ?? "");
                             const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
                             const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: form });
                             const data = await res.json();
@@ -3543,11 +3564,15 @@ const PaymentApproval = OrderDetail;
    Riwayat semua verifikasi receipt yang pernah dilakukan admin.
    ═══════════════════════════════════════════════════════════ */
 function VerifyHistory() {
+  const { mockStore } = useMockData();
   const [statusFilter,   setStatusFilter]   = useState("all");
   const [query,          setQuery]          = useState("");
   const [historyData,    setHistoryData]    = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [viewDetail,     setViewDetail]     = useState(null);
+
+  const resolveUser = (email) =>
+    (mockStore.users ?? []).find(u => u.email === email) ?? null;
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -3666,13 +3691,17 @@ function VerifyHistory() {
           <div className="adm-card" style={{padding:"32px", textAlign:"center", color:"var(--adm-text-3)"}}>
             {historyData.length === 0 ? "Belum ada riwayat verifikasi." : "Tidak ada data ditemukan."}
           </div>
-        ) : filtered.map((v, i) => (
+        ) : filtered.map((v, i) => {
+          const usr = resolveUser(v.email);
+          const displayName = usr?.name || v.customer || "—";
+          const displayAvatar = usr?.avatar || null;
+          return (
           <div key={v.id} className={`adm-vh-item adm-vh-item--${v.result}`}>
             <span className="adm-vh-item-num">{String(i + 1).padStart(2, "0")}</span>
             <div className="adm-vh-item-customer">
-              <Avatar name={v.customer} size={36} />
+              <Avatar name={displayName} size={36} src={displayAvatar} />
               <div>
-                <p className="adm-vh-item-name">{v.customer}</p>
+                <p className="adm-vh-item-name">{displayName}</p>
                 <p className="adm-vh-item-sub">{v.orderId} · {v.file}</p>
               </div>
             </div>
@@ -3686,11 +3715,12 @@ function VerifyHistory() {
                 : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Invalid</>
               }
             </div>
-            <button className="adm-act-btn adm-act-btn--edit" title="Lihat Detail" onClick={() => setViewDetail(v)}>
+            <button className="adm-act-btn adm-act-btn--edit" title="Lihat Detail" onClick={() => setViewDetail({ ...v, _resolvedName: displayName, _resolvedAvatar: displayAvatar })}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Detail Modal ── */}
@@ -3722,18 +3752,46 @@ function VerifyHistory() {
               <div className="adm-vd-section">
                 <p className="adm-vd-section-label">Informasi Customer</p>
                 <div className="adm-vd-card">
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 0 10px" }}>
+                    <Avatar name={viewDetail._resolvedName || viewDetail.customer || "?"} size={40} src={viewDetail._resolvedAvatar || null} />
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#2d2d2d", margin: 0 }}>{viewDetail._resolvedName || viewDetail.customer || "Tidak diketahui"}</p>
+                      <p style={{ fontSize: 12, color: "#aaa", margin: "2px 0 0" }}>{viewDetail.email || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dokumen & Pesanan */}
+              <div className="adm-vd-section">
+                <p className="adm-vd-section-label">Dokumen &amp; Pesanan</p>
+                <div className="adm-vd-card">
                   <div className="adm-vd-row">
                     <span className="adm-vd-row-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     </span>
-                    <span className="adm-vd-row-val">{viewDetail.customer || "—"}</span>
+                    <span className="adm-vd-row-label">PDF diinput</span>
+                    <span className="adm-vd-row-val adm-vd-row-val--mono">{viewDetail.file || "—"}</span>
                   </div>
+                  {viewDetail.pdfOrderId && (
+                    <>
+                      <div className="adm-vd-divider" />
+                      <div className="adm-vd-row">
+                        <span className="adm-vd-row-icon">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                        </span>
+                        <span className="adm-vd-row-label">Order di PDF</span>
+                        <span className="adm-vd-row-val adm-vd-row-val--mono" style={{ color: "#ef4444", fontWeight: 700 }}>{viewDetail.pdfOrderId}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="adm-vd-divider" />
                   <div className="adm-vd-row">
                     <span className="adm-vd-row-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
                     </span>
-                    <span className="adm-vd-row-val adm-vd-row-val--muted">{viewDetail.email || "—"}</span>
+                    <span className="adm-vd-row-label">Order diretur</span>
+                    <span className="adm-vd-row-val adm-vd-row-val--mono" style={{ color: "#2d2d2d", fontWeight: 700 }}>{viewDetail.orderId || "—"}</span>
                   </div>
                 </div>
               </div>
@@ -3742,14 +3800,6 @@ function VerifyHistory() {
               <div className="adm-vd-section">
                 <p className="adm-vd-section-label">Detail Verifikasi</p>
                 <div className="adm-vd-card">
-                  <div className="adm-vd-row">
-                    <span className="adm-vd-row-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    </span>
-                    <span className="adm-vd-row-label">File</span>
-                    <span className="adm-vd-row-val adm-vd-row-val--mono">{viewDetail.file || "—"}</span>
-                  </div>
-                  <div className="adm-vd-divider" />
                   <div className="adm-vd-row">
                     <span className="adm-vd-row-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>

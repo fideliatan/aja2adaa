@@ -28,12 +28,13 @@ class EReceipt(models.Model):
 class ReceiptVerification(models.Model):
     verification_id = models.CharField(max_length=30, unique=True, blank=True, default="")
     order_id        = models.CharField(max_length=30, blank=True, default="")
+    pdf_order_id    = models.CharField(max_length=30, blank=True, default="")
     customer_name   = models.CharField(max_length=150, blank=True, default="")
     customer_email  = models.CharField(max_length=254, blank=True, default="")
     result          = models.CharField(max_length=10)  # "valid" | "invalid"
     verified_by     = models.CharField(max_length=30, blank=True, default="admin")
     file_name       = models.CharField(max_length=200, blank=True, default="")
-    failure_reason  = models.CharField(max_length=300, blank=True, default="")
+    failure_reason  = models.CharField(max_length=500, blank=True, default="")
     verified_at     = models.DateTimeField()
 
     class Meta:

@@ -146,10 +146,16 @@ def verify_receipt(request):
     except (ModuleNotFoundError, OSError) as exc:
         return _missing_dependency_response(exc)
 
+    # Use the return submitter's info (who filed the return),
+    # not the PDF's customer (which may belong to a different order).
+    return_customer_name  = request.data.get("return_customer_name", "").strip()
+    return_customer_email = request.data.get("return_customer_email", "").strip()
+
     ReceiptVerification.objects.create(
         order_id=result.get("order_id", ""),
-        customer_name=result.get("customer_name", ""),
-        customer_email=result.get("customer_email", ""),
+        pdf_order_id=result.get("pdf_order_id", ""),
+        customer_name=return_customer_name or result.get("customer_name", ""),
+        customer_email=return_customer_email or result.get("customer_email", ""),
         result="valid" if result["valid"] else "invalid",
         verified_by=request.data.get("verified_by", "admin"),
         file_name=pdf_file.name,
@@ -170,6 +176,7 @@ def verify_history(request):
         {
             "id":            r.verification_id,
             "orderId":       r.order_id,
+            "pdfOrderId":    r.pdf_order_id,
             "customer":      r.customer_name,
             "email":         r.customer_email,
             "result":        r.result,

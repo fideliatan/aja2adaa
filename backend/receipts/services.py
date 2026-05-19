@@ -378,10 +378,20 @@ def verify_receipt_pdf(pdf_file, expected_order_id=None) -> dict:
         return _invalid("Signature tidak cocok dengan database")
 
     if expected_order_id and receipt.order_id != expected_order_id:
-        return _invalid(
-            f"E-receipt bukan milik pesanan ini "
-            f"(PDF: {receipt.order_id}, Retur: {expected_order_id})"
-        )
+        return {
+            "valid":          False,
+            "failure_reason": (
+                f"E-receipt bukan milik pesanan ini "
+                f"(PDF: {receipt.order_id}, Retur: {expected_order_id})"
+            ),
+            "order_id":       expected_order_id,
+            "pdf_order_id":   receipt.order_id,
+            "customer_name":  receipt.customer_name,
+            "customer_email": receipt.customer_email,
+            "total":          receipt.total,
+            "generated_at":   receipt.generated_at.isoformat(),
+            "receipt_id":     receipt.receipt_id,
+        }
 
     return {
         "valid":          True,
