@@ -2085,6 +2085,7 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
                             const blob = new Blob([bytes], { type: "application/pdf" });
                             const form = new FormData();
                             form.append("pdf_file", blob, `e-receipt-${ret.orderId}.pdf`);
+                            form.append("order_id", ret.orderId);
                             form.append("verified_by", currentUser?.id ?? "admin");
                             const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
                             const res = await fetch(`${apiBase}/api/receipts/verify/`, { method: "POST", body: form });

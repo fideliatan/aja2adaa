@@ -343,10 +343,12 @@ def generate_receipt_pdf(order):
 
 # ── PDF Verification ───────────────────────────────────────────────────────────
 
-def verify_receipt_pdf(pdf_file) -> dict:
+def verify_receipt_pdf(pdf_file, expected_order_id=None) -> dict:
     """
     Extract the hidden SHA-256 signature from PDF /Keywords metadata
     and compare it against the database.
+    If expected_order_id is given, also validates that the receipt belongs
+    to that specific order (prevents cross-order e-receipt fraud).
     """
     from pypdf import PdfReader
     from .models import EReceipt
@@ -374,6 +376,12 @@ def verify_receipt_pdf(pdf_file) -> dict:
         receipt = EReceipt.objects.get(signature_hash=sig_hash, is_revoked=False)
     except EReceipt.DoesNotExist:
         return _invalid("Signature tidak cocok dengan database")
+
+    if expected_order_id and receipt.order_id != expected_order_id:
+        return _invalid(
+            f"E-receipt bukan milik pesanan ini "
+            f"(PDF: {receipt.order_id}, Retur: {expected_order_id})"
+        )
 
     return {
         "valid":          True,

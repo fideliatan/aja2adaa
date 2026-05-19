@@ -139,8 +139,10 @@ def verify_receipt(request):
     if not pdf_file:
         return Response({"error": "File PDF diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
 
+    expected_order_id = request.data.get("order_id", "").strip() or None
+
     try:
-        result = verify_receipt_pdf(pdf_file)
+        result = verify_receipt_pdf(pdf_file, expected_order_id=expected_order_id)
     except (ModuleNotFoundError, OSError) as exc:
         return _missing_dependency_response(exc)
 
