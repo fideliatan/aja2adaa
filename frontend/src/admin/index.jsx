@@ -1613,14 +1613,16 @@ function Returns({ goToReturnDetail }) {
             ) : filtered.map(r => {
               const st = RETURN_STATUS_META[r.status] ?? { label: r.status, color: "#aaa", bg: "rgba(170,170,170,0.1)" };
               const riskSummary = getCaseRiskSummary(mockStore, "return", r.id);
+              const liveUser = r.email ? (mockStore.users ?? []).find(u => u.email === r.email) : null;
+              const displayName = liveUser?.name ?? r.customer;
               return (
                 <tr key={r.id} className="adm-table-row--clickable" onClick={() => goToReturnDetail(r.id)}>
                   <td><span className="adm-order-id">{r.id}</span></td>
                   <td>
                     <div className="adm-customer-cell">
-                      <Avatar name={r.customer} size={28} />
+                      <Avatar name={displayName} size={28} src={liveUser?.photo ?? null} />
                       <div>
-                        <p className="adm-customer-name">{r.customer}</p>
+                        <p className="adm-customer-name">{displayName}</p>
                         <p className="adm-customer-email">{r.email || "—"}</p>
                       </div>
                     </div>
@@ -2035,13 +2037,19 @@ function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive }) {
 
             <div className="adm-pa-block">
               <p className="adm-pa-block-label">Informasi Pelanggan</p>
-              <div className="adm-pa-customer">
-                <Avatar name={ret.customer} size={48} />
-                <div>
-                  <p className="adm-pa-customer-name">{ret.customer}</p>
-                  {ret.email && <p className="adm-pa-customer-sub">{ret.email}</p>}
-                </div>
-              </div>
+              {(() => {
+                const liveUser = ret.email ? (mockStore.users ?? []).find(u => u.email === ret.email) : null;
+                const displayName = liveUser?.name ?? ret.customer;
+                return (
+                  <div className="adm-pa-customer">
+                    <Avatar name={displayName} size={48} src={liveUser?.photo ?? null} />
+                    <div>
+                      <p className="adm-pa-customer-name">{displayName}</p>
+                      {ret.email && <p className="adm-pa-customer-sub">{ret.email}</p>}
+                    </div>
+                  </div>
+                );
+              })()}
               {ret.monitoringFlag && (
                 <div className="adm-return-flag-block" style={{ marginTop: 10 }}>
                   <span className="adm-return-flag adm-return-flag--lg"><AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {ret.monitoringFlag}</span>
