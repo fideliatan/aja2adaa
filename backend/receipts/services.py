@@ -45,12 +45,14 @@ def _build_receipt_html(order) -> str:
     for item in order.items.all():
         items_html += f"""
         <div class="rc-item">
-          <div class="rc-item-dot"></div>
-          <div class="rc-item-left">
+          <div class="rc-item-header">
+            <div class="rc-item-dot"></div>
             <span class="rc-item-name">{item.name}</span>
-            <span class="rc-item-qty">{item.qty} pcs × {_fmt_idr(item.price)}</span>
           </div>
-          <span class="rc-item-total">{_fmt_idr(item.price * item.qty)}</span>
+          <div class="rc-item-footer">
+            <span class="rc-item-qty">{item.qty} pcs × {_fmt_idr(item.price)}</span>
+            <span class="rc-item-total">{_fmt_idr(item.price * item.qty)}</span>
+          </div>
         </div>"""
 
     return f"""<!DOCTYPE html>
@@ -151,24 +153,33 @@ def _build_receipt_html(order) -> str:
     .rc-info-box-val {{ font-size: 12.5px; font-weight: 800; color: #2d2d2d; line-height: 1.3; }}
     .rc-items {{ margin-bottom: 14px; display: flex; flex-direction: column; gap: 7px; }}
     .rc-item {{
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 14px;
+      padding: 12px 14px;
       background: linear-gradient(135deg, #fffaf9, #fdf5f3);
       border-radius: 10px;
       border: 1.5px solid #f0d5d2;
+    }}
+    .rc-item-header {{
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-bottom: 7px;
     }}
     .rc-item-dot {{
       width: 8px; height: 8px;
       border-radius: 50%;
       background: linear-gradient(135deg, #d6867c, #c97269);
       flex-shrink: 0;
+      margin-top: 3px;
     }}
-    .rc-item-left {{ display: flex; flex-direction: column; gap: 2px; flex: 1; }}
-    .rc-item-name {{ font-size: 13px; font-weight: 700; color: #2d2d2d; }}
+    .rc-item-name {{ font-size: 13px; font-weight: 700; color: #2d2d2d; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.45; }}
+    .rc-item-footer {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-left: 17px;
+    }}
     .rc-item-qty {{ font-size: 11px; color: #b0a8a6; font-weight: 500; }}
-    .rc-item-total {{ font-size: 13.5px; font-weight: 900; color: #c97269; white-space: nowrap; }}
+    .rc-item-total {{ font-size: 13.5px; font-weight: 900; color: #c97269; }}
     .rc-summary {{
       border-top: 1.5px dashed #f0d5d2;
       padding: 12px 0;
