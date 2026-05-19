@@ -188,8 +188,11 @@ class ReturnRequest(models.Model):
     monitoring_flag    = models.CharField(max_length=200, null=True, blank=True)
     condition_note     = models.TextField(blank=True, default="")
     photos             = models.JSONField(default=list)
-    receipt_b64        = models.TextField(null=True, blank=True)
-    product_photo_b64  = models.TextField(null=True, blank=True)
+    receipt_b64           = models.TextField(null=True, blank=True)
+    receipt_file_name     = models.CharField(max_length=255, null=True, blank=True)
+    receipt_verify_status = models.CharField(max_length=10, null=True, blank=True)  # valid/invalid
+    receipt_verify_reason = models.TextField(null=True, blank=True)
+    product_photo_b64     = models.TextField(null=True, blank=True)
     qr_code    = models.CharField(max_length=100, blank=True, default="")
     scanned_qr = models.CharField(max_length=100, null=True, blank=True)
     qr_status  = models.CharField(max_length=20, null=True, blank=True)

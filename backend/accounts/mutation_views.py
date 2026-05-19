@@ -221,6 +221,7 @@ def create_return(request):
             condition_note=data.get("conditionNote", ""),
             photos=data.get("photos") or [],
             receipt_b64=data.get("receiptB64"),
+            receipt_file_name=data.get("receiptFileName"),
             product_photo_b64=data.get("productPhotoB64"),
             qr_code=data.get("qrCode", "-"),
             scanned_qr=data.get("scannedQr", "-"),
@@ -284,7 +285,7 @@ def update_return(request, return_id):
     status_changed = new_status != old_status
 
     with transaction.atomic():
-        for field, db_field in [("status", "status"), ("qrStatus", "qr_status"), ("scannedQr", "scanned_qr"), ("monitoringFlag", "monitoring_flag"), ("conditionNote", "condition_note"), ("qrCode", "qr_code")]:
+        for field, db_field in [("status", "status"), ("qrStatus", "qr_status"), ("scannedQr", "scanned_qr"), ("monitoringFlag", "monitoring_flag"), ("conditionNote", "condition_note"), ("qrCode", "qr_code"), ("receiptVerifyStatus", "receipt_verify_status"), ("receiptVerifyReason", "receipt_verify_reason")]:
             if field in data:
                 setattr(ret, db_field, data[field])
         ret.updated_at = now

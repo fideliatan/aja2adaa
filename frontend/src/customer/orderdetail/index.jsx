@@ -668,6 +668,7 @@ export default function OrderDetailPage() {
       conditionNote: returnReason === "Lainnya" ? returnCustomReason : returnReason,
       photos: returnPhotoB64 ? [returnPhotoB64] : [],
       receiptB64: returnReceiptB64,
+      receiptFileName: returnReceiptFile?.name ?? null,
       productPhotoB64: returnPhotoB64,
       qrCode: "—", scannedQr: "—", qrStatus: null,
       total: selectedItems.reduce((s, i) => s + i.price * i.qty, 0),
