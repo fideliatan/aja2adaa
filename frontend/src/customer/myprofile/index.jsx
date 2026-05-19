@@ -1419,15 +1419,8 @@ function SettingSection() {
   const [pwSaved, setPwSaved] = useState(false);
 
   // Toggles
-  const [twoFA, setTwoFA] = useState(false);
-  const [notifs, setNotifs] = useState({
-    orderUpdates: true,
-    promotions:   true,
-    newArrivals:  false,
-  });
 
   // Language
-  const [language, setLanguage] = useState("en");
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
@@ -1514,16 +1507,6 @@ function SettingSection() {
 
         <div className="pr-setting-row">
           <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Autentikasi Dua Faktor</span>
-            <span className="pr-setting-row-sub">
-              {twoFA ? "Aktif — perlindungan tambahan sudah aktif" : "Tambahkan lapisan perlindungan login ekstra"}
-            </span>
-          </div>
-          <Toggle checked={twoFA} onChange={setTwoFA} />
-        </div>
-
-        <div className="pr-setting-row">
-          <div className="pr-setting-row-info">
             <span className="pr-setting-row-title">Akun Terhubung</span>
             <span className="pr-setting-row-sub">{userEmail}</span>
           </div>
@@ -1531,56 +1514,6 @@ function SettingSection() {
         </div>
       </div>
 
-      {/* ── Notifications ── */}
-      <div className="pr-setting-group">
-        <p className="pr-setting-group-label">Notifikasi</p>
-        {[
-          { key: "orderUpdates", title: "Update Pesanan",     sub: "Pengiriman, pengantaran & perubahan status" },
-          { key: "promotions",   title: "Promosi & Penawaran", sub: "Diskon, voucher & penawaran spesial" },
-          { key: "newArrivals",  title: "Produk Baru",         sub: "Jadilah yang pertama tahu tentang produk baru" },
-        ].map(item => (
-          <div key={item.key} className="pr-setting-row">
-            <div className="pr-setting-row-info">
-              <span className="pr-setting-row-title">{item.title}</span>
-              <span className="pr-setting-row-sub">{item.sub}</span>
-            </div>
-            <Toggle checked={notifs[item.key]} onChange={v => setNotifs({ ...notifs, [item.key]: v })} />
-          </div>
-        ))}
-      </div>
-
-      {/* ── Language & Region ── */}
-      <div className="pr-setting-group">
-        <p className="pr-setting-group-label">Bahasa &amp; Wilayah</p>
-        <div className="pr-setting-row">
-          <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Bahasa</span>
-            <span className="pr-setting-row-sub">Pilih bahasa tampilan yang kamu inginkan</span>
-          </div>
-          <select
-            className="pr-setting-select"
-            value={language}
-            onChange={e => setLanguage(e.target.value)}
-          >
-            <option value="en">English</option>
-            <option value="id">Bahasa Indonesia</option>
-          </select>
-        </div>
-        <div className="pr-setting-row">
-          <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Mata Uang</span>
-            <span className="pr-setting-row-sub">Digunakan untuk semua tampilan harga</span>
-          </div>
-          <span className="pr-setting-chip">IDR — Rp</span>
-        </div>
-        <div className="pr-setting-row">
-          <div className="pr-setting-row-info">
-            <span className="pr-setting-row-title">Zona Waktu</span>
-            <span className="pr-setting-row-sub">Semua waktu ditampilkan dalam zona lokal kamu</span>
-          </div>
-          <span className="pr-setting-chip">{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
-        </div>
-      </div>
 
       {/* ── Danger Zone ── */}
       <div className="pr-setting-group pr-setting-group--danger">

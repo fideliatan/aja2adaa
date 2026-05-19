@@ -44,6 +44,12 @@ store_urlpatterns = [
     path("products/", mutation_views.create_product, name="product_create"),
     path("products/<str:product_id>/", mutation_views.update_product, name="product_update"),
     path("products/<str:product_id>/delete/", mutation_views.delete_product, name="product_delete"),
+    # Cart
+    path("cart/", mutation_views.cart_list, name="cart_list"),
+    path("cart/<str:product_id>/", mutation_views.cart_item, name="cart_item"),
+    # Wishlist
+    path("wishlist/", mutation_views.wishlist_list, name="wishlist_list"),
+    path("wishlist/<str:product_id>/", mutation_views.wishlist_item, name="wishlist_item"),
 ]
 
 qr_urlpatterns = [

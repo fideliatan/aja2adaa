@@ -325,3 +325,34 @@ class Address(models.Model):
     class Meta:
         db_table = "addresses"
         managed  = False
+
+
+class CartItem(models.Model):
+    user_id    = models.CharField(max_length=30)
+    product_id = models.CharField(max_length=30)
+    name       = models.CharField(max_length=200)
+    brand      = models.CharField(max_length=100, blank=True, default="")
+    category   = models.CharField(max_length=100, blank=True, default="")
+    price      = models.BigIntegerField(default=0)
+    image      = models.TextField(blank=True, default="")
+    qty        = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "cart_items"
+        unique_together = [("user_id", "product_id")]
+
+
+class WishlistItem(models.Model):
+    user_id    = models.CharField(max_length=30)
+    product_id = models.CharField(max_length=30)
+    name       = models.CharField(max_length=200)
+    brand      = models.CharField(max_length=100, blank=True, default="")
+    category   = models.CharField(max_length=100, blank=True, default="")
+    price      = models.BigIntegerField(default=0)
+    image      = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "wishlist_items"
+        unique_together = [("user_id", "product_id")]
