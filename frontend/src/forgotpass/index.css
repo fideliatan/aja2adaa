@@ -435,17 +435,17 @@ body { font-family: var(--font-body); }
 /* ── OTP inputs ── */
 .fp-otp-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
 }
 
 .fp-otp-input {
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 16px;
+  height: 52px;
+  border-radius: 12px;
   border: 2px solid #ede0de;
   text-align: center;
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: #1a1a1a;
   background: #fdf6f5;
@@ -457,7 +457,7 @@ body { font-family: var(--font-body); }
 .fp-otp-input:focus {
   border-color: #d6867c;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(214, 134, 124, 0.14);
+  box-shadow: 0 0 0 3px rgba(214, 134, 124, 0.14);
   transform: translateY(-2px);
 }
 
