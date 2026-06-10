@@ -314,6 +314,14 @@ def create_return(request):
     return_id = data.get("id") or f"RET-{uuid.uuid4().hex[:8].upper()}"
     created_at = _dt(data.get("createdAt")) or now
 
+    order_id = data.get("orderId", "")
+    if order_id:
+        existing = ReturnRequest.objects.filter(
+            order_id=order_id, status__in=["pending", "approved"]
+        ).first()
+        if existing:
+            return Response({"return": _serialize_return(existing)}, status=status.HTTP_200_OK)
+
     with transaction.atomic():
         ret = ReturnRequest.objects.create(
             return_id=return_id,
