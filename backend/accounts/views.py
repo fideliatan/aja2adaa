@@ -352,20 +352,49 @@ def login(request):
                         "deviceMatch": None,
                     })
 
-    try:
-        otp_session_id = _issue_otp_session(
-            user,
-            "login",
-            device_fingerprint=device_fingerprint,
-            user_agent=user_agent,
+    if user.two_factor_enabled:
+        try:
+            otp_session_id = _issue_otp_session(
+                user,
+                "login",
+                device_fingerprint=device_fingerprint,
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+        except Exception as exc:
+            logger.error("Failed to send login OTP to %s: %s", user.email, exc)
+            return Response(
+                {"error": OTP_SEND_ERROR},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        LoginAttempt.objects.create(
+            attempt_id=str(uuid.uuid4()),
+            user_id=user_id,
+            email=email,
+            role=user.role,
+            success=True,
+            timestamp=_now(),
             ip_address=ip_address,
+            user_agent=user_agent,
+            device_fingerprint=device_fingerprint,
+            reason="otp_required",
         )
-    except Exception as exc:
-        logger.error("Failed to send login OTP to %s: %s", user.email, exc)
-        return Response(
-            {"error": OTP_SEND_ERROR},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        _log_activity(
+            actor_id=user_id,
+            actor_role=user.role,
+            event_type="login_otp_required",
+            label=f"Login OTP required for {email}",
+            metadata={"email": email, "ipAddress": ip_address, "deviceStatus": device_status, "deviceFingerprint": device_fingerprint},
         )
+
+        return Response({
+            "requireLoginOtp": True,
+            "sessionId": otp_session_id,
+            "user": _serialize_user(user),
+            "deviceStatus": device_status,
+            "deviceMatch": device_match,
+        })
 
     LoginAttempt.objects.create(
         attempt_id=str(uuid.uuid4()),
@@ -377,19 +406,22 @@ def login(request):
         ip_address=ip_address,
         user_agent=user_agent,
         device_fingerprint=device_fingerprint,
-        reason="otp_required",
+        reason="login_success",
     )
     _log_activity(
         actor_id=user_id,
         actor_role=user.role,
-        event_type="login_otp_required",
-        label=f"Login OTP required for {email}",
-        metadata={"email": email, "ipAddress": ip_address, "deviceStatus": device_status, "deviceFingerprint": device_fingerprint},
+        event_type="login_success",
+        label=f"Login success for {email}",
+        metadata={
+            "email": email,
+            "ipAddress": ip_address,
+            "deviceStatus": device_status,
+            "deviceFingerprint": device_fingerprint,
+        },
     )
 
     return Response({
-        "requireLoginOtp": True,
-        "sessionId": otp_session_id,
         "user": _serialize_user(user),
         "deviceStatus": device_status,
         "deviceMatch": device_match,
