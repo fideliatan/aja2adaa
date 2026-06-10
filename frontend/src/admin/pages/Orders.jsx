@@ -223,6 +223,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
   // Unit QR state: { [orderId]: UnitQrSlot[] }
   const [unitQrs, setUnitQrs] = useState({});
   const [viewingQr, setViewingQr] = useState(null);
+  const fetchedQrOrderIds = useRef(new Set());
 
   const getStatus = (o) => localStatuses[o.id] ?? o.status;
   const curStatus = order ? getStatus(order) : null;
@@ -265,11 +266,32 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     if (!order?.id || !order?.items?.length) return;
     const postPending = ["packing", "shipped", "delivered"].includes(curStatus);
     if (!postPending) return;
-    setUnitQrs(prev => {
-      if (prev[order.id]) return prev; // already initialised
-      return { ...prev, [order.id]: buildOrderQrSlots(order) };
-    });
-  }, [curStatus, order?.id, order?.items]);
+    if (fetchedQrOrderIds.current.has(order.id)) return;
+    fetchedQrOrderIds.current.add(order.id);
+
+    const emptySlots = buildOrderQrSlots(order);
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+    fetch(`${apiBase}/api/qr/order/${order.id}/`)
+      .then(r => r.json())
+      .then(data => {
+        const backendUnits = data.units ?? [];
+        const hydratedSlots = emptySlots.map(slot => {
+          const match = backendUnits.find(u => u.order_item_id === slot.unitId);
+          if (!match || match.qr_status === "pending") return slot;
+          return activateQr(slot, {
+            qrToken:    match.qr_token,
+            qrImageUrl: match.qr_image_url,
+            generatedAt: match.generated_at,
+            generatedBy: match.generated_by,
+          });
+        });
+        setUnitQrs(prev => ({ ...prev, [order.id]: hydratedSlots }));
+      })
+      .catch(() => {
+        setUnitQrs(prev => ({ ...prev, [order.id]: emptySlots }));
+      });
+  }, [curStatus, order?.id, order?.items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateUnitQr = async (unitId) => {
     const slot = (unitQrs[order.id] ?? []).find(s => s.unitId === unitId);
