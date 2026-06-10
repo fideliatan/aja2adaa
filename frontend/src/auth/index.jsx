@@ -251,7 +251,7 @@ export default function AuthPage() {
       };
 
       if (data.requireDeviceOtp || data.requireLoginOtp) {
-        // New device detected — backend already created OTP session
+        // Backend requested OTP for a new device or an enabled login 2FA flow.
         setOtpSessionId(data.sessionId);
         setPendingUser(user);
         setPendingDeviceMeta(deviceMeta);
