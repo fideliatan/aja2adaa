@@ -215,6 +215,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     helperText: "",
   });
   const stepUpActionRef = useRef(null);
+  const pendingStepUpSessionRef = useRef(null);
 
   const [localStatuses, setLocalStatuses] = useState({});
   const [localShip, setLocalShip] = useState({});
@@ -230,6 +231,13 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
   const orderQrs = unitQrs[order?.id] ?? [];
   const allQrsGenerated = orderQrs.length > 0 && orderQrs.every(q => q.generatedAt !== null);
 
+  const clearPendingStepUpSession = () => {
+    pendingStepUpSessionRef.current = null;
+  };
+
+  const getActionErrorMessage = (error) =>
+    error?.response?.data?.error ?? "Aksi sensitif gagal diproses. Silakan minta OTP baru lalu coba lagi.";
+
   useEffect(() => {
     if (!order?.id) return;
     setRiskSummary(getCaseRiskSummary(mockStore, "order", order.id));
@@ -241,6 +249,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
       helperText: "",
     });
     stepUpActionRef.current = null;
+    clearPendingStepUpSession();
     setApproveModal(false);
     setApproveStep("confirm");
     setRejectModal(false);
@@ -304,12 +313,12 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     await Promise.all(pending.map(s => generateUnitQr(s.unitId)));
   };
 
-  const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
+  const requestStepUp = async ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
     const finalReasons = reasons ?? config?.reasons ?? ["Aksi sensitif memerlukan konfirmasi."];
 
     if (currentUser?.id) {
-      generateOtp(currentUser.id, {
+      const otpSession = await generateOtp(currentUser.id, {
         purpose: "step_up",
         metadata: {
           entityType: "order",
@@ -317,6 +326,10 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
           actionKey,
         },
       });
+      if (!otpSession?.id) {
+        window.alert("Gagal mengirim OTP admin. Pastikan Mailpit sedang aktif lalu coba lagi.");
+        return;
+      }
     }
 
     setRiskSummary((prev) => ({
@@ -353,8 +366,36 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     stepUpActionRef.current = null;
   };
 
-  const handleStepUpSuccess = () => {
+  const closeApproveModal = () => {
+    clearPendingStepUpSession();
+    setApproveModal(false);
+    setApproveStep("confirm");
+  };
+
+  const closeRejectModal = () => {
+    clearPendingStepUpSession();
+    setRejectModal(false);
+    setRejectReason("");
+  };
+
+  const closeShipModal = () => {
+    clearPendingStepUpSession();
+    setShipModal(false);
+    setCourierInput("");
+    setCourierIsCustom(false);
+    setTrackingInput("");
+  };
+
+  const closeDeliverModal = () => {
+    clearPendingStepUpSession();
+    setDeliverModal(false);
+    setDeliverFile(null);
+    setDeliverPreview(null);
+  };
+
+  const handleStepUpSuccess = async (result) => {
     const pendingAction = stepUpActionRef.current;
+    const stepUpSessionId = result?.sessionId ?? null;
 
     setRiskSummary((prev) => ({
       ...prev,
@@ -383,7 +424,14 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     }));
 
     closeStepUp();
-    pendingAction?.();
+    if (!pendingAction) return;
+
+    try {
+      await pendingAction(stepUpSessionId);
+    } catch (error) {
+      clearPendingStepUpSession();
+      window.alert(getActionErrorMessage(error));
+    }
   };
 
   const handleResolveFlag = (flag) => {
@@ -394,8 +442,8 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
         `Flag ${flag.ruleCode} masih aktif pada case ini.`,
         "Resolving high risk flag memerlukan verifikasi tambahan.",
       ],
-      onVerified: () => {
-        resolveFlag(flag.id);
+      onVerified: async (stepUpSessionId) => {
+        await resolveFlag(flag.id, stepUpSessionId);
         setRiskSummary((prev) => ({
           ...prev,
           flags: prev.flags.map((item) =>
@@ -416,10 +464,53 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
   };
 
   const handleApprove = () => {
+    const stepUpSessionId = pendingStepUpSessionRef.current;
+    if (!stepUpSessionId) {
+      window.alert("OTP admin belum siap. Minta verifikasi ulang lalu coba lagi.");
+      return;
+    }
     setApproveStep("loading");
-    setTimeout(() => {
-      if (order.fromCtx) approveOrder(order.id);
-      setLocalStatuses(p => ({ ...p, [order.id]: "packing" }));
+    setTimeout(async () => {
+      try {
+        if (order.fromCtx) {
+          await approveOrder(order.id, stepUpSessionId);
+        }
+        clearPendingStepUpSession();
+        setLocalStatuses(p => ({ ...p, [order.id]: "packing" }));
+        setRiskSummary((prev) => ({
+          ...prev,
+          timeline: [
+            ...prev.timeline,
+            createSecurityTimelineEvent(
+              order.id.toLowerCase(),
+              "action",
+              "Aksi sensitif dikonfirmasi: Setujui Pembayaran",
+              "success"
+            ),
+          ],
+        }));
+        setApproveStep("success");
+      } catch (error) {
+        clearPendingStepUpSession();
+        setApproveStep("confirm");
+        window.alert(getActionErrorMessage(error));
+      }
+    }, 1600);
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectReason.trim()) return;
+    const stepUpSessionId = pendingStepUpSessionRef.current;
+    if (!stepUpSessionId) {
+      window.alert("OTP admin belum siap. Minta verifikasi ulang lalu coba lagi.");
+      return;
+    }
+    try {
+      if (order.fromCtx) {
+        await rejectOrder(order.id, rejectReason.trim(), stepUpSessionId);
+      }
+      clearPendingStepUpSession();
+      setLocalStatuses(p => ({ ...p, [order.id]: "rejected" }));
       setRiskSummary((prev) => ({
         ...prev,
         timeline: [
@@ -427,33 +518,17 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
           createSecurityTimelineEvent(
             order.id.toLowerCase(),
             "action",
-            "Aksi sensitif dikonfirmasi: Setujui Pembayaran",
+            "Aksi sensitif dikonfirmasi: Tolak Pembayaran",
             "success"
           ),
         ],
       }));
-      setApproveStep("success");
-    }, 1600);
-  };
-
-  const handleRejectConfirm = () => {
-    if (!rejectReason.trim()) return;
-    if (order.fromCtx) rejectOrder(order.id, rejectReason.trim());
-    setLocalStatuses(p => ({ ...p, [order.id]: "rejected" }));
-    setRiskSummary((prev) => ({
-      ...prev,
-      timeline: [
-        ...prev.timeline,
-        createSecurityTimelineEvent(
-          order.id.toLowerCase(),
-          "action",
-          "Aksi sensitif dikonfirmasi: Tolak Pembayaran",
-          "success"
-        ),
-      ],
-    }));
-    setRejectModal(false);
-    setRejectReason("");
+      setRejectModal(false);
+      setRejectReason("");
+    } catch (error) {
+      clearPendingStepUpSession();
+      window.alert(getActionErrorMessage(error));
+    }
   };
 
   const COURIER_BY_DELIVERY = {
@@ -475,13 +550,26 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     }
   };
 
-  const handleShipConfirm = () => {
+  const handleShipConfirm = async () => {
     if (!trackingInput.trim()) return;
+    const stepUpSessionId = pendingStepUpSessionRef.current;
+    if (!stepUpSessionId) {
+      window.alert("OTP admin belum siap. Minta verifikasi ulang lalu coba lagi.");
+      return;
+    }
     const finalCourier = courierInput.trim() || COURIER_OPTIONS[0] || "JNE Reguler";
-    if (order.fromCtx) shipOrder(order.id, finalCourier, trackingInput.trim());
-    setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
-    setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
-    setShipModal(false);
+    try {
+      if (order.fromCtx) {
+        await shipOrder(order.id, finalCourier, trackingInput.trim(), stepUpSessionId);
+      }
+      clearPendingStepUpSession();
+      setLocalStatuses(p => ({ ...p, [order.id]: "shipped" }));
+      setLocalShip(p => ({ ...p, [order.id]: { courier: finalCourier, trackingNumber: trackingInput.trim() } }));
+      setShipModal(false);
+    } catch (error) {
+      clearPendingStepUpSession();
+      window.alert(getActionErrorMessage(error));
+    }
   };
 
   const handleDeliverFile = (file) => {
@@ -495,11 +583,25 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
     reader.readAsDataURL(file);
   };
 
-  const handleDeliverConfirm = () => {
-    if (order.fromCtx) deliverOrder(order.id, deliverPreview ?? null);
-    setLocalStatuses(p => ({ ...p, [order.id]: "delivered" }));
-    setDeliverModal(false);
-    setDeliverFile(null); setDeliverPreview(null);
+  const handleDeliverConfirm = async () => {
+    const stepUpSessionId = pendingStepUpSessionRef.current;
+    if (!stepUpSessionId) {
+      window.alert("OTP admin belum siap. Minta verifikasi ulang lalu coba lagi.");
+      return;
+    }
+    try {
+      if (order.fromCtx) {
+        await deliverOrder(order.id, deliverPreview ?? null, stepUpSessionId);
+      }
+      clearPendingStepUpSession();
+      setLocalStatuses(p => ({ ...p, [order.id]: "delivered" }));
+      setDeliverModal(false);
+      setDeliverFile(null);
+      setDeliverPreview(null);
+    } catch (error) {
+      clearPendingStepUpSession();
+      window.alert(getActionErrorMessage(error));
+    }
   };
 
   if (!order) return (
@@ -811,7 +913,8 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
                     onClick={() => requestStepUp({
                       actionKey: "approvePayment",
                       actionLabel: "Setujui Pembayaran",
-                      onVerified: () => {
+                      onVerified: (stepUpSessionId) => {
+                        pendingStepUpSessionRef.current = stepUpSessionId;
                         setApproveModal(true);
                         setApproveStep("confirm");
                       },
@@ -824,7 +927,8 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
                     onClick={() => requestStepUp({
                       actionKey: "rejectPayment",
                       actionLabel: "Tolak Pembayaran",
-                      onVerified: () => {
+                      onVerified: (stepUpSessionId) => {
+                        pendingStepUpSessionRef.current = stepUpSessionId;
                         setRejectModal(true);
                         setRejectReason("");
                       },
@@ -841,7 +945,17 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
                     className="adm-pa-approve-btn"
                     disabled={!allQrsGenerated}
                     title={!allQrsGenerated ? "Generate semua QR produk terlebih dahulu" : undefined}
-                    onClick={() => { setShipModal(true); setCourierInput(""); setCourierIsCustom(false); setTrackingInput(""); }}
+                    onClick={() => requestStepUp({
+                      actionKey: "shipOrder",
+                      actionLabel: "Input Pengiriman",
+                      onVerified: (stepUpSessionId) => {
+                        pendingStepUpSessionRef.current = stepUpSessionId;
+                        setShipModal(true);
+                        setCourierInput("");
+                        setCourierIsCustom(false);
+                        setTrackingInput("");
+                      },
+                    })}
                     style={{ opacity: allQrsGenerated ? 1 : 0.5, cursor: allQrsGenerated ? "pointer" : "not-allowed" }}
                   >
                     <IcTruck /> Input Pengiriman
@@ -855,7 +969,19 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
               )}
               {curStatus === "shipped" && (
                 <div className="adm-pa-actions">
-                  <button className="adm-pa-approve-btn" onClick={() => { setDeliverModal(true); setDeliverFile(null); setDeliverPreview(null); }}>
+                  <button
+                    className="adm-pa-approve-btn"
+                    onClick={() => requestStepUp({
+                      actionKey: "deliverOrder",
+                      actionLabel: "Tandai Selesai Dikirim",
+                      onVerified: (stepUpSessionId) => {
+                        pendingStepUpSessionRef.current = stepUpSessionId;
+                        setDeliverModal(true);
+                        setDeliverFile(null);
+                        setDeliverPreview(null);
+                      },
+                    })}
+                  >
                     <IcCheck /> Tandai Selesai Dikirim
                   </button>
                 </div>
@@ -986,12 +1112,12 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
 
       {/* ── Approve modal ── */}
       {approveModal && (
-        <div className="adm-modal-overlay" onClick={() => approveStep !== "loading" && setApproveModal(false)}>
+        <div className="adm-modal-overlay" onClick={() => approveStep !== "loading" && closeApproveModal()}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             {approveStep === "confirm" && <>
               <div className="adm-modal-header">
                 <h3>Konfirmasi Persetujuan</h3>
-                <button className="adm-modal-close" onClick={() => setApproveModal(false)}>✕</button>
+                <button className="adm-modal-close" onClick={closeApproveModal}>✕</button>
               </div>
               <div className="adm-modal-body">
                 <p>Yakin ingin menyetujui pembayaran <strong>{fmt(order.total)}</strong> dari <strong>{order.customer}</strong>?</p>
@@ -999,7 +1125,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
               </div>
               <div className="adm-modal-footer">
                 <button className="adm-pa-approve-btn" onClick={handleApprove}><IcCheck /> Ya, Setujui</button>
-                <button className="adm-ghost-btn" onClick={() => setApproveModal(false)}>Batal</button>
+                <button className="adm-ghost-btn" onClick={closeApproveModal}>Batal</button>
               </div>
             </>}
             {approveStep === "loading" && (
@@ -1016,7 +1142,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
                 <p className="adm-modal-success-sub">E-Receipt berhasil digenerate dan tersedia untuk customer.</p>
                 <div className="adm-modal-receipt-badge"><IcReceipt /> E-Receipt #{order.id} siap</div>
                 <div className="adm-modal-footer" style={{ marginTop: 20 }}>
-                  <button className="adm-pa-approve-btn" onClick={() => setApproveModal(false)}><IcReceipt /> Tutup</button>
+                  <button className="adm-pa-approve-btn" onClick={closeApproveModal}><IcReceipt /> Tutup</button>
                 </div>
               </div>
             )}
@@ -1026,11 +1152,11 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
 
       {/* ── Reject modal ── */}
       {rejectModal && (
-        <div className="adm-modal-overlay" onClick={() => setRejectModal(false)}>
+        <div className="adm-modal-overlay" onClick={closeRejectModal}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal-header">
               <h3>Tolak Pembayaran</h3>
-              <button className="adm-modal-close" onClick={() => setRejectModal(false)}>✕</button>
+              <button className="adm-modal-close" onClick={closeRejectModal}>✕</button>
             </div>
             <div className="adm-modal-body">
               <p style={{ marginBottom: 12 }}>Masukkan alasan penolakan (ditampilkan ke customer):</p>
@@ -1042,7 +1168,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
               <button className="adm-pa-reject-btn" onClick={handleRejectConfirm} disabled={!rejectReason.trim()}>
                 Konfirmasi Tolak
               </button>
-              <button className="adm-ghost-btn" onClick={() => setRejectModal(false)}>Batal</button>
+              <button className="adm-ghost-btn" onClick={closeRejectModal}>Batal</button>
             </div>
           </div>
         </div>
@@ -1050,11 +1176,11 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
 
       {/* ── Ship modal ── */}
       {shipModal && (
-        <div className="adm-modal-overlay" onClick={() => setShipModal(false)}>
+        <div className="adm-modal-overlay" onClick={closeShipModal}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal-header">
               <h3>Input Info Pengiriman</h3>
-              <button className="adm-modal-close" onClick={() => setShipModal(false)}>✕</button>
+              <button className="adm-modal-close" onClick={closeShipModal}>✕</button>
             </div>
             <div className="adm-modal-body">
               <p style={{ marginBottom: 14, fontSize: 13.5, color: "#666" }}>
@@ -1103,7 +1229,7 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
               <button className="adm-pa-approve-btn" onClick={handleShipConfirm} disabled={!trackingInput.trim()}>
                 <IcTruck /> Konfirmasi Kirim
               </button>
-              <button className="adm-ghost-btn" onClick={() => setShipModal(false)}>Batal</button>
+              <button className="adm-ghost-btn" onClick={closeShipModal}>Batal</button>
             </div>
           </div>
         </div>
@@ -1111,11 +1237,11 @@ export function OrderDetail({ selectedOrderId, setSelectedOrderId, setActive }) 
 
       {/* ── Deliver modal ── */}
       {deliverModal && (
-        <div className="adm-modal-overlay" onClick={() => setDeliverModal(false)}>
+        <div className="adm-modal-overlay" onClick={closeDeliverModal}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal-header">
               <h3>Konfirmasi Selesai Dikirim</h3>
-              <button className="adm-modal-close" onClick={() => setDeliverModal(false)}>✕</button>
+              <button className="adm-modal-close" onClick={closeDeliverModal}>✕</button>
             </div>
             <div className="adm-modal-body">
               <p style={{ marginBottom: 14, fontSize: 13.5, color: "#666" }}>

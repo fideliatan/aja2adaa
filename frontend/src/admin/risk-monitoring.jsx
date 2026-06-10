@@ -653,7 +653,7 @@ export function StepUpVerificationModal({
     if (result?.success) {
       setStatus("success");
       window.setTimeout(() => {
-        onSuccess?.();
+        onSuccess?.(result);
       }, 650);
       return;
     }

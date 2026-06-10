@@ -179,6 +179,7 @@ export function MockDataProvider({ children }) {
       const { data } = await api.post("/api/auth/otp/request/", {
         userId,
         purpose: options.purpose ?? "step_up",
+        metadata: options.metadata ?? {},
       });
       otpSessionRef.current = data.sessionId;
       return { id: data.sessionId };
@@ -194,13 +195,17 @@ export function MockDataProvider({ children }) {
       await new Promise((r) => setTimeout(r, 200));
       waited += 200;
     }
+    const activeSessionId = otpSessionRef.current;
+    if (!activeSessionId) {
+      return { success: false, reason: "otp_session_missing" };
+    }
     try {
       await api.post("/api/auth/otp/verify/", {
-        sessionId: otpSessionRef.current,
+        sessionId: activeSessionId,
         code,
       });
       otpSessionRef.current = null;
-      return { success: true };
+      return { success: true, sessionId: activeSessionId };
     } catch (err) {
       const reason = err.response?.data?.reason ?? "otp_wrong";
       return { success: false, reason };
@@ -212,10 +217,14 @@ export function MockDataProvider({ children }) {
       const { data } = await api.post("/api/auth/otp/request/", {
         userId,
         purpose: options.purpose ?? "step_up",
+        metadata: options.metadata ?? {},
       });
       otpSessionRef.current = data.sessionId;
     } catch (_) {}
   }, []);
+
+  const withStepUpSession = (payload, stepUpSessionId) =>
+    stepUpSessionId ? { ...payload, stepUpSessionId } : payload;
 
   // ── Orders ──────────────────────────────────────────────────
 
@@ -229,39 +238,39 @@ export function MockDataProvider({ children }) {
     return data.order;
   }, [refresh]);
 
-  const approveOrder = useCallback(async (orderId) => {
-    await api.patch(`/api/store/orders/${orderId}/approve/`, {
+  const approveOrder = useCallback(async (orderId, stepUpSessionId = null) => {
+    await api.patch(`/api/store/orders/${orderId}/approve/`, withStepUpSession({
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
-  const rejectOrder = useCallback(async (orderId, reason) => {
-    await api.patch(`/api/store/orders/${orderId}/reject/`, {
+  const rejectOrder = useCallback(async (orderId, reason, stepUpSessionId = null) => {
+    await api.patch(`/api/store/orders/${orderId}/reject/`, withStepUpSession({
       reason,
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
-  const shipOrder = useCallback(async (orderId, courier, trackingNumber) => {
-    await api.patch(`/api/store/orders/${orderId}/ship/`, {
+  const shipOrder = useCallback(async (orderId, courier, trackingNumber, stepUpSessionId = null) => {
+    await api.patch(`/api/store/orders/${orderId}/ship/`, withStepUpSession({
       courier,
       trackingNumber,
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
-  const deliverOrder = useCallback(async (orderId, deliveryProof) => {
-    await api.patch(`/api/store/orders/${orderId}/deliver/`, {
+  const deliverOrder = useCallback(async (orderId, deliveryProof, stepUpSessionId = null) => {
+    await api.patch(`/api/store/orders/${orderId}/deliver/`, withStepUpSession({
       deliveryProof,
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
@@ -291,12 +300,12 @@ export function MockDataProvider({ children }) {
     return data.return;
   }, [refresh]);
 
-  const updateReturn = useCallback(async (returnId, patch) => {
-    await api.patch(`/api/store/returns/${returnId}/`, {
+  const updateReturn = useCallback(async (returnId, patch, stepUpSessionId = null) => {
+    await api.patch(`/api/store/returns/${returnId}/`, withStepUpSession({
       ...patch,
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
@@ -317,19 +326,19 @@ export function MockDataProvider({ children }) {
     return data.flag;
   }, [refresh]);
 
-  const reviewFlag = useCallback(async (flagId) => {
-    await api.patch(`/api/store/flags/${flagId}/review/`, {
+  const reviewFlag = useCallback(async (flagId, stepUpSessionId = null) => {
+    await api.patch(`/api/store/flags/${flagId}/review/`, withStepUpSession({
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 
-  const resolveFlag = useCallback(async (flagId) => {
-    await api.patch(`/api/store/flags/${flagId}/resolve/`, {
+  const resolveFlag = useCallback(async (flagId, stepUpSessionId = null) => {
+    await api.patch(`/api/store/flags/${flagId}/resolve/`, withStepUpSession({
       actorId: sessionRef.current?.userId,
       actorRole: sessionRef.current?.role,
-    });
+    }, stepUpSessionId));
     await refresh();
   }, [refresh]);
 

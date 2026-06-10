@@ -9,6 +9,7 @@ from .models import (
     ReturnRequest, ReturnProduct, ReturnStatusHistory,
     MonitoringFlag, ActivityTimeline, TrustedDevice, Address,
     Product, Category, CartItem, WishlistItem,
+    OtpSession,
 )
 from .views import (
     _log_activity, _dt, _now,
@@ -49,6 +50,92 @@ RETURN_STATUS_LABELS = {
     "completed":     "Return completed",
     "rejected":      "Return rejected",
 }
+
+STEP_UP_PURPOSE = "step_up"
+SENSITIVE_RETURN_ACTIONS = {
+    "approved": "approveReturn",
+    "rejected": "rejectReturn",
+    "completed": "completeReturn",
+}
+
+
+def _step_up_error(message, *, reason="step_up_required", http_status=status.HTTP_403_FORBIDDEN):
+    return Response({"error": message, "reason": reason}, status=http_status)
+
+
+def _enforce_step_up_session(request, *, entity_type, entity_id, action_key):
+    actor_id = request.data.get("actorId", "")
+    actor_role = request.data.get("actorRole", "admin")
+    session_id = (request.data.get("stepUpSessionId") or "").strip()
+
+    if actor_role != "admin":
+        return _step_up_error(
+            "Aksi sensitif ini hanya bisa dijalankan oleh admin.",
+            reason="step_up_admin_only",
+        )
+
+    if not actor_id:
+        return _step_up_error(
+            "actorId wajib diisi untuk aksi sensitif ini.",
+            reason="step_up_actor_missing",
+            http_status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not session_id:
+        return _step_up_error("OTP admin diperlukan untuk aksi sensitif ini.")
+
+    with transaction.atomic():
+        try:
+            session = OtpSession.objects.select_for_update().get(session_id=session_id)
+        except OtpSession.DoesNotExist:
+            return _step_up_error(
+                "Sesi OTP admin tidak ditemukan.",
+                reason="step_up_session_missing",
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if session.user_id != actor_id:
+            return _step_up_error(
+                "Sesi OTP tidak cocok dengan admin yang sedang aktif.",
+                reason="step_up_actor_mismatch",
+            )
+
+        if session.purpose != STEP_UP_PURPOSE:
+            return _step_up_error(
+                "Sesi OTP ini bukan untuk verifikasi aksi admin.",
+                reason="step_up_wrong_purpose",
+            )
+
+        if not session.is_verified:
+            return _step_up_error(
+                "OTP admin belum diverifikasi.",
+                reason="step_up_not_verified",
+            )
+
+        if session.is_expired or _now() > session.expires_at:
+            session.is_expired = True
+            session.save(update_fields=["is_expired"])
+            return _step_up_error(
+                "OTP admin sudah kedaluwarsa. Minta kode baru lalu coba lagi.",
+                reason="step_up_expired",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        metadata = session.metadata or {}
+        if (
+            metadata.get("entityType") != entity_type
+            or str(metadata.get("entityId")) != str(entity_id)
+            or metadata.get("actionKey") != action_key
+        ):
+            return _step_up_error(
+                "Sesi OTP tidak sesuai dengan aksi sensitif ini.",
+                reason="step_up_scope_mismatch",
+            )
+
+        session.is_expired = True
+        session.save(update_fields=["is_expired"])
+
+    return None
 
 
 # ── Orders ─────────────────────────────────────────────────────
@@ -120,11 +207,21 @@ def create_order(request):
     return Response({"order": _serialize_order(order)}, status=status.HTTP_201_CREATED)
 
 
-def _change_order_status(request, order_id_str, new_status, extra_fields, note):
+def _change_order_status(request, order_id_str, new_status, extra_fields, note, *, step_up_action_key=None):
     try:
         order = Order.objects.prefetch_related("items", "status_history").get(order_id=order_id_str)
     except Order.DoesNotExist:
         return Response({"error": "Order tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    if step_up_action_key:
+        step_up_error = _enforce_step_up_session(
+            request,
+            entity_type="order",
+            entity_id=order_id_str,
+            action_key=step_up_action_key,
+        )
+        if step_up_error is not None:
+            return step_up_error
 
     actor_id = request.data.get("actorId", "")
     actor_role = request.data.get("actorRole", "admin")
@@ -159,7 +256,14 @@ def _change_order_status(request, order_id_str, new_status, extra_fields, note):
 
 @api_view(["PATCH"])
 def approve_order(request, order_id):
-    return _change_order_status(request, order_id, "packing", {"cancel_deadline_ts": None}, "Payment approved by admin.")
+    return _change_order_status(
+        request,
+        order_id,
+        "packing",
+        {"cancel_deadline_ts": None},
+        "Payment approved by admin.",
+        step_up_action_key="approvePayment",
+    )
 
 
 @api_view(["PATCH"])
@@ -168,6 +272,7 @@ def reject_order(request, order_id):
         request, order_id, "rejected",
         {"rejection_reason": request.data.get("reason", ""), "cancel_deadline_ts": None},
         "Payment rejected by admin.",
+        step_up_action_key="rejectPayment",
     )
 
 
@@ -177,6 +282,7 @@ def ship_order(request, order_id):
         request, order_id, "shipped",
         {"courier": request.data.get("courier", ""), "tracking_number": request.data.get("trackingNumber", "")},
         "Order marked as shipped by admin.",
+        step_up_action_key="shipOrder",
     )
 
 
@@ -186,6 +292,7 @@ def deliver_order(request, order_id):
         request, order_id, "delivered",
         {"delivery_proof": request.data.get("deliveryProof")},
         "Order marked as delivered by admin.",
+        step_up_action_key="deliverOrder",
     )
 
 
@@ -283,6 +390,17 @@ def update_return(request, return_id):
     old_status = ret.status
     new_status = data.get("status", old_status)
     status_changed = new_status != old_status
+    step_up_action_key = SENSITIVE_RETURN_ACTIONS.get(new_status) if status_changed else None
+
+    if step_up_action_key:
+        step_up_error = _enforce_step_up_session(
+            request,
+            entity_type="return",
+            entity_id=return_id,
+            action_key=step_up_action_key,
+        )
+        if step_up_error is not None:
+            return step_up_error
 
     with transaction.atomic():
         for field, db_field in [("status", "status"), ("qrStatus", "qr_status"), ("scannedQr", "scanned_qr"), ("monitoringFlag", "monitoring_flag"), ("conditionNote", "condition_note"), ("qrCode", "qr_code"), ("receiptVerifyStatus", "receipt_verify_status"), ("receiptVerifyReason", "receipt_verify_reason")]:
@@ -411,6 +529,16 @@ def resolve_flag(request, flag_id):
         flag = MonitoringFlag.objects.get(flag_id=flag_id)
     except MonitoringFlag.DoesNotExist:
         return Response({"error": "Flag tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    step_up_error = _enforce_step_up_session(
+        request,
+        entity_type=flag.entity_type,
+        entity_id=flag.entity_id,
+        action_key="resolveHighRiskFlag",
+    )
+    if step_up_error is not None:
+        return step_up_error
+
     now = _now()
     flag.status = "resolved"
     flag.resolved_at = now

@@ -342,6 +342,8 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
   const anyFraudFlag = returnUnits.some(u => scansForRet[u.key]?.fraud_flag_id);
   const validCount   = returnUnits.filter(u => scansForRet[u.key]?.status === "valid").length;
   const curQr        = allVerified ? "valid" : anyInvalid ? "invalid" : null;
+  const getActionErrorMessage = (error) =>
+    error?.response?.data?.error ?? "Aksi sensitif gagal diproses. Silakan minta OTP baru lalu coba lagi.";
 
   useEffect(() => {
     if (selectedReturnId) setLocalId(selectedReturnId);
@@ -392,12 +394,16 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
     if (!ret?.id || curStatus !== "approved" || returnUnits.length === 0) return;
     const scans = unitScans[ret.id] ?? {};
     if (returnUnits.every(u => scans[u.key]?.status === "valid")) {
-      patchReturn(ret.id, { status: "item_received", qrStatus: "valid" });
+      patchReturn(ret.id, { status: "item_received", qrStatus: "valid" }).catch((error) => {
+        console.error("Auto-update return status failed:", error);
+      });
     }
   }, [unitScans]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const patchReturn = (id, patch) => {
-    if (ret?.fromCtx) updateReturn(id, patch);
+  const patchReturn = async (id, patch, stepUpSessionId = null) => {
+    if (ret?.fromCtx) {
+      await updateReturn(id, patch, stepUpSessionId);
+    }
     if (patch.status) setLocalStatuses(p => ({ ...p, [id]: patch.status }));
   };
 
@@ -495,7 +501,9 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
           metadata: { entityType: "return", entityId: ret.id, orderId: ret.orderId ?? null, unitKey, resultCode: finalCode },
         });
         if (!matched) {
-          patchReturn(ret.id, { qrStatus: "invalid" });
+          patchReturn(ret.id, { qrStatus: "invalid" }).catch((error) => {
+            console.error("Persist invalid QR status failed:", error);
+          });
         }
       })
       .catch(err => {
@@ -527,12 +535,12 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
 
   const navTo = (r) => { setLocalId(r.id); if (setSelectedReturnId) setSelectedReturnId(r.id); setPendingScanUnit(null); };
 
-  const requestStepUp = ({ actionKey, actionLabel, onVerified, reasons }) => {
+  const requestStepUp = async ({ actionKey, actionLabel, onVerified, reasons }) => {
     const config = riskSummary.stepUpConfig?.[actionKey];
     const finalReasons = reasons ?? config?.reasons ?? ["Aksi sensitif memerlukan konfirmasi."];
 
     if (currentUser?.id) {
-      generateOtp(currentUser.id, {
+      const otpSession = await generateOtp(currentUser.id, {
         purpose: "step_up",
         metadata: {
           entityType: "return",
@@ -540,6 +548,10 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
           actionKey,
         },
       });
+      if (!otpSession?.id) {
+        window.alert("Gagal mengirim OTP admin. Pastikan Mailpit sedang aktif lalu coba lagi.");
+        return;
+      }
     }
 
     setRiskSummary((prev) => ({
@@ -576,8 +588,9 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
     stepUpActionRef.current = null;
   };
 
-  const handleStepUpSuccess = () => {
+  const handleStepUpSuccess = async (result) => {
     const pendingAction = stepUpActionRef.current;
+    const stepUpSessionId = result?.sessionId ?? null;
 
     setRiskSummary((prev) => ({
       ...prev,
@@ -606,7 +619,13 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
     }));
 
     closeStepUp();
-    pendingAction?.();
+    if (!pendingAction) return;
+
+    try {
+      await pendingAction(stepUpSessionId);
+    } catch (error) {
+      window.alert(getActionErrorMessage(error));
+    }
   };
 
   const handleResolveFlag = (flag) => {
@@ -617,8 +636,8 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
         `Flag ${flag.ruleCode} masih aktif pada case ini.`,
         "Resolving high risk flag memerlukan verifikasi tambahan.",
       ],
-      onVerified: () => {
-        resolveFlag(flag.id);
+      onVerified: async (stepUpSessionId) => {
+        await resolveFlag(flag.id, stepUpSessionId);
         setRiskSummary((prev) => ({
           ...prev,
           flags: prev.flags.map((item) =>
@@ -1028,19 +1047,38 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                       <div style={{ padding: "10px 14px", background: "rgba(74,159,212,0.1)", borderRadius: 10, marginBottom: 10, fontSize: 13, color: "#4a9fd4", lineHeight: 1.5 }}>
                         <Package size={14} style={{ display: "inline", verticalAlign: "middle" }} /> Barang telah diterima. Tandai selesai setelah refund dilakukan.
                       </div>
-                      <button className="adm-pa-approve-btn" onClick={async () => {
-                        const unitIds = returnUnits
-                          .map(u => scansForRet[u.key]?.unit_id)
-                          .filter(Boolean);
-                        await Promise.allSettled(unitIds.map(unit_id =>
-                          fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/approve/`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ unit_id, approved_by: currentUser?.id ?? "admin" }),
-                          }).catch(err => console.error("QR approve failed:", err))
-                        ));
-                        patchReturn(ret.id, { status: "completed" });
-                      }}><IcCheck /> Tandai Return Selesai</button>
+                      <button
+                        className="adm-pa-approve-btn"
+                        onClick={() => requestStepUp({
+                          actionKey: "completeReturn",
+                          actionLabel: "Tandai Return Selesai",
+                          onVerified: async (stepUpSessionId) => {
+                            const unitIds = returnUnits
+                              .map(u => scansForRet[u.key]?.unit_id)
+                              .filter(Boolean);
+                            await Promise.allSettled(unitIds.map(unit_id =>
+                              fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qr/approve/`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ unit_id, approved_by: currentUser?.id ?? "admin" }),
+                              }).catch(err => console.error("QR approve failed:", err))
+                            ));
+                            await patchReturn(ret.id, { status: "completed" }, stepUpSessionId);
+                            setRiskSummary((prev) => ({
+                              ...prev,
+                              timeline: [
+                                ...prev.timeline,
+                                createSecurityTimelineEvent(
+                                  ret.id.toLowerCase(),
+                                  "action",
+                                  "Aksi sensitif dikonfirmasi: Tandai Return Selesai",
+                                  "success"
+                                ),
+                              ],
+                            }));
+                          },
+                        })}
+                      ><IcCheck /> Tandai Return Selesai</button>
                     </>
                   )}
                   <button
@@ -1048,7 +1086,8 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                     onClick={() => requestStepUp({
                       actionKey: "rejectReturn",
                       actionLabel: "Tolak Pengembalian",
-                      onVerified: () => {
+                      onVerified: async (stepUpSessionId) => {
+                        await patchReturn(ret.id, { status: "rejected" }, stepUpSessionId);
                         setRiskSummary((prev) => ({
                           ...prev,
                           timeline: [
@@ -1061,7 +1100,6 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                             ),
                           ],
                         }));
-                        patchReturn(ret.id, { status: "rejected" });
                       },
                     })}
                   >
@@ -1083,7 +1121,8 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                     onClick={() => requestStepUp({
                       actionKey: "approveReturn",
                       actionLabel: "Setujui Pengembalian",
-                      onVerified: () => {
+                      onVerified: async (stepUpSessionId) => {
+                        await patchReturn(ret.id, { status: "approved" }, stepUpSessionId);
                         setRiskSummary((prev) => ({
                           ...prev,
                           timeline: [
@@ -1096,7 +1135,6 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                             ),
                           ],
                         }));
-                        patchReturn(ret.id, { status: "approved" });
                       },
                     })}
                   >
@@ -1107,7 +1145,8 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                     onClick={() => requestStepUp({
                       actionKey: "rejectReturn",
                       actionLabel: "Tolak Pengembalian",
-                      onVerified: () => {
+                      onVerified: async (stepUpSessionId) => {
+                        await patchReturn(ret.id, { status: "rejected" }, stepUpSessionId);
                         setRiskSummary((prev) => ({
                           ...prev,
                           timeline: [
@@ -1120,7 +1159,6 @@ export function ReturnDetail({ selectedReturnId, setSelectedReturnId, setActive 
                             ),
                           ],
                         }));
-                        patchReturn(ret.id, { status: "rejected" });
                       },
                     })}
                   >

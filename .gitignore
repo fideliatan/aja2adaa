@@ -19,3 +19,6 @@ staticfiles/
 
 # VS Code (optional)
 .vscode/
+
+# Local tooling
+.tools/

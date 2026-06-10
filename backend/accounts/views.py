@@ -17,6 +17,8 @@ from rest_framework.response import Response
 logger = logging.getLogger(__name__)
 
 _WIB = ZoneInfo("Asia/Jakarta")
+OTP_EXPIRY_MINUTES = 5
+OTP_SEND_ERROR = "Gagal mengirim OTP. Pastikan Mailpit sedang aktif lalu coba lagi."
 
 def _now():
     return datetime.now(_WIB).replace(tzinfo=None)
@@ -44,6 +46,106 @@ def _log_activity(actor_id, actor_role, event_type, label, metadata=None):
         timestamp=_now(),
         metadata=metadata or {},
     )
+
+
+def _create_otp_session(
+    user_id,
+    purpose,
+    *,
+    device_fingerprint="",
+    user_agent="",
+    ip_address="",
+    extra_metadata=None,
+):
+    OtpSession.objects.filter(
+        user_id=user_id,
+        purpose=purpose,
+        is_expired=False,
+        is_verified=False,
+    ).update(is_expired=True)
+
+    otp_code = f"{secrets.randbelow(1000000):06d}"
+    session_id = str(uuid.uuid4())
+    metadata = {
+        "otpCode": otp_code,
+        "deviceFingerprint": device_fingerprint,
+        "userAgent": user_agent,
+        "ipAddress": ip_address,
+    }
+    if isinstance(extra_metadata, dict):
+        metadata.update(extra_metadata)
+
+    OtpSession.objects.create(
+        session_id=session_id,
+        user_id=user_id,
+        purpose=purpose,
+        expires_at=_now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+        metadata=metadata,
+    )
+    return session_id, otp_code
+
+
+def _issue_otp_session(
+    user,
+    purpose,
+    *,
+    device_fingerprint="",
+    user_agent="",
+    ip_address="",
+    extra_metadata=None,
+):
+    session_id, otp_code = _create_otp_session(
+        user.user_code or f"USR-{user.pk:03d}",
+        purpose,
+        device_fingerprint=device_fingerprint,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        extra_metadata=extra_metadata,
+    )
+
+    if django_settings.DEBUG:
+        print(f"\n[DEV] OTP for {user.email}: {otp_code}\n")
+        logger.warning("[DEV] OTP for %s: %s", user.email, otp_code)
+
+    try:
+        _send_otp_email(user.email, otp_code, purpose)
+    except RuntimeError:
+        OtpSession.objects.filter(session_id=session_id).update(is_expired=True)
+        raise
+
+    return session_id
+
+
+def _issue_password_reset_session(user):
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    session_id, otp_code = _create_otp_session(
+        user.user_code or f"USR-{user.pk:03d}",
+        "password_reset",
+    )
+
+    if django_settings.DEBUG:
+        print(f"\n[DEV] Password reset OTP for {user.email}: {otp_code}\n")
+        logger.warning("[DEV] Password reset OTP for %s: %s", user.email, otp_code)
+
+    subject = "careofyou - Reset Password"
+    body = (
+        f"Hai,\n\n"
+        f"Kami menerima permintaan untuk mengatur ulang password akun careofyou kamu.\n\n"
+        f"Kode OTP kamu: {otp_code}\n\n"
+        f"Kode berlaku selama {OTP_EXPIRY_MINUTES} menit. Jangan bagikan kode ini ke siapapun.\n\n"
+        f"Jika kamu tidak merasa melakukan permintaan ini, abaikan email ini.\n\n"
+        f"- Tim careofyou"
+    )
+
+    try:
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+    except Exception as exc:
+        OtpSession.objects.filter(session_id=session_id).update(is_expired=True)
+        raise RuntimeError(f"Gagal mengirim email OTP reset password: {exc}")
+
+    return session_id
 
 
 # ── Auth views ────────────────────────────────────────────────
@@ -215,37 +317,26 @@ def login(request):
                 # → require OTP to verify identity before trusting new device
                 # (skip for twoFactorEnabled users — their 2FA flow handles it)
                 if not user.two_factor_enabled:
-                    otp_session_id = str(uuid.uuid4())
-                    otp_code = f"{secrets.randbelow(1000000):06d}"
-                    OtpSession.objects.filter(
-                        user_id=user_id, purpose="device_verification",
-                        is_expired=False, is_verified=False,
-                    ).update(is_expired=True)
-                    OtpSession.objects.create(
-                        session_id=otp_session_id,
-                        user_id=user_id,
-                        purpose="device_verification",
-                        expires_at=_now() + timedelta(minutes=5),
-                        metadata={
-                            "otpCode": otp_code,
-                            "deviceFingerprint": device_fingerprint,
-                            "userAgent": user_agent,
-                            "ipAddress": ip_address,
-                        },
-                    )
-                    if django_settings.DEBUG:
-                        print(f"\n[DEV] OTP for {email}: {otp_code}\n")
-                        logger.warning("[DEV] OTP for %s: %s", email, otp_code)
                     try:
-                        _send_otp_email(user.email, otp_code, "device_verification")
+                        otp_session_id = _issue_otp_session(
+                            user,
+                            "device_verification",
+                            device_fingerprint=device_fingerprint,
+                            user_agent=user_agent,
+                            ip_address=ip_address,
+                        )
                     except Exception as exc:
                         logger.error("Failed to send OTP email to %s: %s", user.email, exc)
+                        return Response(
+                            {"error": OTP_SEND_ERROR},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        )
                     LoginAttempt.objects.create(
                         attempt_id=str(uuid.uuid4()),
                         user_id=user_id, email=email, role=user.role,
                         success=True, timestamp=_now(),
                         ip_address=ip_address, user_agent=user_agent,
-                        device_fingerprint=device_fingerprint, reason=None,
+                        device_fingerprint=device_fingerprint, reason="otp_required",
                     )
                     _log_activity(
                         actor_id=user_id, actor_role=user.role,
@@ -261,6 +352,21 @@ def login(request):
                         "deviceMatch": None,
                     })
 
+    try:
+        otp_session_id = _issue_otp_session(
+            user,
+            "login",
+            device_fingerprint=device_fingerprint,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+    except Exception as exc:
+        logger.error("Failed to send login OTP to %s: %s", user.email, exc)
+        return Response(
+            {"error": OTP_SEND_ERROR},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
     LoginAttempt.objects.create(
         attempt_id=str(uuid.uuid4()),
         user_id=user_id,
@@ -271,18 +377,19 @@ def login(request):
         ip_address=ip_address,
         user_agent=user_agent,
         device_fingerprint=device_fingerprint,
-        reason=None,
+        reason="otp_required",
     )
     _log_activity(
         actor_id=user_id,
         actor_role=user.role,
-        event_type="login_success",
-        label=f"Login success for {email}",
+        event_type="login_otp_required",
+        label=f"Login OTP required for {email}",
         metadata={"email": email, "ipAddress": ip_address, "deviceStatus": device_status, "deviceFingerprint": device_fingerprint},
     )
 
     return Response({
-        "message": "Login berhasil",
+        "requireLoginOtp": True,
+        "sessionId": otp_session_id,
         "user": _serialize_user(user),
         "deviceStatus": device_status,
         "deviceMatch": device_match,
@@ -361,6 +468,7 @@ def otp_request(request):
 
     user_id = request.data.get("userId", "")
     purpose = request.data.get("purpose", "login")
+    request_metadata = request.data.get("metadata") or {}
 
     if not user_id:
         return Response({"error": "userId wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
@@ -370,34 +478,21 @@ def otp_request(request):
     except User.DoesNotExist:
         return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Expire any active sessions for same user+purpose
-    OtpSession.objects.filter(
-        user_id=user_id, purpose=purpose, is_expired=False, is_verified=False
-    ).update(is_expired=True)
-
-    otp_code = f"{secrets.randbelow(1000000):06d}"
-    session_id = str(uuid.uuid4())
-    expires_at = _now() + timedelta(minutes=5)
-    OtpSession.objects.create(
-        session_id=session_id,
-        user_id=user_id,
-        purpose=purpose,
-        expires_at=expires_at,
-        metadata={
-            "otpCode": otp_code,
-            "deviceFingerprint": request.data.get("deviceFingerprint", ""),
-            "userAgent": request.META.get("HTTP_USER_AGENT", ""),
-            "ipAddress": request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")),
-        },
-    )
-
-    if django_settings.DEBUG:
-        print(f"\n[DEV] OTP for {user.email}: {otp_code}\n")
-        logger.warning("[DEV] OTP for %s: %s", user.email, otp_code)
     try:
-        _send_otp_email(user.email, otp_code, purpose)
-    except Exception as e:
-        logger.error("Failed to send OTP email to %s: %s", user.email, e)
+        session_id = _issue_otp_session(
+            user,
+            purpose,
+            device_fingerprint=request.data.get("deviceFingerprint", ""),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            ip_address=request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")),
+            extra_metadata=request_metadata if isinstance(request_metadata, dict) else None,
+        )
+    except Exception as exc:
+        logger.error("Failed to send OTP email to %s: %s", user.email, exc)
+        return Response(
+            {"error": OTP_SEND_ERROR},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
     _log_activity(
         actor_id=user_id,
@@ -532,12 +627,118 @@ def otp_verify(request):
                 metadata={"deviceId": device_id, "deviceLabel": device_label, "purpose": session.purpose},
             )
 
+    if session.purpose in {"login", "device_verification"}:
+        _log_activity(
+            actor_id=session.user_id,
+            actor_role=user.role,
+            event_type="login_success",
+            label=f"Login success for {user.email}",
+            metadata={
+                "email": user.email,
+                "purpose": session.purpose,
+                "deviceStatus": device_status,
+                "deviceFingerprint": fp,
+                "ipAddress": ip,
+            },
+        )
+
     return Response({
         "success": True,
         "user": _serialize_user(user),
         "deviceStatus": device_status,
         "deviceMatch": device_match,
     })
+
+
+@api_view(["POST"])
+def forgot_password_request(request):
+    email = request.data.get("email", "").strip().lower()
+
+    if not email:
+        return Response({"error": "Email wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        return Response({"error": "Email tidak terdaftar"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        session_id = _issue_password_reset_session(user)
+    except Exception as exc:
+        logger.error("Failed to send password reset OTP to %s: %s", email, exc)
+        return Response(
+            {"error": OTP_SEND_ERROR},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    _log_activity(
+        actor_id=user.user_code or f"USR-{user.pk:03d}",
+        actor_role=user.role,
+        event_type="password_reset_requested",
+        label=f"Password reset OTP requested for {email}",
+        metadata={"email": email},
+    )
+
+    return Response({
+        "sessionId": session_id,
+        "userId": user.user_code or f"USR-{user.pk:03d}",
+        "email": user.email,
+    })
+
+
+@api_view(["POST"])
+def forgot_password_confirm(request):
+    session_id = request.data.get("sessionId", "")
+    new_password = request.data.get("newPassword", "")
+
+    if not session_id or not new_password:
+        return Response({"error": "sessionId dan newPassword wajib diisi"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 6:
+        return Response({"error": "Password minimal 6 karakter"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        session = OtpSession.objects.get(session_id=session_id)
+    except OtpSession.DoesNotExist:
+        return Response({"error": "Sesi reset password tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    if session.purpose != "password_reset":
+        return Response({"error": "Sesi OTP tidak valid untuk reset password"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if session.is_expired or _now() > session.expires_at:
+        session.is_expired = True
+        session.save(update_fields=["is_expired"])
+        return Response({"error": "OTP sudah kadaluarsa", "reason": "otp_expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not session.is_verified:
+        return Response({"error": "OTP belum diverifikasi"}, status=status.HTTP_400_BAD_REQUEST)
+
+    metadata = dict(session.metadata or {})
+    if metadata.get("passwordResetCompleted"):
+        return Response({"error": "Sesi reset password sudah digunakan"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(user_code=session.user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User tidak ditemukan"}, status=status.HTTP_404_NOT_FOUND)
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+
+    metadata["passwordResetCompleted"] = True
+    session.metadata = metadata
+    session.is_expired = True
+    session.save(update_fields=["metadata", "is_expired"])
+
+    _log_activity(
+        actor_id=session.user_id,
+        actor_role=user.role,
+        event_type="password_reset_completed",
+        label=f"Password reset completed for {user.email}",
+        metadata={"email": user.email},
+    )
+
+    return Response({"success": True, "message": "Password berhasil diatur ulang"})
 
 
 # ── Serializer helpers ────────────────────────────────────────

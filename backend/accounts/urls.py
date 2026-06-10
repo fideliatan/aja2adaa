@@ -9,6 +9,8 @@ urlpatterns = [
     path("me/", views.me),
     path("otp/request/", views.otp_request),
     path("otp/verify/", views.otp_verify),
+    path("password/forgot/", views.forgot_password_request),
+    path("password/reset/", views.forgot_password_confirm),
     path("profile/", views.update_profile),
     path("logout/", mutation_views.logout),
 ]

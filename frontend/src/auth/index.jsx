@@ -109,7 +109,7 @@ export default function AuthPage() {
   const [pendingUser, setPendingUser] = useState(null);
   const [otpSessionId, setOtpSessionId] = useState(null);
   const [pendingDeviceMeta, setPendingDeviceMeta] = useState({});
-  const [otpPurpose, setOtpPurpose] = useState("new_device");
+  const [otpPurpose, setOtpPurpose] = useState("login");
 
   const [mode, setMode] = useState(
     location.pathname === "/register" ? "register" : "login"
@@ -228,13 +228,6 @@ export default function AuthPage() {
     }
   };
 
-  const LOGIN_ERROR_MSG = {
-    user_not_found:    "Email atau password salah.",
-    wrong_password:    "Email atau password salah.",
-    account_locked:    "Akun terkunci sementara. Coba lagi beberapa menit lagi.",
-    account_suspended: "Akun ini telah dinonaktifkan. Hubungi kami untuk bantuan.",
-  };
-
   const handleLogin = async (event) => {
     event.preventDefault();
     setLoginLoading(true);
@@ -257,23 +250,12 @@ export default function AuthPage() {
         },
       };
 
-      if (data.requireDeviceOtp) {
+      if (data.requireDeviceOtp || data.requireLoginOtp) {
         // New device detected — backend already created OTP session
         setOtpSessionId(data.sessionId);
         setPendingUser(user);
         setPendingDeviceMeta(deviceMeta);
-        setOtpPurpose("new_device");
-        openOtpModal(user.email);
-      } else if (user.twoFactorEnabled) {
-        const otpRes = await api.post("/api/auth/otp/request/", {
-          userId: user.id,
-          purpose: "login",
-          deviceFingerprint: fingerprint,
-        });
-        setOtpSessionId(otpRes.data.sessionId);
-        setPendingUser(user);
-        setPendingDeviceMeta(deviceMeta);
-        setOtpPurpose("admin_2fa");
+        setOtpPurpose(data.requireDeviceOtp ? "new_device" : "login");
         openOtpModal(user.email);
       } else {
         flushSync(() => setUserSession(user, deviceMeta));
@@ -475,7 +457,7 @@ export default function AuthPage() {
     try {
       const otpRes = await api.post("/api/auth/otp/request/", {
         userId: pendingUser.id,
-        purpose: otpPurpose === "admin_2fa" ? "login" : "device_verification",
+        purpose: otpPurpose === "new_device" ? "device_verification" : "login",
         deviceFingerprint: pendingDeviceMeta.deviceInfo?.fingerprint ?? "",
       });
       setOtpSessionId(otpRes.data.sessionId);
@@ -655,13 +637,13 @@ export default function AuthPage() {
 
               <div className="otp-header-copy">
                 <p className="otp-kicker">
-                  {otpPurpose === "new_device" ? "Perangkat Baru Terdeteksi" : "Verifikasi Admin"}
+                  {otpPurpose === "new_device" ? "Perangkat Baru Terdeteksi" : "Verifikasi Login"}
                 </p>
                 <h3 id="otp-title" className="otp-title">Masukkan OTP 6 digit</h3>
                 <p className="otp-subtitle">
                   {otpPurpose === "new_device"
                     ? "Login dari perangkat baru terdeteksi. Masukkan kode OTP untuk memverifikasi identitasmu dan mempercayai perangkat ini."
-                    : "Kami sudah mengirim kode verifikasi ke email admin terdaftar sebelum dashboard bisa dibuka."}
+                    : "Kami sudah mengirim kode verifikasi ke email terdaftar. Masukkan OTP untuk menyelesaikan proses login."}
                 </p>
               </div>
             </div>
