@@ -22,3 +22,9 @@ staticfiles/
 
 # Local tooling
 .tools/
+
+# Local migration fixes (do not push)
+backend/accounts/migrations/0018_remove_cartitem_unique_cart_user_product_and_more.py
+
+# Gitignore itself
+.gitignore
