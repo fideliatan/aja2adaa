@@ -550,6 +550,7 @@ export default function OrderDetailPage() {
   const [returnPhotoB64, setReturnPhotoB64]       = useState(null);
   const receiptInputRef = useState(() => ({ current: null }))[0];
   const photoInputRef   = useState(() => ({ current: null }))[0];
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
   const [ratingMap, setRatingMap]             = useState({});
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
@@ -650,37 +651,43 @@ export default function OrderDetailPage() {
   };
 
   const submitReturn = async () => {
-    const selectedItems = (liveOrder.items ?? [])
-      .filter(item => (returnQtys[item.name] ?? 0) > 0)
-      .map(item => ({ ...item, qty: returnQtys[item.name] }));
+    if (isSubmittingReturn) return;
+    setIsSubmittingReturn(true);
+    try {
+      const selectedItems = (liveOrder.items ?? [])
+        .filter(item => (returnQtys[item.name] ?? 0) > 0)
+        .map(item => ({ ...item, qty: returnQtys[item.name] }));
 
-    const ret = {
-      id: `RET-${Date.now().toString().slice(-6)}`,
-      orderId: liveOrder.id,
-      customerId: liveOrder.customerId ?? session?.userId ?? null,
-      customer: liveOrder.recipient ?? liveOrder.customer ?? "Customer",
-      email: liveOrder.email ?? session?.email ?? "",
-      date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
-      reason: returnReason === "Lainnya" ? returnCustomReason : returnReason,
-      status: "pending",
-      monitoringFlag: null,
-      products: selectedItems,
-      conditionNote: returnReason === "Lainnya" ? returnCustomReason : returnReason,
-      photos: returnPhotoB64 ? [returnPhotoB64] : [],
-      receiptB64: returnReceiptB64,
-      receiptFileName: returnReceiptFile?.name ?? null,
-      productPhotoB64: returnPhotoB64,
-      qrCode: "—", scannedQr: "—", qrStatus: null,
-      total: selectedItems.reduce((s, i) => s + i.price * i.qty, 0),
-      sessionSnapshot: {
-        userId: liveOrder.customerId ?? session?.userId ?? null,
-        loginAt: session?.loginAt ?? null,
-        deviceStatus: session?.deviceStatus ?? liveOrder.sessionSnapshot?.deviceStatus ?? "trusted",
-        deviceInfo: session?.deviceInfo ?? liveOrder.sessionSnapshot?.deviceInfo ?? {},
-      },
-    };
-    await addReturn(ret);
-    setReturnStep(4);
+      const ret = {
+        id: `RET-${Date.now().toString().slice(-6)}`,
+        orderId: liveOrder.id,
+        customerId: liveOrder.customerId ?? session?.userId ?? null,
+        customer: liveOrder.recipient ?? liveOrder.customer ?? "Customer",
+        email: liveOrder.email ?? session?.email ?? "",
+        date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+        reason: returnReason === "Lainnya" ? returnCustomReason : returnReason,
+        status: "pending",
+        monitoringFlag: null,
+        products: selectedItems,
+        conditionNote: returnReason === "Lainnya" ? returnCustomReason : returnReason,
+        photos: returnPhotoB64 ? [returnPhotoB64] : [],
+        receiptB64: returnReceiptB64,
+        receiptFileName: returnReceiptFile?.name ?? null,
+        productPhotoB64: returnPhotoB64,
+        qrCode: "—", scannedQr: "—", qrStatus: null,
+        total: selectedItems.reduce((s, i) => s + i.price * i.qty, 0),
+        sessionSnapshot: {
+          userId: liveOrder.customerId ?? session?.userId ?? null,
+          loginAt: session?.loginAt ?? null,
+          deviceStatus: session?.deviceStatus ?? liveOrder.sessionSnapshot?.deviceStatus ?? "trusted",
+          deviceInfo: session?.deviceInfo ?? liveOrder.sessionSnapshot?.deviceInfo ?? {},
+        },
+      };
+      await addReturn(ret);
+      setReturnStep(4);
+    } finally {
+      setIsSubmittingReturn(false);
+    }
   };
 
   return (
@@ -1372,10 +1379,10 @@ export default function OrderDetailPage() {
                 <div className="od-modal-footer">
                   <button
                     className="od-return-next-btn od-return-submit-btn"
-                    disabled={!returnPhotoB64}
+                    disabled={!returnPhotoB64 || isSubmittingReturn}
                     onClick={submitReturn}
                   >
-                    Submit Pengajuan Return
+                    {isSubmittingReturn ? "Memproses..." : "Submit Pengajuan Return"}
                   </button>
                   <button className="od-cancel-back-btn" onClick={() => setReturnStep(2)}>← Kembali</button>
                 </div>
