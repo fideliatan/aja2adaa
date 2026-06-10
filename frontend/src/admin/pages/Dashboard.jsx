@@ -231,12 +231,10 @@ export default function Dashboard({ setActive }) {
         ))}
       </div>
 
-      <MonitoringSummaryCards summary={monitoringSummary} />
-
+      {/* Chart + Alert */}
       <div className="adm-dash-grid">
         <RevenueChart />
 
-        {/* Pending alert */}
         <div className="adm-card adm-pending-card">
           <div className="adm-card-header">
             <h3 className="adm-card-title">Perlu Perhatian</h3>
@@ -268,8 +266,8 @@ export default function Dashboard({ setActive }) {
         </div>
       </div>
 
-      <div className="adm-dash-row2">
-        {/* Recent orders */}
+      {/* Recent orders + Top products */}
+      <div className="adm-dash-grid">
         <div className="adm-card adm-recent-card">
           <div className="adm-card-header">
             <h3 className="adm-card-title">Pesanan Terbaru</h3>
@@ -311,7 +309,6 @@ export default function Dashboard({ setActive }) {
           </table>
         </div>
 
-        {/* Top products */}
         <div className="adm-card adm-top-products-card">
           <div className="adm-card-header">
             <h3 className="adm-card-title">Produk Terlaris</h3>
@@ -334,6 +331,12 @@ export default function Dashboard({ setActive }) {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Monitoring summary — dipindah ke bawah biar tidak tumpuk sama stat cards */}
+      <div className="adm-dash-subsection">
+        <p className="adm-dash-subsection-label">Pemantauan Risiko</p>
+        <MonitoringSummaryCards summary={monitoringSummary} />
       </div>
     </div>
   );

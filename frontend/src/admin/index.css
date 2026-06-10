@@ -507,8 +507,17 @@
 }
 
 /* Dashboard grid */
-.adm-dash-grid  { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
-.adm-dash-row2  { display: grid; grid-template-columns: 1fr 340px; gap: 18px; }
+.adm-dash-grid { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+
+.adm-dash-subsection { display: flex; flex-direction: column; gap: 10px; }
+.adm-dash-subsection-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--adm-text-3);
+  margin: 0;
+}
 
 /* Chart */
 .adm-chart-card { padding: 24px; }
@@ -1159,7 +1168,6 @@
 @media (max-width: 1200px) {
   .adm-stat-grid    { grid-template-columns: repeat(2, 1fr); }
   .adm-dash-grid    { grid-template-columns: 1fr; }
-  .adm-dash-row2    { grid-template-columns: 1fr; }
   .adm-settings-grid { grid-template-columns: 1fr; }
 }
 
@@ -1427,6 +1435,7 @@
   position: fixed;
   inset: 0;
   background: rgba(17, 24, 39, 0.5);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -2407,6 +2416,7 @@
   justify-content: center;
   z-index: 200;
   padding: 20px;
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 .adm-modal {

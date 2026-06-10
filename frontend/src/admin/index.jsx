@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./index.css";
 import { useMockData } from "../context/MockDataContext.jsx";
-import { getAdminNotifications } from "./risk-data.js";
 import {
   IcGrid,
   IcOrders,
@@ -11,8 +10,6 @@ import {
   IcSettings,
   IcLogOut,
   IcSearch,
-  IcBell,
-  IcNotif,
   IcReturn,
   IcHistory,
   IcStore,
@@ -22,7 +19,6 @@ import { Orders, OrderDetail } from "./pages/Orders.jsx";
 import Products from "./pages/Products.jsx";
 import Customers from "./pages/Customers.jsx";
 import Settings from "./pages/Settings.jsx";
-import Notifications from "./pages/Notifications.jsx";
 import { Returns, ReturnDetail } from "./pages/Returns.jsx";
 import VerifyHistory from "./pages/VerifyHistory.jsx";
 
@@ -36,7 +32,6 @@ const NAV_ITEMS = [
   { id: "customers",       label: "Pelanggan",         icon: <IcCustomers />  },
   { id: "returns",         label: "Return Paket",      icon: <IcReturn />     },
   { id: "verify-history",  label: "Riwayat Verifikasi",icon: <IcHistory />    },
-  { id: "notifications",   label: "Notifikasi",        icon: <IcNotif />      },
   { id: "settings",        label: "Pengaturan",        icon: <IcSettings />   },
 ];
 
@@ -46,14 +41,12 @@ const NAV_ITEMS = [
 export default function AdminPage() {
   const navigate = useNavigate();
   const { mockStore, session, logoutUser } = useMockData();
-  const adminNotifications = getAdminNotifications(mockStore);
   const [active,            setActive]            = useState("dashboard");
   const [query,             setQuery]             = useState("");
   const [selectedOrderId,   setSelectedOrderId]   = useState(null);
   const [selectedReturnId,  setSelectedReturnId]  = useState(null);
 
   const pendingOrders = mockStore.orders.filter((order) => order.status === "pending").length;
-  const unreadNotifs = adminNotifications.filter((notif) => !notif.read).length;
   const pendingReturns = mockStore.returns.filter(
     (ret) => ret.status === "pending" || ret.status === "approved"
   ).length;
@@ -71,7 +64,6 @@ export default function AdminPage() {
       case "verify-history":   return <VerifyHistory />;
       case "returns":          return <Returns goToReturnDetail={goToReturnDetail} />;
       case "return-detail":    return <ReturnDetail selectedReturnId={selectedReturnId} setSelectedReturnId={setSelectedReturnId} setActive={setActive} />;
-      case "notifications":    return <Notifications />;
       case "settings":         return <Settings />;
       default:          return <Dashboard setActive={setActive} />;
     }
@@ -107,9 +99,6 @@ export default function AdminPage() {
               )}
               {item.id === "returns" && pendingReturns > 0 && (
                 <span className="adm-nav-badge adm-nav-badge--rose">{pendingReturns}</span>
-              )}
-              {item.id === "notifications" && unreadNotifs > 0 && (
-                <span className="adm-nav-badge adm-nav-badge--rose">{unreadNotifs}</span>
               )}
             </button>
           ))}
@@ -149,14 +138,6 @@ export default function AdminPage() {
           </div>
 
           <div className="adm-topbar-right">
-            {/* Notification bell */}
-            <button className="adm-topbar-icon-btn">
-              <IcBell />
-              {unreadNotifs > 0 && (
-                <span className="adm-notif-dot">{unreadNotifs}</span>
-              )}
-            </button>
-
             {/* Admin profile */}
             <div className="adm-topbar-profile">
               <img src="/logo-careofyou.png" alt="Admin" className="adm-topbar-avatar-img" />
